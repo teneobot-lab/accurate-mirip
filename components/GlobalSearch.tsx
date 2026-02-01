@@ -1,0 +1,142 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Command, ArrowRight } from 'lucide-react';
+import { Item } from '../types';
+import { StorageService } from '../services/storage';
+
+interface Props {
+  onSelectItem: (item: Item) => void;
+}
+
+export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
+  const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [items, setItems] = useState<Item[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load items on mount
+  useEffect(() => {
+    setItems(StorageService.getItems());
+  }, []);
+
+  // Filter Logic (Fuzzy-ish)
+  useEffect(() => {
+    if (!query) {
+      setFilteredItems([]);
+      setIsOpen(false);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    const terms = lowerQuery.split(' ').filter(t => t.length > 0);
+
+    const results = items.filter(item => {
+      const searchString = `${item.code} ${item.name} ${item.category}`.toLowerCase();
+      // Every term typed must exist somewhere in the item string
+      return terms.every(term => searchString.includes(term));
+    }).slice(0, 8); // Limit to 8 results
+
+    setFilteredItems(results);
+    setIsOpen(results.length > 0);
+    setSelectedIndex(0);
+  }, [query, items]);
+
+  // Click Outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev + 1) % filteredItems.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredItems[selectedIndex]) {
+        handleSelect(filteredItems[selectedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  const handleSelect = (item: Item) => {
+    onSelectItem(item);
+    setQuery('');
+    setIsOpen(false);
+    inputRef.current?.blur();
+  };
+
+  return (
+    <div className="relative w-full max-w-md mx-auto" ref={containerRef}>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-4 w-4 text-slate-400" />
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          className="block w-full pl-10 pr-4 py-2 border-0 bg-slate-100/50 text-slate-900 rounded-lg ring-1 ring-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm transition-all shadow-sm"
+          placeholder="Search items (Code, Name)..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => { if(query) setIsOpen(true); }}
+          onKeyDown={handleKeyDown}
+        />
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+          <kbd className="hidden sm:inline-block border border-slate-300 rounded px-1.5 text-[10px] font-mono text-slate-400 bg-slate-50 shadow-[0_1px_0_rgba(0,0,0,0.1)]">
+            /
+          </kbd>
+        </div>
+      </div>
+
+      {/* Dropdown Results */}
+      {isOpen && (
+        <div className="absolute z-50 mt-1 w-full bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="text-[10px] uppercase font-bold text-slate-400 px-3 py-2 bg-slate-50 border-b border-slate-100 flex justify-between">
+                <span>Suggestions</span>
+                <span>Use <ArrowRight size={10} className="inline"/> to select</span>
+            </div>
+            <ul>
+                {filteredItems.map((item, index) => (
+                <li
+                    key={item.id}
+                    onClick={() => handleSelect(item)}
+                    className={`cursor-pointer px-4 py-3 border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors ${
+                        index === selectedIndex ? 'bg-blue-50' : 'hover:bg-slate-50'
+                    }`}
+                >
+                    <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-800 flex items-center gap-2">
+                             {item.name}
+                             {index === selectedIndex && <ArrowRight size={14} className="text-blue-500" />}
+                        </span>
+                        <span className="text-xs text-slate-500 font-mono">
+                            {item.code} • {item.category}
+                        </span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                        {item.baseUnit}
+                    </span>
+                </li>
+                ))}
+            </ul>
+        </div>
+      )}
+    </div>
+  );
+};
