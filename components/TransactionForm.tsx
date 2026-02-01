@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, Edit3, Search, CornerDownLeft, Truck, FileText, User } from 'lucide-react';
+import { Plus, Trash2, Save, X, Edit3, Search, CornerDownLeft, Truck, FileText, User, Upload, Download, AlertTriangle, CheckCircle } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Props {
   type: TransactionType;
@@ -35,6 +36,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingQty, setPendingQty] = useState<number | ''>(1);
   const [pendingUnit, setPendingUnit] = useState<string>('');
+
+  // Import State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importWarnings, setImportWarnings] = useState<{sku: string, name: string, needed: number, available: number}[]>([]);
+  const [pendingImportLines, setPendingImportLines] = useState<TransactionItem[]>([]);
+  const [showWarningModal, setShowWarningModal] = useState(false);
 
   // Refs for keyboard navigation
   const queryInputRef = useRef<HTMLInputElement>(null);
@@ -208,6 +215,134 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       queryInputRef.current?.focus();
   };
 
+  // --- Import Logic ---
+
+  const handleDownloadTemplate = () => {
+      const headers = [['SKU', 'ItemName', 'Qty', 'Unit']];
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(headers);
+      XLSX.utils.book_append_sheet(wb, ws, "Template");
+      XLSX.writeFile(wb, "Import_Template.xlsx");
+  };
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsName = wb.SheetNames[0];
+          const ws = wb.Sheets[wsName];
+          const data = XLSX.utils.sheet_to_json(ws);
+          processImportData(data);
+      };
+      reader.readAsBinaryString(file);
+      // Reset input
+      e.target.value = '';
+  };
+
+  const processImportData = (rows: any[]) => {
+      const newLines: TransactionItem[] = [];
+      const warnings: {sku: string, name: string, needed: number, available: number}[] = [];
+      
+      // We need a fresh copy of items in case we auto-created some during this loop
+      let currentItems = [...items];
+      const itemsToCreate: Item[] = [];
+
+      rows.forEach((row: any) => {
+          const sku = row.SKU ? String(row.SKU).trim() : '';
+          const name = row.ItemName ? String(row.ItemName).trim() : 'Unknown Item';
+          const qty = parseFloat(row.Qty) || 0;
+          const unit = row.Unit ? String(row.Unit).trim() : 'Pcs';
+
+          if (!sku || qty <= 0) return;
+
+          let item = currentItems.find(i => i.code.toLowerCase() === sku.toLowerCase());
+
+          // Auto Create if not exists
+          if (!item) {
+              item = {
+                  id: crypto.randomUUID(),
+                  code: sku,
+                  name: name,
+                  category: 'Imported',
+                  baseUnit: unit, // Assume imported unit is base
+                  minStock: 10,
+                  conversions: []
+              };
+              itemsToCreate.push(item);
+              currentItems.push(item); // Update local reference for subsequent rows
+          }
+
+          // Calculate Ratio
+          let ratio = 1;
+          if (item.baseUnit !== unit) {
+              const conv = item.conversions.find(c => c.name.toLowerCase() === unit.toLowerCase());
+              if (conv) {
+                  ratio = conv.ratio;
+              } else {
+                  // Fallback: if unit doesn't match and no conversion, treat as base unit 1:1 but keep unit name
+                  // Or realistically, we should default to base unit? 
+                  // Let's assume ratio 1 for unknown units to allow import to proceed
+                  ratio = 1; 
+              }
+          }
+
+          // Validation for OUT/TRANSFER
+          if (type === 'OUT' || type === 'TRANSFER') {
+              const stock = StorageService.getStockQty(item.id, sourceWh);
+              const requestedBase = qty * ratio;
+              
+              // We need to account for what's already in 'lines' state + what's accumulated in 'newLines'
+              const existingInForm = [...lines, ...newLines]
+                  .filter(l => l.itemId === item!.id)
+                  .reduce((acc, l) => acc + (l.qty * l.ratio), 0);
+
+              if ((existingInForm + requestedBase) > stock) {
+                  warnings.push({
+                      sku: item.code,
+                      name: item.name,
+                      needed: existingInForm + requestedBase,
+                      available: stock
+                  });
+              }
+          }
+
+          newLines.push({
+              itemId: item.id,
+              qty: qty,
+              unit: unit,
+              ratio: ratio
+          });
+      });
+
+      // Save new items immediately
+      if (itemsToCreate.length > 0) {
+          itemsToCreate.forEach(i => StorageService.saveItem(i));
+          setItems(StorageService.getItems()); // Refresh state
+      }
+
+      setPendingImportLines(newLines);
+
+      if (warnings.length > 0) {
+          setImportWarnings(warnings);
+          setShowWarningModal(true);
+      } else {
+          // No warnings, add directly
+          setLines([...lines, ...newLines]);
+          alert(`Successfully imported ${newLines.length} lines.`);
+      }
+  };
+
+  const confirmImportWarning = () => {
+      setLines([...lines, ...pendingImportLines]);
+      setShowWarningModal(false);
+      setImportWarnings([]);
+      setPendingImportLines([]);
+  };
+
   const handleSubmit = () => {
     if (lines.length === 0) {
         alert("Please add at least one item.");
@@ -251,7 +386,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[95vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl h-[95vh] flex flex-col relative">
         {/* Header Title */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-lg">
             <div>
@@ -464,16 +599,96 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end items-center gap-3">
-             <button onClick={onClose} className="px-6 py-2 rounded text-slate-600 hover:bg-slate-200 font-medium text-sm">Cancel</button>
-             <button 
-                onClick={handleSubmit} 
-                className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center shadow-md shadow-blue-200"
-             >
-                <Save size={16} className="mr-2" /> 
-                {initialData ? 'Update Transaction' : 'Save Transaction'}
-             </button>
+        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
+             <div className="flex items-center gap-2">
+                 <button onClick={handleDownloadTemplate} className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 text-slate-600 rounded text-sm hover:bg-slate-100">
+                    <Download size={14} /> Template
+                 </button>
+                 <div className="relative">
+                     <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded text-sm hover:bg-slate-900 shadow-sm">
+                        <Upload size={14} /> Import XLSX
+                     </button>
+                     <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleImportFile} 
+                        accept=".xlsx, .xls" 
+                        className="hidden" 
+                     />
+                 </div>
+             </div>
+
+             <div className="flex gap-3">
+                 <button onClick={onClose} className="px-6 py-2 rounded text-slate-600 hover:bg-slate-200 font-medium text-sm">Cancel</button>
+                 <button 
+                    onClick={handleSubmit} 
+                    className="px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center shadow-md shadow-blue-200"
+                 >
+                    <Save size={16} className="mr-2" /> 
+                    {initialData ? 'Update Transaction' : 'Save Transaction'}
+                 </button>
+             </div>
         </div>
+
+        {/* Warning Modal Overlay */}
+        {showWarningModal && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg overflow-hidden border border-red-200">
+                    <div className="bg-red-50 p-4 flex items-center gap-3 border-b border-red-100">
+                        <div className="p-2 bg-red-100 rounded-full text-red-600">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-700">Stock Insufficient</h3>
+                            <p className="text-xs text-red-500">The following items exceed available stock.</p>
+                        </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto p-0">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
+                                <tr>
+                                    <th className="p-3">Item</th>
+                                    <th className="p-3 text-right">Needed</th>
+                                    <th className="p-3 text-right">Available</th>
+                                    <th className="p-3 text-right">Deficit</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {importWarnings.map((w, idx) => (
+                                    <tr key={idx}>
+                                        <td className="p-3">
+                                            <div className="font-bold text-slate-700">{w.sku}</div>
+                                            <div className="text-xs text-slate-500">{w.name}</div>
+                                        </td>
+                                        <td className="p-3 text-right font-mono">{w.needed}</td>
+                                        <td className="p-3 text-right font-mono text-slate-500">{w.available}</td>
+                                        <td className="p-3 text-right font-mono font-bold text-red-600">-{w.needed - w.available}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                        <button 
+                            onClick={() => {
+                                setShowWarningModal(false);
+                                setImportWarnings([]);
+                                setPendingImportLines([]);
+                            }} 
+                            className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded text-sm"
+                        >
+                            Cancel Import
+                        </button>
+                        <button 
+                            onClick={confirmImportWarning} 
+                            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded text-sm flex items-center gap-2 shadow-sm"
+                        >
+                            <CheckCircle size={14} /> Proceed Anyway
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );
