@@ -1,6 +1,8 @@
+
 export interface UnitConversion {
   name: string;
   ratio: number; // How many base units in this unit (e.g., Box = 12 Pcs, ratio = 12)
+  operator?: '*' | '/'; // Default is '*'
 }
 
 export interface Item {
@@ -23,6 +25,27 @@ export interface Warehouse {
   id: string;
   name: string;
   location: string;
+  phone?: string;
+  pic?: string;
+}
+
+export interface Partner {
+  id: string;
+  type: 'SUPPLIER' | 'CUSTOMER';
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  npwp?: string; // Tax ID
+  term?: number; // Payment terms (days)
+}
+
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'ADMIN' | 'MANAGER' | 'STAFF';
+  status: 'ACTIVE' | 'INACTIVE';
 }
 
 export type TransactionType = 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
@@ -58,4 +81,23 @@ export interface StockMutation {
   outQty: number;
   balanceQty: number;
   unit: string;
+}
+
+// --- REJECT MODULE TYPES ---
+export interface RejectItem {
+    itemId: string;
+    sku: string;
+    name: string;
+    qty: number;
+    unit: string;
+    baseQty: number; // Calculated
+    reason: string;
+}
+
+export interface RejectBatch {
+    id: string;
+    date: string;
+    outlet: string;
+    createdAt: number;
+    items: RejectItem[];
 }

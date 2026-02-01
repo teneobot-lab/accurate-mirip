@@ -1,0 +1,780 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { StorageService } from '../services/storage';
+import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
+import { Trash2, Plus, Save, Upload, Download, Copy, Search, Calendar, MapPin, FileSpreadsheet, History, Eye, X, CornerDownLeft, Database, Edit3, ArrowRight } from 'lucide-react';
+import * as XLSX from 'xlsx';
+
+export const RejectView: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'DATABASE'>('NEW');
+    const [items, setItems] = useState<Item[]>([]);
+    const [outlets, setOutlets] = useState<string[]>([]);
+    
+    // --- New Entry State ---
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedOutlet, setSelectedOutlet] = useState('');
+    const [newOutletName, setNewOutletName] = useState('');
+    const [showAddOutlet, setShowAddOutlet] = useState(false);
+    const [rejectLines, setRejectLines] = useState<RejectItem[]>([]);
+
+    // --- Input Line State ---
+    const [query, setQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<Item[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(0);
+    const [pendingItem, setPendingItem] = useState<Item | null>(null);
+    const [pendingQty, setPendingQty] = useState<number | ''>('');
+    const [pendingUnit, setPendingUnit] = useState('');
+    const [pendingReason, setPendingReason] = useState('');
+
+    // --- History State ---
+    const [batches, setBatches] = useState<RejectBatch[]>([]);
+    const [viewingBatch, setViewingBatch] = useState<RejectBatch | null>(null);
+
+    // --- Database Tab State ---
+    const [dbSearch, setDbSearch] = useState('');
+    const [editingItem, setEditingItem] = useState<Item | null>(null); // For conversion editing
+
+    // --- Refs ---
+    const queryRef = useRef<HTMLInputElement>(null);
+    const qtyRef = useRef<HTMLInputElement>(null);
+    const reasonRef = useRef<HTMLInputElement>(null);
+    const unitRef = useRef<HTMLSelectElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null); // For Transaction Import
+    const masterFileInputRef = useRef<HTMLInputElement>(null); // For Master Data Import
+
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = () => {
+        setItems(StorageService.getItems());
+        setOutlets(StorageService.getRejectOutlets());
+        setBatches(StorageService.getRejectBatches());
+        const savedOutlets = StorageService.getRejectOutlets();
+        if (savedOutlets.length > 0 && !selectedOutlet) setSelectedOutlet(savedOutlets[0]);
+    };
+
+    // --- Search & Autocomplete ---
+    useEffect(() => {
+        if (!query.trim()) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        if (pendingItem && query === pendingItem.name) return;
+
+        const lower = query.toLowerCase();
+        const matches = items.filter(i => 
+            i.code.toLowerCase().includes(lower) || 
+            i.name.toLowerCase().includes(lower)
+        ).slice(0, 10);
+        
+        setSuggestions(matches);
+        setShowSuggestions(matches.length > 0);
+        setHighlightedIndex(0);
+    }, [query, items, pendingItem]);
+
+    const handleQueryKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setHighlightedIndex(prev => (prev + 1) % suggestions.length);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlightedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (suggestions.length > 0) {
+                selectItem(suggestions[highlightedIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            setShowSuggestions(false);
+        }
+    };
+
+    const selectItem = (item: Item) => {
+        setPendingItem(item);
+        setQuery(item.name);
+        
+        // Smart Unit: Check history
+        const lastUnit = localStorage.getItem(`reject_last_unit_${item.id}`);
+        setPendingUnit(lastUnit || item.baseUnit);
+        
+        setPendingQty('');
+        setShowSuggestions(false);
+        setTimeout(() => qtyRef.current?.focus(), 50);
+    };
+
+    // --- Calculation Logic ---
+    const calculateBase = (qty: number, unitName: string, item: Item) => {
+        if (unitName === item.baseUnit) return qty;
+        const conv = item.conversions.find(c => c.name === unitName);
+        if (!conv) return qty;
+        
+        if (conv.operator === '/') {
+            return qty / conv.ratio;
+        } else {
+            return qty * conv.ratio;
+        }
+    };
+
+    const handleAddLine = () => {
+        if (!pendingItem) return;
+        const qty = Number(pendingQty);
+        if (qty <= 0) return alert("Invalid Qty");
+        if (!pendingReason.trim()) return alert("Reason is required");
+
+        const baseQty = calculateBase(qty, pendingUnit, pendingItem);
+
+        const newLine: RejectItem = {
+            itemId: pendingItem.id,
+            sku: pendingItem.code,
+            name: pendingItem.name,
+            qty: qty,
+            unit: pendingUnit,
+            baseQty: baseQty,
+            reason: pendingReason
+        };
+
+        setRejectLines([...rejectLines, newLine]);
+        localStorage.setItem(`reject_last_unit_${pendingItem.id}`, pendingUnit);
+
+        setPendingItem(null);
+        setQuery('');
+        setPendingQty('');
+        setPendingReason('');
+        queryRef.current?.focus();
+    };
+
+    const handleRemoveLine = (idx: number) => {
+        const newLines = [...rejectLines];
+        newLines.splice(idx, 1);
+        setRejectLines(newLines);
+    };
+
+    const handleSaveBatch = () => {
+        if (rejectLines.length === 0) return alert("No items to save");
+        if (!selectedOutlet) return alert("Please select an outlet");
+
+        const batch: RejectBatch = {
+            id: `REJ-${Date.now().toString().slice(-6)}`,
+            date,
+            outlet: selectedOutlet,
+            createdAt: Date.now(),
+            items: rejectLines
+        };
+
+        StorageService.saveRejectBatch(batch);
+        setRejectLines([]);
+        setBatches(StorageService.getRejectBatches());
+        alert("Reject Batch Saved!");
+    };
+
+    // --- History Export Logic (Bulk) ---
+    const handleHistoryClipboard = () => {
+        // Format: Blocks of batch data
+        let text = "";
+        batches.forEach(batch => {
+            const dateStr = batch.date.split('-').reverse().join(''); 
+            const shortDate = dateStr.substring(0, 4) + dateStr.substring(6, 8);
+            text += `Data Reject ${batch.outlet} ${shortDate}\n`;
+            batch.items.forEach(line => {
+                text += `- ${line.name} ${line.qty} ${line.unit} ${line.reason}\n`;
+            });
+            text += "\n";
+        });
+        navigator.clipboard.writeText(text).then(() => alert("All History Copied to Clipboard!"));
+    };
+
+    const handleHistoryExcel = () => {
+        // Flatten all history
+        const rows: any[] = [];
+        batches.forEach(batch => {
+            batch.items.forEach(line => {
+                rows.push({
+                    Date: batch.date,
+                    Outlet: batch.outlet,
+                    SKU: line.sku,
+                    'Item Name': line.name,
+                    Qty: line.qty === 0 ? '' : line.qty,
+                    Unit: line.unit,
+                    'Base Qty': line.baseQty === 0 ? '' : Number(line.baseQty.toFixed(1)),
+                    Reason: line.reason
+                });
+            });
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        
+        // Simulating Yellow Header by manually selecting range A1:H1 if possible (library limit)
+        // We will just create the file
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Reject History");
+        XLSX.writeFile(wb, `All_Reject_History_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
+    // --- New Entry Export Logic (Single Session) ---
+    const handleSessionClipboard = () => {
+        const dateStr = date.split('-').reverse().join(''); 
+        const shortDate = dateStr.substring(0, 4) + dateStr.substring(6, 8);
+        let text = `Data Reject ${selectedOutlet} ${shortDate}\n`;
+        rejectLines.forEach(line => {
+            text += `- ${line.name} ${line.qty} ${line.unit} ${line.reason}\n`;
+        });
+        navigator.clipboard.writeText(text).then(() => alert("Copied to Clipboard!"));
+    };
+
+    // --- Transaction Import Logic ---
+    const handleTransactionImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data: any[] = XLSX.utils.sheet_to_json(ws);
+            const imported: RejectItem[] = [];
+            data.forEach(row => {
+                const item = items.find(i => i.code === String(row.SKU).trim());
+                if (item && row.Qty > 0) {
+                    const unit = row.Unit || item.baseUnit;
+                    imported.push({
+                        itemId: item.id,
+                        sku: item.code,
+                        name: item.name,
+                        qty: row.Qty,
+                        unit: unit,
+                        baseQty: calculateBase(row.Qty, unit, item),
+                        reason: row.Reason || 'Imported'
+                    });
+                }
+            });
+            setRejectLines([...rejectLines, ...imported]);
+            e.target.value = '';
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    // --- Database / Master Data Logic ---
+    const handleDownloadMasterTemplate = () => {
+        const headers = [['Code', 'Name', 'Category', 'BaseUnit', 'MinStock']];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(headers);
+        XLSX.utils.book_append_sheet(wb, ws, "MasterTemplate");
+        XLSX.writeFile(wb, "Master_Data_Template.xlsx");
+    };
+
+    const handleImportMasterData = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const data: any[] = XLSX.utils.sheet_to_json(ws);
+            
+            const newItems: Item[] = [];
+            data.forEach(row => {
+                if (row.Code && row.Name) {
+                    newItems.push({
+                        id: crypto.randomUUID(),
+                        code: String(row.Code).trim(),
+                        name: String(row.Name).trim(),
+                        category: row.Category || 'General',
+                        baseUnit: row.BaseUnit || 'Pcs',
+                        minStock: Number(row.MinStock) || 0,
+                        conversions: []
+                    });
+                }
+            });
+            StorageService.importItems(newItems);
+            loadData();
+            alert(`Imported ${newItems.length} Master Items`);
+            e.target.value = '';
+        };
+        reader.readAsBinaryString(file);
+    };
+
+    const handleSaveConversions = () => {
+        if (editingItem) {
+             const updated = { ...editingItem, conversions: editingItem.conversions.filter(c => c.name && c.ratio > 0) };
+             StorageService.saveItem(updated);
+             loadData();
+             setEditingItem(null);
+        }
+    };
+
+    // --- Helpers ---
+    const getUnits = (item: Item) => [{ name: item.baseUnit }, ...item.conversions];
+
+    return (
+        <div className="flex flex-col h-full bg-slate-50 p-4 gap-4">
+            
+            {/* Navigation Tabs */}
+            <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex justify-between items-center">
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setActiveTab('NEW')}
+                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'NEW' ? 'bg-red-50 text-red-600 border border-red-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <CornerDownLeft size={16}/> New Reject Entry
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('HISTORY')}
+                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'HISTORY' ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <History size={16}/> Reject History
+                    </button>
+                     <button 
+                        onClick={() => setActiveTab('DATABASE')}
+                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'DATABASE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <Database size={16}/> Database Reject
+                    </button>
+                </div>
+            </div>
+
+            {/* --- TAB: NEW ENTRY --- */}
+            {activeTab === 'NEW' && (
+                <div className="flex flex-col gap-4 flex-1 overflow-hidden">
+                    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
+                        <div className="flex flex-col gap-1">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><Calendar size={12}/> Date</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="border p-2 rounded text-sm w-36 focus:ring-1 focus:ring-red-500 outline-none" />
+                        </div>
+                        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><MapPin size={12}/> Outlet / Location</label>
+                            <div className="flex gap-2">
+                                <select 
+                                    value={selectedOutlet} 
+                                    onChange={e => setSelectedOutlet(e.target.value)} 
+                                    className="border p-2 rounded text-sm flex-1 outline-none focus:ring-1 focus:ring-red-500"
+                                >
+                                    {outlets.map(o => <option key={o} value={o}>{o}</option>)}
+                                </select>
+                                <button onClick={() => setShowAddOutlet(true)} className="p-2 bg-slate-100 rounded hover:bg-slate-200 text-slate-600"><Plus size={16}/></button>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                             <button onClick={() => fileInputRef.current?.click()} className="px-3 py-2 bg-slate-800 text-white rounded text-sm hover:bg-slate-900 flex items-center gap-2 shadow-sm">
+                                <Upload size={14}/> Import Transaction
+                            </button>
+                            <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx" onChange={handleTransactionImport} />
+                        </div>
+                    </div>
+
+                    <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="flex-1 overflow-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0 z-10">
+                                    <tr>
+                                        <th className="p-3 border-b w-10 text-center">#</th>
+                                        <th className="p-3 border-b">Item</th>
+                                        <th className="p-3 border-b w-24 text-right">Qty</th>
+                                        <th className="p-3 border-b w-24">Unit</th>
+                                        <th className="p-3 border-b w-24 text-right">Base</th>
+                                        <th className="p-3 border-b">Reason</th>
+                                        <th className="p-3 border-b w-10 text-center">Act</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {rejectLines.map((line, idx) => (
+                                        <tr key={idx} className="border-b border-slate-50 hover:bg-red-50/10">
+                                            <td className="p-2 text-center text-slate-400">{idx + 1}</td>
+                                            <td className="p-2">
+                                                <div className="font-medium text-slate-700">{line.name}</div>
+                                                <div className="text-xs text-slate-400 font-mono">{line.sku}</div>
+                                            </td>
+                                            <td className="p-2 text-right font-bold font-mono text-red-600">{line.qty}</td>
+                                            <td className="p-2 text-slate-500">{line.unit}</td>
+                                            <td className="p-2 text-right font-mono text-slate-400">{Number(line.baseQty.toFixed(2))}</td>
+                                            <td className="p-2 text-slate-600">{line.reason}</td>
+                                            <td className="p-2 text-center">
+                                                <button onClick={() => handleRemoveLine(idx)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr className="bg-red-50/20 border-t-2 border-red-100">
+                                        <td className="p-2 text-center text-red-300"><Plus size={16} className="mx-auto"/></td>
+                                        <td className="p-2 relative">
+                                            <div className="relative">
+                                                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <input 
+                                                    ref={queryRef}
+                                                    type="text" 
+                                                    className="w-full pl-8 pr-2 py-1.5 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                    placeholder="Scan or type item..."
+                                                    value={query}
+                                                    onChange={e => setQuery(e.target.value)}
+                                                    onKeyDown={handleQueryKeyDown}
+                                                    onFocus={() => { if(query) setShowSuggestions(true); }}
+                                                />
+                                                {showSuggestions && (
+                                                    <div className="absolute left-0 bottom-full mb-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                                        {suggestions.map((item, idx) => (
+                                                            <div 
+                                                                key={item.id}
+                                                                className={`px-3 py-2 cursor-pointer flex justify-between items-center ${idx === highlightedIndex ? 'bg-red-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                                                onClick={() => selectItem(item)}
+                                                            >
+                                                                <div>
+                                                                    <div className="font-medium text-sm">{item.name}</div>
+                                                                    <div className={`text-xs ${idx === highlightedIndex ? 'text-red-100' : 'text-slate-400'}`}>{item.code}</div>
+                                                                </div>
+                                                                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${idx === highlightedIndex ? 'bg-red-500' : 'bg-slate-100'}`}>{item.baseUnit}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-2">
+                                            <input 
+                                                ref={qtyRef}
+                                                type="number" 
+                                                className="w-full text-right py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                placeholder="Qty"
+                                                value={pendingQty}
+                                                onChange={e => setPendingQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                                onKeyDown={e => e.key === 'Enter' && unitRef.current?.focus()}
+                                            />
+                                        </td>
+                                        <td className="p-2">
+                                            <select 
+                                                ref={unitRef}
+                                                className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                                value={pendingUnit}
+                                                onChange={e => setPendingUnit(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && reasonRef.current?.focus()}
+                                                disabled={!pendingItem}
+                                            >
+                                                {pendingItem && getUnits(pendingItem).map(u => (
+                                                    <option key={u.name} value={u.name}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        <td className="p-2 text-right text-slate-400 font-mono text-xs italic bg-slate-50">
+                                            {pendingItem && pendingQty !== '' ? Number(calculateBase(Number(pendingQty), pendingUnit, pendingItem).toFixed(2)) : '-'}
+                                        </td>
+                                        <td className="p-2">
+                                            <input 
+                                                ref={reasonRef}
+                                                type="text" 
+                                                className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                placeholder="Reason"
+                                                value={pendingReason}
+                                                onChange={e => setPendingReason(e.target.value)}
+                                                onKeyDown={e => e.key === 'Enter' && handleAddLine()}
+                                            />
+                                        </td>
+                                        <td className="p-2 text-center">
+                                            <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">
+                                                <Plus size={16}/>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                             <div className="text-xs text-slate-500">
+                                 {rejectLines.length} Items ready.
+                             </div>
+                             <div className="flex gap-2">
+                                 <button onClick={handleSessionClipboard} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded text-sm hover:bg-slate-50 flex items-center gap-2 shadow-sm">
+                                    <Copy size={16}/> Copy to Clipboard
+                                 </button>
+                                 <button onClick={handleSaveBatch} className="px-6 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 font-bold flex items-center gap-2 shadow-sm">
+                                    <Save size={16}/> Save Batch
+                                 </button>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- TAB: HISTORY --- */}
+            {activeTab === 'HISTORY' && (
+                <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                        <div className="text-sm font-bold text-slate-700">Batch History</div>
+                        <div className="flex gap-2">
+                            <button onClick={handleHistoryClipboard} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded text-xs hover:bg-slate-100 flex items-center gap-2 shadow-sm">
+                                <Copy size={14}/> Copy All History
+                            </button>
+                            <button onClick={handleHistoryExcel} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 flex items-center gap-2 shadow-sm">
+                                <FileSpreadsheet size={14}/> Export All Flat
+                            </button>
+                        </div>
+                    </div>
+                    <div className="overflow-auto flex-1">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0">
+                                <tr>
+                                    <th className="p-3">ID</th>
+                                    <th className="p-3">Date</th>
+                                    <th className="p-3">Outlet</th>
+                                    <th className="p-3 text-right">Items Count</th>
+                                    <th className="p-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 text-sm">
+                                {batches.map(batch => (
+                                    <tr key={batch.id} className="hover:bg-slate-50">
+                                        <td className="p-3 font-mono text-slate-500">{batch.id}</td>
+                                        <td className="p-3">{batch.date}</td>
+                                        <td className="p-3 font-medium text-slate-700">{batch.outlet}</td>
+                                        <td className="p-3 text-right font-bold text-red-600">{batch.items.length}</td>
+                                        <td className="p-3 text-center flex justify-center gap-2">
+                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Eye size={16}/></button>
+                                            <button 
+                                                onClick={() => {
+                                                    if(confirm('Delete this batch?')) {
+                                                        StorageService.deleteRejectBatch(batch.id);
+                                                        setBatches(StorageService.getRejectBatches());
+                                                    }
+                                                }} 
+                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                            >
+                                                <Trash2 size={16}/>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* --- TAB: DATABASE REJECT (MASTER DATA) --- */}
+            {activeTab === 'DATABASE' && (
+                <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
+                        <div className="relative">
+                            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                            <input 
+                                type="text" 
+                                placeholder="Search Master Data..." 
+                                className="pl-8 pr-3 py-1.5 border rounded text-sm w-64 outline-none focus:ring-1 focus:ring-emerald-500"
+                                value={dbSearch}
+                                onChange={e => setDbSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                             <button onClick={handleDownloadMasterTemplate} className="px-3 py-1.5 border bg-white text-slate-600 rounded text-xs flex items-center gap-2 hover:bg-slate-50">
+                                <Download size={14}/> Master Template
+                            </button>
+                            <button onClick={() => masterFileInputRef.current?.click()} className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs flex items-center gap-2 hover:bg-slate-900 shadow-sm">
+                                <Upload size={14}/> Import Master Data
+                            </button>
+                            <input type="file" ref={masterFileInputRef} className="hidden" accept=".xlsx" onChange={handleImportMasterData} />
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0">
+                                <tr>
+                                    <th className="p-3">SKU</th>
+                                    <th className="p-3">Name</th>
+                                    <th className="p-3">Base Unit</th>
+                                    <th className="p-3">Category</th>
+                                    <th className="p-3">Conversions</th>
+                                    <th className="p-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 text-sm">
+                                {items.filter(i => i.name.toLowerCase().includes(dbSearch.toLowerCase()) || i.code.toLowerCase().includes(dbSearch.toLowerCase())).map(item => (
+                                    <tr key={item.id} className="hover:bg-slate-50">
+                                        <td className="p-3 font-mono text-slate-500">{item.code}</td>
+                                        <td className="p-3 font-medium text-slate-700">{item.name}</td>
+                                        <td className="p-3"><span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-bold">{item.baseUnit}</span></td>
+                                        <td className="p-3 text-slate-500">{item.category}</td>
+                                        <td className="p-3 text-xs text-slate-500">
+                                            {item.conversions.map(c => `${c.name} (${c.operator === '/' ? '/' : '*'}${c.ratio})`).join(', ') || '-'}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <button 
+                                                onClick={() => setEditingItem(JSON.parse(JSON.stringify(item)))}
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                title="Manage Conversions"
+                                            >
+                                                <Edit3 size={16}/>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Add Outlet */}
+            {showAddOutlet && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-80">
+                        <h3 className="font-bold text-slate-700 mb-4">Add New Outlet</h3>
+                        <input 
+                            autoFocus
+                            className="w-full border p-2 rounded mb-4" 
+                            placeholder="Outlet Name" 
+                            value={newOutletName} 
+                            onChange={e => setNewOutletName(e.target.value)}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => setShowAddOutlet(false)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded">Cancel</button>
+                            <button 
+                                onClick={() => {
+                                    if(newOutletName) {
+                                        StorageService.saveRejectOutlet(newOutletName);
+                                        setOutlets(StorageService.getRejectOutlets());
+                                        setSelectedOutlet(newOutletName);
+                                        setShowAddOutlet(false);
+                                        setNewOutletName('');
+                                    }
+                                }} 
+                                className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: View Batch */}
+            {viewingBatch && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[80vh]">
+                        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-lg">
+                            <div>
+                                <h3 className="font-bold text-slate-800">Reject Batch Details</h3>
+                                <p className="text-xs text-slate-500 font-mono">{viewingBatch.id} • {viewingBatch.date} • {viewingBatch.outlet}</p>
+                            </div>
+                            <button onClick={() => setViewingBatch(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-0">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-100 text-xs text-slate-500 uppercase">
+                                    <tr>
+                                        <th className="p-3">Item</th>
+                                        <th className="p-3 text-right">Qty</th>
+                                        <th className="p-3">Unit</th>
+                                        <th className="p-3 text-right">Base Qty</th>
+                                        <th className="p-3">Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {viewingBatch.items.map((line, i) => (
+                                        <tr key={i}>
+                                            <td className="p-3">
+                                                <div className="font-medium text-slate-700">{line.name}</div>
+                                                <div className="text-xs text-slate-400 font-mono">{line.sku}</div>
+                                            </td>
+                                            <td className="p-3 text-right font-bold text-red-600">{line.qty}</td>
+                                            <td className="p-3 text-slate-500">{line.unit}</td>
+                                            <td className="p-3 text-right font-mono text-slate-400">{Number(line.baseQty.toFixed(2))}</td>
+                                            <td className="p-3 text-slate-600">{line.reason}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-lg text-right">
+                             <button onClick={() => setViewingBatch(null)} className="px-4 py-2 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Edit Conversions */}
+            {editingItem && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-700">Manage Units: {editingItem.code}</h3>
+                            <button onClick={() => setEditingItem(null)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+                        </div>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto bg-slate-50/50">
+                            <div className="mb-4 text-xs text-slate-500">
+                                Base Unit: <strong className="text-slate-800">{editingItem.baseUnit}</strong>
+                            </div>
+                            <div className="space-y-3">
+                                {editingItem.conversions.map((conv, idx) => (
+                                    <div key={idx} className="bg-white p-3 rounded border border-slate-200 shadow-sm flex items-center gap-2">
+                                        <div className="flex-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Name</label>
+                                            <input 
+                                                className="w-full border rounded px-2 py-1 text-sm" 
+                                                value={conv.name}
+                                                onChange={e => {
+                                                    const nc = [...editingItem.conversions];
+                                                    nc[idx].name = e.target.value;
+                                                    setEditingItem({...editingItem, conversions: nc});
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col items-center pt-4">
+                                            <ArrowRight size={14} className="text-slate-300"/>
+                                        </div>
+                                        <div className="w-20">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Operator</label>
+                                            <select 
+                                                className="w-full border rounded px-1 py-1 text-sm bg-slate-50"
+                                                value={conv.operator || '*'}
+                                                onChange={e => {
+                                                    const nc = [...editingItem.conversions];
+                                                    nc[idx].operator = e.target.value as '*' | '/';
+                                                    setEditingItem({...editingItem, conversions: nc});
+                                                }}
+                                            >
+                                                <option value="*">Multiply (*)</option>
+                                                <option value="/">Divide (/)</option>
+                                            </select>
+                                        </div>
+                                        <div className="w-24">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Ratio</label>
+                                            <input 
+                                                type="number"
+                                                className="w-full border rounded px-2 py-1 text-sm" 
+                                                value={conv.ratio}
+                                                onChange={e => {
+                                                    const nc = [...editingItem.conversions];
+                                                    nc[idx].ratio = parseFloat(e.target.value);
+                                                    setEditingItem({...editingItem, conversions: nc});
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="pt-4">
+                                             <button 
+                                                onClick={() => {
+                                                    const nc = editingItem.conversions.filter((_, i) => i !== idx);
+                                                    setEditingItem({...editingItem, conversions: nc});
+                                                }}
+                                                className="text-slate-300 hover:text-red-500"
+                                             >
+                                                 <Trash2 size={16}/>
+                                             </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button 
+                                onClick={() => setEditingItem({...editingItem, conversions: [...editingItem.conversions, { name: '', ratio: 1, operator: '*' }]})}
+                                className="mt-4 w-full py-2 border-2 border-dashed border-blue-200 text-blue-600 rounded hover:bg-blue-50 text-sm font-bold flex items-center justify-center gap-2"
+                            >
+                                <Plus size={16}/> Add Unit
+                            </button>
+                        </div>
+                        <div className="p-3 border-t border-slate-200 flex justify-end gap-2">
+                             <button onClick={() => setEditingItem(null)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded text-sm">Cancel</button>
+                             <button onClick={handleSaveConversions} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 shadow-sm">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};

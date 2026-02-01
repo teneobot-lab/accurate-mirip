@@ -1,16 +1,19 @@
+
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
 import { InventoryView } from './components/InventoryView';
 import { TransactionForm } from './components/TransactionForm';
 import { ReportsView } from './components/ReportsView';
 import { DashboardView } from './components/DashboardView';
+import { SettingsView } from './components/SettingsView';
+import { RejectView } from './components/RejectView';
 import { GlobalSearch } from './components/GlobalSearch';
 import { StockCardModal } from './components/StockCardModal';
-import { LayoutDashboard, Package, ArrowLeftRight, FileBarChart, ChevronRight, Warehouse as WhIcon } from 'lucide-react';
+import { LayoutDashboard, Package, ArrowLeftRight, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
   
   // Transaction Modal State
   const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
@@ -71,6 +74,7 @@ function App() {
            <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
            <NavItem id="INVENTORY" label="Stock Inventory" icon={Package} />
            <NavItem id="REPORTS" label="Mutation Reports" icon={FileBarChart} />
+           <NavItem id="REJECT" label="Reject / Afkir" icon={AlertOctagon} />
            
            <div className="mt-8 text-xs font-bold text-slate-500 uppercase mb-4 px-3">Quick Transactions</div>
            <div className="space-y-2">
@@ -83,6 +87,10 @@ function App() {
               <button onClick={() => { setShowTransactionModal('TRANSFER'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-slate-800 rounded flex items-center">
                  <div className="w-2 h-2 rounded-full bg-blue-500 mr-3"></div> Transfer Stock
               </button>
+           </div>
+           
+           <div className="mt-8 border-t border-slate-800 pt-4">
+               <NavItem id="SETTINGS" label="Settings" icon={Settings} />
            </div>
         </div>
         
@@ -99,6 +107,8 @@ function App() {
                     {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
                     {activeTab === 'INVENTORY' && 'Inventory Master Data'}
                     {activeTab === 'REPORTS' && 'Stock Mutation Reports'}
+                    {activeTab === 'SETTINGS' && 'System Configuration'}
+                    {activeTab === 'REJECT' && 'Reject / Afkir Management'}
                 </h2>
              </div>
              
@@ -122,6 +132,8 @@ function App() {
              {activeTab === 'DASHBOARD' && <DashboardView />}
              {activeTab === 'INVENTORY' && <InventoryView />}
              {activeTab === 'REPORTS' && <ReportsView onEditTransaction={handleEditTransaction} />}
+             {activeTab === 'SETTINGS' && <SettingsView />}
+             {activeTab === 'REJECT' && <RejectView />}
          </div>
 
          {/* Transaction Modal Overlay */}
