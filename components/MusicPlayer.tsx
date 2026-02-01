@@ -27,7 +27,9 @@ export const MusicPlayer: React.FC = () => {
   const currentSong = activePlaylist?.songs[currentSongIndex];
 
   const getYoutubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    // Regex string for YouTube ID extraction
+    // Using RegExp constructor to avoid syntax errors with forward slashes in some parsers
+    const regExp = new RegExp("^.*(youtu.be/|v/|u/\\w/|embed/|watch\\?v=|&v=)([^#&?]*).*");
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
