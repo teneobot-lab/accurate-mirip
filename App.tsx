@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
 import { InventoryView } from './components/InventoryView';
@@ -10,7 +9,7 @@ import { RejectView } from './components/RejectView';
 import { StockCardModal } from './components/StockCardModal';
 import { ThemeToggle } from './components/ThemeToggle';
 import { ClockWidget } from './components/ClockWidget';
-import { MusicPlayer } from './components/MusicPlayer';
+import MusicPlayer from './components/MusicPlayer';
 import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 

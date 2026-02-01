@@ -1,20 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
-import { Music, Plus, Play, Trash2, ListMusic, X, ExternalLink, SkipForward, SkipBack, Edit3 } from 'lucide-react';
+import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3 } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import { Playlist, Song } from '../types';
+import { Playlist } from '../types';
 
-export const MusicPlayer: React.FC = () => {
+const MusicPlayer: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>(StorageService.getPlaylists());
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [isManaging, setIsManaging] = useState(false);
   
-  // Create New Playlist State
   const [newPlaylistName, setNewPlaylistName] = useState('');
-  
-  // Current Playlist View (for adding songs)
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [newSongTitle, setNewSongTitle] = useState('');
   const [newSongUrl, setNewSongUrl] = useState('');
@@ -27,11 +23,15 @@ export const MusicPlayer: React.FC = () => {
   const currentSong = activePlaylist?.songs[currentSongIndex];
 
   const getYoutubeId = (url: string) => {
-    // Regex string for YouTube ID extraction
-    // Using RegExp constructor to avoid syntax errors with forward slashes in some parsers
-    const regExp = new RegExp("^.*(youtu.be/|v/|u/\\w/|embed/|watch\\?v=|&v=)([^#&?]*).*");
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    try {
+        if (!url) return null;
+        // Robust regex for YouTube ID
+        const regExp = new RegExp(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    } catch (e) {
+        return null;
+    }
   };
 
   const handleCreatePlaylist = () => {
@@ -96,7 +96,6 @@ export const MusicPlayer: React.FC = () => {
 
       {isOpen && (
         <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-          {/* Active Player Mini-Display */}
           {currentSong && (
             <div className="p-3 bg-blue-600 text-white flex flex-col gap-2">
               <div className="flex justify-between items-center">
@@ -131,7 +130,6 @@ export const MusicPlayer: React.FC = () => {
             </div>
           )}
 
-          {/* Navigation */}
           <div className="flex border-b border-slate-100 dark:border-slate-800">
             <button 
               onClick={() => { setIsManaging(false); setEditingPlaylist(null); }}
@@ -255,3 +253,5 @@ export const MusicPlayer: React.FC = () => {
     </div>
   );
 };
+
+export default MusicPlayer;
