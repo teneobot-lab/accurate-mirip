@@ -24,7 +24,7 @@ export const RejectView: React.FC = () => {
     const [pendingItem, setPendingItem] = useState<Item | null>(null);
     const [pendingQty, setPendingQty] = useState<number | ''>('');
     const [pendingUnit, setPendingUnit] = useState('');
-    // Note: pendingReason state removed to fix cursor jumping issue. Using ref instead.
+    const [pendingReason, setPendingReason] = useState('');
 
     // --- History State ---
     const [batches, setBatches] = useState<RejectBatch[]>([]);
@@ -46,8 +46,8 @@ export const RejectView: React.FC = () => {
     const qtyRef = useRef<HTMLInputElement>(null);
     const reasonRef = useRef<HTMLInputElement>(null);
     const unitRef = useRef<HTMLSelectElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null); // For Transaction Import
-    const masterFileInputRef = useRef<HTMLInputElement>(null); // For Master Data Import
+    const fileInputRef = useRef<HTMLInputElement>(null); 
+    const masterFileInputRef = useRef<HTMLInputElement>(null); 
 
     useEffect(() => {
         loadData();
@@ -103,7 +103,6 @@ export const RejectView: React.FC = () => {
         setPendingItem(item);
         setQuery(item.name);
         
-        // Smart Unit: Check history
         const lastUnit = localStorage.getItem(`reject_last_unit_${item.id}`);
         setPendingUnit(lastUnit || item.baseUnit);
         
@@ -112,7 +111,6 @@ export const RejectView: React.FC = () => {
         setTimeout(() => qtyRef.current?.focus(), 50);
     };
 
-    // --- Calculation Logic ---
     const calculateBase = (qty: number, unitName: string, item: Item) => {
         if (unitName === item.baseUnit) return qty;
         const conv = item.conversions.find(c => c.name === unitName);
@@ -129,10 +127,7 @@ export const RejectView: React.FC = () => {
         if (!pendingItem) return;
         const qty = Number(pendingQty);
         if (qty <= 0) return alert("Invalid Qty");
-        
-        // Use Ref for Reason to avoid re-render cursor issues (Uncontrolled Input)
-        const reasonVal = reasonRef.current?.value || '';
-        if (!reasonVal.trim()) return alert("Reason is required");
+        if (!pendingReason.trim()) return alert("Reason is required");
 
         const baseQty = calculateBase(qty, pendingUnit, pendingItem);
 
@@ -143,24 +138,25 @@ export const RejectView: React.FC = () => {
             qty: qty,
             unit: pendingUnit,
             baseQty: baseQty,
-            reason: reasonVal
+            reason: pendingReason
         };
 
-        setRejectLines([...rejectLines, newLine]);
+        setRejectLines(prev => [...prev, newLine]);
         localStorage.setItem(`reject_last_unit_${pendingItem.id}`, pendingUnit);
 
         setPendingItem(null);
         setQuery('');
         setPendingQty('');
-        // Clear Ref value manually
-        if (reasonRef.current) reasonRef.current.value = '';
+        setPendingReason('');
         queryRef.current?.focus();
     };
 
     const handleRemoveLine = (idx: number) => {
-        const newLines = [...rejectLines];
-        newLines.splice(idx, 1);
-        setRejectLines(newLines);
+        setRejectLines(prev => {
+            const newLines = [...prev];
+            newLines.splice(idx, 1);
+            return newLines;
+        });
     };
 
     const handleSaveBatch = () => {
@@ -181,12 +177,10 @@ export const RejectView: React.FC = () => {
         alert("Reject Batch Saved!");
     };
 
-    // --- Filtered Batches ---
     const filteredBatches = useMemo(() => {
         return batches.filter(b => b.date >= historyStartDate && b.date <= historyEndDate);
     }, [batches, historyStartDate, historyEndDate]);
 
-    // --- Copy Clipboard Logic (Per Batch) ---
     const handleBatchClipboard = (batch: RejectBatch) => {
         const dateStr = batch.date.split('-').reverse().join(''); 
         const shortDate = dateStr.substring(0, 4) + dateStr.substring(6, 8);
@@ -197,18 +191,9 @@ export const RejectView: React.FC = () => {
         navigator.clipboard.writeText(text).then(() => alert("Copied to Clipboard!"));
     };
 
-    // --- Matrix Export (Flattened by Date) ---
     const handleMatrixExport = () => {
-        if (filteredBatches.length === 0) {
-            alert("No data in selected date range.");
-            return;
-        }
-
-        // 1. Get all unique dates in range and sort them
+        if (filteredBatches.length === 0) return alert("No data in selected date range.");
         const uniqueDates: string[] = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
-
-        // 2. Map Items by SKU -> Date -> Qty
-        // Structure: { [sku]: { name, unit, [date1]: qty, [date2]: qty } }
         const matrix: Record<string, any> = {};
 
         filteredBatches.forEach(batch => {
@@ -217,37 +202,30 @@ export const RejectView: React.FC = () => {
                     matrix[line.sku] = {
                         'Kode Barang': line.sku,
                         'Nama Barang': line.name,
-                        'Satuan': line.unit, // Taking the unit from the first occurrence. Ideal? Maybe.
+                        'Satuan': line.unit,
                     };
-                    // Initialize all date columns to 0 or null
                     uniqueDates.forEach(d => matrix[line.sku][d] = 0);
                 }
-                
-                // Sum quantity (assuming same unit or just sum raw number as requested "padat")
                 const current = matrix[line.sku][batch.date] || 0;
                 matrix[line.sku][batch.date] = current + line.qty;
             });
         });
 
-        // 3. Convert to Array
         const rows = Object.values(matrix).map(row => {
-            // Process row to clean up 0s -> empty string
             const cleanRow: any = { ...row };
             uniqueDates.forEach((d: string) => {
                 if (cleanRow[d] === 0) cleanRow[d] = '';
-                else cleanRow[d] = Number(cleanRow[d].toFixed(1)); // 1 decimal
+                else cleanRow[d] = Number(cleanRow[d].toFixed(1));
             });
             return cleanRow;
         });
 
-        // 4. Create Workbook
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Matrix Report");
         XLSX.writeFile(wb, `Reject_Matrix_${historyStartDate}_to_${historyEndDate}.xlsx`);
     };
 
-    // --- New Entry Export Logic (Single Session) ---
     const handleSessionClipboard = () => {
         const dateStr = date.split('-').reverse().join(''); 
         const shortDate = dateStr.substring(0, 4) + dateStr.substring(6, 8);
@@ -258,7 +236,6 @@ export const RejectView: React.FC = () => {
         navigator.clipboard.writeText(text).then(() => alert("Copied to Clipboard!"));
     };
 
-    // --- Transaction Import Logic ---
     const handleTransactionImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -284,13 +261,12 @@ export const RejectView: React.FC = () => {
                     });
                 }
             });
-            setRejectLines([...rejectLines, ...imported]);
+            setRejectLines(prev => [...prev, ...imported]);
             e.target.value = '';
         };
         reader.readAsBinaryString(file);
     };
 
-    // --- Database / Master Data Logic ---
     const handleDownloadMasterTemplate = () => {
         const headers = [['Code', 'Name', 'Category', 'BaseUnit', 'MinStock']];
         const wb = XLSX.utils.book_new();
@@ -350,10 +326,12 @@ export const RejectView: React.FC = () => {
     };
 
     const handleDbSelectRow = (id: string) => {
-        const newSet = new Set(selectedDbIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedDbIds(newSet);
+        setSelectedDbIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) newSet.delete(id);
+            else newSet.add(id);
+            return newSet;
+        });
     };
 
     const handleDbBulkDelete = () => {
@@ -364,75 +342,54 @@ export const RejectView: React.FC = () => {
         }
     };
 
-    // --- Sample Data Generator ---
     const handleGenerateSampleData = () => {
-        if (!confirm("Generate 1 month of sample reject data? This will add dummy data to your history.")) return;
-
-        const newBatches: RejectBatch[] = [];
-        const today = new Date();
+        if (!confirm("Generate 1 month of sample reject data?")) return;
         const outletsList = outlets.length > 0 ? outlets : ['Outlet Pusat', 'Outlet Cabang'];
-        
-        // Ensure we have outlets if empty
         if(outlets.length === 0) {
             outletsList.forEach(o => StorageService.saveRejectOutlet(o));
             setOutlets(StorageService.getRejectOutlets());
         }
-
-        // Generate for last 30 days
         for (let i = 0; i < 30; i++) {
             const d = new Date();
-            d.setDate(today.getDate() - i);
+            d.setDate(new Date().getDate() - i);
             const dateStr = d.toISOString().split('T')[0];
-
-            // Random number of batches per day (0 to 3)
             const numBatches = Math.floor(Math.random() * 4); 
-
             for (let b = 0; b < numBatches; b++) {
                  const batchItems: RejectItem[] = [];
-                 // Random items (1 to 5 items per batch)
                  const numItems = Math.floor(Math.random() * 5) + 1;
-                 
                  for(let k=0; k<numItems; k++) {
                      if(items.length === 0) break;
                      const randomItem = items[Math.floor(Math.random() * items.length)];
                      const qty = Math.floor(Math.random() * 10) + 1;
-                     
                      batchItems.push({
                          itemId: randomItem.id,
                          sku: randomItem.code,
                          name: randomItem.name,
                          qty: qty,
                          unit: randomItem.baseUnit,
-                         baseQty: qty, // Simplified for mock
+                         baseQty: qty,
                          reason: ['Expired', 'Broken', 'Rotten', 'Damaged'][Math.floor(Math.random() * 4)]
                      });
                  }
-
                  if (batchItems.length > 0) {
-                     const batch: RejectBatch = {
+                     StorageService.saveRejectBatch({
                          id: `MOCK-${Date.now()}-${i}-${b}`,
                          date: dateStr,
                          outlet: outletsList[Math.floor(Math.random() * outletsList.length)],
                          createdAt: Date.now(),
                          items: batchItems
-                     };
-                     newBatches.push(batch);
-                     StorageService.saveRejectBatch(batch);
+                     });
                  }
             }
         }
-        
         loadData();
-        alert(`Generated ${newBatches.length} sample batches.`);
+        alert("Sample data generated.");
     };
 
-    // --- Helpers ---
     const getUnits = (item: Item) => [{ name: item.baseUnit }, ...item.conversions];
 
     return (
         <div className="flex flex-col h-full bg-slate-50 p-4 gap-4">
-            
-            {/* Navigation Tabs */}
             <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex justify-between items-center">
                 <div className="flex gap-2">
                     <button 
@@ -456,7 +413,6 @@ export const RejectView: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- TAB: NEW ENTRY --- */}
             {activeTab === 'NEW' && (
                 <div className="flex flex-col gap-4 flex-1 overflow-hidden">
                     <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
@@ -501,7 +457,7 @@ export const RejectView: React.FC = () => {
                                 </thead>
                                 <tbody className="text-sm">
                                     {rejectLines.map((line, idx) => (
-                                        <tr key={`line-${idx}`} className="border-b border-slate-50 hover:bg-red-50/10">
+                                        <tr key={`line-${line.itemId}-${idx}`} className="border-b border-slate-50 hover:bg-red-50/10">
                                             <td className="p-2 text-center text-slate-400">{idx + 1}</td>
                                             <td className="p-2">
                                                 <div className="font-medium text-slate-700">{line.name}</div>
@@ -516,7 +472,7 @@ export const RejectView: React.FC = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    <tr key="input-row" className="bg-red-50/20 border-t-2 border-red-100">
+                                    <tr key="input-row-stable" className="bg-red-50/20 border-t-2 border-red-100">
                                         <td className="p-2 text-center text-red-300"><Plus size={16} className="mx-auto"/></td>
                                         <td className="p-2 relative">
                                             <div className="relative">
@@ -524,7 +480,7 @@ export const RejectView: React.FC = () => {
                                                 <input 
                                                     ref={queryRef}
                                                     type="text" 
-                                                    className="w-full pl-8 pr-2 py-1.5 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                    className="w-full pl-8 pr-2 py-1.5 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
                                                     placeholder="Scan or type item..."
                                                     value={query}
                                                     onChange={e => setQuery(e.target.value)}
@@ -555,7 +511,7 @@ export const RejectView: React.FC = () => {
                                             <input 
                                                 ref={qtyRef}
                                                 type="number" 
-                                                className="w-full text-right py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                className="w-full text-right py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
                                                 placeholder="Qty"
                                                 value={pendingQty}
                                                 onChange={e => setPendingQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
@@ -583,8 +539,10 @@ export const RejectView: React.FC = () => {
                                             <input 
                                                 ref={reasonRef}
                                                 type="text" 
-                                                className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                                                className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
                                                 placeholder="Reason"
+                                                value={pendingReason}
+                                                onChange={e => setPendingReason(e.target.value)}
                                                 onKeyDown={e => {
                                                     if (e.key === 'Enter') {
                                                         e.preventDefault();
@@ -592,7 +550,8 @@ export const RejectView: React.FC = () => {
                                                     }
                                                 }}
                                                 autoComplete="off"
-                                                spellCheck="false"
+                                                autoCorrect="off"
+                                                spellCheck={false}
                                             />
                                         </td>
                                         <td className="p-2 text-center">
@@ -621,7 +580,6 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* --- TAB: HISTORY --- */}
             {activeTab === 'HISTORY' && (
                 <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 justify-between items-center bg-slate-50">
@@ -635,7 +593,7 @@ export const RejectView: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={handleGenerateSampleData} className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 flex items-center gap-2 shadow-sm" title="Generate 1 Month Sample Data">
+                            <button onClick={handleGenerateSampleData} className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 flex items-center gap-2 shadow-sm">
                                 <FlaskConical size={14}/> Test Data
                             </button>
                             <button onClick={handleMatrixExport} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 flex items-center gap-2 shadow-sm">
@@ -657,7 +615,7 @@ export const RejectView: React.FC = () => {
                             <tbody className="divide-y divide-slate-50 text-sm">
                                 {filteredBatches.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-slate-400 italic">No batches found in selected date range.</td>
+                                        <td colSpan={5} className="p-8 text-center text-slate-400 italic">No batches found.</td>
                                     </tr>
                                 ) : filteredBatches.map(batch => (
                                     <tr key={batch.id} className="hover:bg-slate-50">
@@ -666,15 +624,15 @@ export const RejectView: React.FC = () => {
                                         <td className="p-3 font-medium text-slate-700">{batch.outlet}</td>
                                         <td className="p-3 text-right font-bold text-red-600">{batch.items.length}</td>
                                         <td className="p-3 text-center flex justify-center gap-2">
-                                            <button onClick={() => handleBatchClipboard(batch)} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded" title="Copy to Clipboard">
+                                            <button onClick={() => handleBatchClipboard(batch)} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded">
                                                 <Copy size={16}/>
                                             </button>
-                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="View Details">
+                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded">
                                                 <Eye size={16}/>
                                             </button>
                                             <button 
                                                 onClick={() => {
-                                                    if(confirm('Delete this batch?')) {
+                                                    if(confirm('Delete batch?')) {
                                                         StorageService.deleteRejectBatch(batch.id);
                                                         setBatches(StorageService.getRejectBatches());
                                                     }
@@ -692,7 +650,6 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* --- TAB: DATABASE REJECT (MASTER DATA) --- */}
             {activeTab === 'DATABASE' && (
                 <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
@@ -753,7 +710,6 @@ export const RejectView: React.FC = () => {
                                             <button 
                                                 onClick={() => setEditingItem(JSON.parse(JSON.stringify(item)))}
                                                 className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
-                                                title="Manage Conversions"
                                             >
                                                 <Edit3 size={16}/>
                                             </button>
@@ -766,18 +722,11 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal: Add Outlet */}
             {showAddOutlet && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-80">
                         <h3 className="font-bold text-slate-700 mb-4">Add New Outlet</h3>
-                        <input 
-                            autoFocus
-                            className="w-full border p-2 rounded mb-4" 
-                            placeholder="Outlet Name" 
-                            value={newOutletName} 
-                            onChange={e => setNewOutletName(e.target.value)}
-                        />
+                        <input autoFocus className="w-full border p-2 rounded mb-4" placeholder="Outlet Name" value={newOutletName} onChange={e => setNewOutletName(e.target.value)} />
                         <div className="flex justify-end gap-2">
                             <button onClick={() => setShowAddOutlet(false)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded">Cancel</button>
                             <button 
@@ -791,15 +740,12 @@ export const RejectView: React.FC = () => {
                                     }
                                 }} 
                                 className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
-                                Add
-                            </button>
+                            > Add </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Modal: View Batch */}
             {viewingBatch && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[80vh]">
@@ -844,7 +790,6 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal: Edit Conversions */}
             {editingItem && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
@@ -853,75 +798,48 @@ export const RejectView: React.FC = () => {
                             <button onClick={() => setEditingItem(null)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
                         </div>
                         <div className="p-4 max-h-[60vh] overflow-y-auto bg-slate-50/50">
-                            <div className="mb-4 text-xs text-slate-500">
-                                Base Unit: <strong className="text-slate-800">{editingItem.baseUnit}</strong>
-                            </div>
+                            <div className="mb-4 text-xs text-slate-500"> Base Unit: <strong className="text-slate-800">{editingItem.baseUnit}</strong> </div>
                             <div className="space-y-3">
                                 {editingItem.conversions.map((conv, idx) => (
                                     <div key={idx} className="bg-white p-3 rounded border border-slate-200 shadow-sm flex items-center gap-2">
                                         <div className="flex-1">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Name</label>
-                                            <input 
-                                                className="w-full border rounded px-2 py-1 text-sm" 
-                                                value={conv.name}
-                                                onChange={e => {
-                                                    const nc = [...editingItem.conversions];
-                                                    nc[idx].name = e.target.value;
-                                                    setEditingItem({...editingItem, conversions: nc});
-                                                }}
-                                            />
+                                            <input className="w-full border rounded px-2 py-1 text-sm" value={conv.name} onChange={e => {
+                                                const nc = [...editingItem.conversions];
+                                                nc[idx].name = e.target.value;
+                                                setEditingItem({...editingItem, conversions: nc});
+                                            }} />
                                         </div>
-                                        <div className="flex flex-col items-center pt-4">
-                                            <ArrowRight size={14} className="text-slate-300"/>
-                                        </div>
+                                        <div className="flex flex-col items-center pt-4"> <ArrowRight size={14} className="text-slate-300"/> </div>
                                         <div className="w-20">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Operator</label>
-                                            <select 
-                                                className="w-full border rounded px-1 py-1 text-sm bg-slate-50"
-                                                value={conv.operator || '*'}
-                                                onChange={e => {
-                                                    const nc = [...editingItem.conversions];
-                                                    nc[idx].operator = e.target.value as '*' | '/';
-                                                    setEditingItem({...editingItem, conversions: nc});
-                                                }}
-                                            >
+                                            <select className="w-full border rounded px-1 py-1 text-sm bg-slate-50" value={conv.operator || '*'} onChange={e => {
+                                                const nc = [...editingItem.conversions];
+                                                nc[idx].operator = e.target.value as '*' | '/';
+                                                setEditingItem({...editingItem, conversions: nc});
+                                            }}>
                                                 <option value="*">Multiply (*)</option>
                                                 <option value="/">Divide (/)</option>
                                             </select>
                                         </div>
                                         <div className="w-24">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Ratio</label>
-                                            <input 
-                                                type="number"
-                                                className="w-full border rounded px-2 py-1 text-sm" 
-                                                value={conv.ratio}
-                                                onChange={e => {
-                                                    const nc = [...editingItem.conversions];
-                                                    nc[idx].ratio = parseFloat(e.target.value);
-                                                    setEditingItem({...editingItem, conversions: nc});
-                                                }}
-                                            />
+                                            <input type="number" className="w-full border rounded px-2 py-1 text-sm" value={conv.ratio} onChange={e => {
+                                                const nc = [...editingItem.conversions];
+                                                nc[idx].ratio = parseFloat(e.target.value);
+                                                setEditingItem({...editingItem, conversions: nc});
+                                            }} />
                                         </div>
                                         <div className="pt-4">
-                                             <button 
-                                                onClick={() => {
-                                                    const nc = editingItem.conversions.filter((_, i) => i !== idx);
-                                                    setEditingItem({...editingItem, conversions: nc});
-                                                }}
-                                                className="text-slate-300 hover:text-red-500"
-                                             >
-                                                 <Trash2 size={16}/>
-                                             </button>
+                                             <button onClick={() => {
+                                                const nc = editingItem.conversions.filter((_, i) => i !== idx);
+                                                setEditingItem({...editingItem, conversions: nc});
+                                            }} className="text-slate-300 hover:text-red-500"> <Trash2 size={16}/> </button>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <button 
-                                onClick={() => setEditingItem({...editingItem, conversions: [...editingItem.conversions, { name: '', ratio: 1, operator: '*' }]})}
-                                className="mt-4 w-full py-2 border-2 border-dashed border-blue-200 text-blue-600 rounded hover:bg-blue-50 text-sm font-bold flex items-center justify-center gap-2"
-                            >
-                                <Plus size={16}/> Add Unit
-                            </button>
+                            <button onClick={() => setEditingItem({...editingItem, conversions: [...editingItem.conversions, { name: '', ratio: 1, operator: '*' }]})} className="mt-4 w-full py-2 border-2 border-dashed border-blue-200 text-blue-600 rounded hover:bg-blue-50 text-sm font-bold flex items-center justify-center gap-2"> <Plus size={16}/> Add Unit </button>
                         </div>
                         <div className="p-3 border-t border-slate-200 flex justify-end gap-2">
                              <button onClick={() => setEditingItem(null)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded text-sm">Cancel</button>
