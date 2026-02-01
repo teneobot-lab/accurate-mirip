@@ -1,8 +1,8 @@
 
 export interface UnitConversion {
   name: string;
-  ratio: number; // How many base units in this unit (e.g., Box = 12 Pcs, ratio = 12)
-  operator?: '*' | '/'; // Default is '*'
+  ratio: number;
+  operator?: '*' | '/';
 }
 
 export interface Item {
@@ -18,7 +18,7 @@ export interface Item {
 export interface Stock {
   itemId: string;
   warehouseId: string;
-  qty: number; // Always stored in base unit
+  qty: number;
 }
 
 export interface Warehouse {
@@ -36,8 +36,8 @@ export interface Partner {
   phone: string;
   email: string;
   address: string;
-  npwp?: string; // Tax ID
-  term?: number; // Payment terms (days)
+  npwp?: string;
+  term?: number;
 }
 
 export interface AppUser {
@@ -52,21 +52,21 @@ export type TransactionType = 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT';
 
 export interface TransactionItem {
   itemId: string;
-  unit: string; // The unit used in the transaction
-  qty: number;  // The quantity in the selected unit
-  ratio: number; // Snapshot of ratio at time of transaction
-  note?: string; // Keeping strictly for backward compatibility in types, though removed from UI
+  unit: string;
+  qty: number;
+  ratio: number;
+  note?: string;
 }
 
 export interface Transaction {
   id: string;
   date: string;
-  referenceNo: string; // e.g., INV-2023-001
-  deliveryOrderNo?: string; // Surat Jalan
-  supplier?: string; // Supplier or Recipient
+  referenceNo: string;
+  deliveryOrderNo?: string;
+  supplier?: string;
   type: TransactionType;
   sourceWarehouseId: string;
-  targetWarehouseId?: string; // Only for TRANSFER
+  targetWarehouseId?: string;
   items: TransactionItem[];
   notes?: string;
   createdAt: number;
@@ -90,7 +90,7 @@ export interface RejectItem {
     name: string;
     qty: number;
     unit: string;
-    baseQty: number; // Calculated
+    baseQty: number;
     reason: string;
 }
 
@@ -100,4 +100,17 @@ export interface RejectBatch {
     outlet: string;
     createdAt: number;
     items: RejectItem[];
+}
+
+// --- MUSIC PLAYER TYPES ---
+export interface Song {
+  id: string;
+  title: string;
+  youtubeUrl: string;
+}
+
+export interface Playlist {
+  id: string;
+  name: string;
+  songs: Song[];
 }
