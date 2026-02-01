@@ -1,13 +1,12 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { 
-    TrendingUp, TrendingDown, AlertTriangle, Package, 
-    ArrowRight, MapPin, Clock, Activity, ArrowUpRight, ArrowDownRight
+    Calendar, Filter, ChevronRight, TrendingUp, Package, Activity, ArrowUpRight
 } from 'lucide-react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-    PieChart, Pie, Cell, Legend 
 } from 'recharts';
 
 export const DashboardView: React.FC = () => {
@@ -15,6 +14,14 @@ export const DashboardView: React.FC = () => {
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+    // Date Filter State
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
     useEffect(() => {
         setItems(StorageService.getItems());
@@ -25,342 +32,263 @@ export const DashboardView: React.FC = () => {
 
     // --- Derived Data Calculations ---
 
-    const stockStatus = useMemo(() => {
-        const lowStockItems: { item: Item, current: number, min: number, gap: number }[] = [];
+    const stats = useMemo(() => {
         let totalStockCount = 0;
+        let activeItems = 0;
 
         items.forEach(item => {
             const itemStocks = stocks.filter(s => s.itemId === item.id);
             const currentTotal = itemStocks.reduce((acc, s) => acc + s.qty, 0);
             totalStockCount += currentTotal;
-
-            if (currentTotal <= item.minStock) {
-                lowStockItems.push({
-                    item,
-                    current: currentTotal,
-                    min: item.minStock,
-                    gap: item.minStock - currentTotal
-                });
-            }
+            if (currentTotal > 0) activeItems++;
         });
 
-        // Sort by gap (severity)
-        lowStockItems.sort((a, b) => (b.min - b.current) - (a.min - a.current));
-
-        return { lowStockItems, totalStockCount };
-    }, [items, stocks]);
-
-    const movementStats = useMemo(() => {
-        const now = new Date();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(now.getDate() - 30);
+        // Filter transactions by date range
+        const filteredTx = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
         
-        let monthIn = 0;
-        let monthOut = 0;
+        let totalIn = 0;
+        let totalOut = 0;
 
-        // Group by Date for Chart
-        const dailyData: Record<string, { date: string, in: number, out: number }> = {};
-        
-        // Initialize last 14 days with 0 to ensure continuous chart
-        for(let i=13; i>=0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            dailyData[dateStr] = { date: dateStr.slice(5), in: 0, out: 0 }; // MM-DD
-        }
-
-        transactions.forEach(tx => {
-            const txDate = new Date(tx.date);
-            if (txDate >= thirtyDaysAgo) {
-                const isRecent = tx.date >= thirtyDaysAgo.toISOString().split('T')[0];
-                
-                let qty = 0;
-                tx.items.forEach(line => { qty += (line.qty * line.ratio); });
-
-                if (isRecent) {
-                    if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') monthIn += qty;
-                    if (tx.type === 'OUT') monthOut += qty;
-                }
-
-                // Chart Data (Last 14 days focused)
-                if (dailyData[tx.date.slice(5)]) { // Match MM-DD key
-                    if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') dailyData[tx.date.slice(5)].in += qty;
-                    if (tx.type === 'OUT') dailyData[tx.date.slice(5)].out += qty;
-                }
-            }
+        filteredTx.forEach(tx => {
+            let qty = 0;
+            tx.items.forEach(line => { qty += (line.qty * line.ratio); });
+            if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') totalIn += qty;
+            if (tx.type === 'OUT') totalOut += qty;
         });
 
         return { 
-            monthIn, 
-            monthOut, 
-            chartData: Object.values(dailyData).sort((a,b) => a.date.localeCompare(b.date))
+            totalStockCount, 
+            activeItems,
+            totalIn,
+            totalOut,
+            txCount: filteredTx.length
         };
-    }, [transactions]);
+    }, [items, stocks, transactions, startDate, endDate]);
 
-    const warehouseDistribution = useMemo(() => {
-        const data = warehouses.map(wh => {
-            const qty = stocks.filter(s => s.warehouseId === wh.id).reduce((acc, s) => acc + s.qty, 0);
-            return { name: wh.name, value: qty };
+    const chartData = useMemo(() => {
+        // Group by Date for Chart
+        const dailyData: Record<string, { date: string, value: number }> = {};
+        
+        // Initialize range with 0
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const displayDate = d.toLocaleDateString('id-ID', {day: 'numeric', month: 'short'});
+            dailyData[dateStr] = { date: displayDate, value: 0 }; 
+        }
+
+        transactions.forEach(tx => {
+            if (tx.date >= startDate && tx.date <= endDate && tx.type === 'OUT') {
+                const dateKey = tx.date;
+                let qty = 0;
+                tx.items.forEach(line => { qty += (line.qty * line.ratio); });
+                if (dailyData[dateKey]) { 
+                    dailyData[dateKey].value += qty;
+                }
+            }
         });
-        return data.filter(d => d.value > 0);
-    }, [warehouses, stocks]);
 
-    const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+        return Object.values(dailyData);
+    }, [transactions, startDate, endDate]);
+
+    const topItems = useMemo(() => {
+        const itemMap = new Map<string, number>();
+        transactions.forEach(tx => {
+             if (tx.date >= startDate && tx.date <= endDate && tx.type === 'OUT') {
+                 tx.items.forEach(line => {
+                     const baseQty = line.qty * line.ratio;
+                     const current = itemMap.get(line.itemId) || 0;
+                     itemMap.set(line.itemId, current + baseQty);
+                 });
+             }
+        });
+
+        return Array.from(itemMap.entries())
+            .map(([itemId, qty]) => {
+                const item = items.find(i => i.id === itemId);
+                return {
+                    name: item ? item.name : 'Unknown',
+                    code: item ? item.code : '?',
+                    qty: qty,
+                    category: item ? item.category : ''
+                };
+            })
+            .sort((a, b) => b.qty - a.qty)
+            .slice(0, 5);
+    }, [transactions, items, startDate, endDate]);
 
     return (
-        <div className="flex-1 overflow-y-auto bg-slate-50 p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-8 transition-colors font-sans">
             
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-32 relative overflow-hidden group hover:border-blue-300 transition-colors">
-                    <div className="flex justify-between items-start z-10">
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Items</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-1">{items.length}</h3>
-                        </div>
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                            <Package size={20} />
+            {/* Filter Section */}
+            <div className="mb-8">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Filter Dashboard</h2>
+                <div className="flex flex-wrap gap-4 items-end">
+                    <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mulai Dari</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+                            <input 
+                                type="date" 
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-600 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                            />
                         </div>
                     </div>
-                    <div className="z-10">
-                         <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                             <span className="text-slate-700 font-bold">{stockStatus.totalStockCount.toLocaleString()}</span> units across all WH
-                         </p>
+                    <div className="flex flex-col gap-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hingga</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+                            <input 
+                                type="date" 
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-600 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                            />
+                        </div>
                     </div>
-                    <div className="absolute -bottom-4 -right-4 text-slate-50 opacity-50 group-hover:scale-110 transition-transform duration-500">
+                    <button className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 h-[42px]">
+                        <Filter size={16} /> Terapkan Filter
+                    </button>
+                </div>
+            </div>
+
+            {/* Blue Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* Total Sales (Mapped to Outbound) */}
+                <div className="bg-blue-500 dark:bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden group">
+                    <div className="relative z-10 text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Total Barang Keluar</p>
+                        <h3 className="text-3xl font-bold mb-4">{stats.totalOut.toLocaleString()} <span className="text-sm font-normal opacity-70">Unit</span></h3>
+                        <button className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity mx-auto">
+                            Rincian <ChevronRight size={10} />
+                        </button>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
+                        <TrendingUp size={100} />
+                    </div>
+                </div>
+
+                {/* Total Profit (Mapped to Inbound/Restock) */}
+                <div className="bg-blue-500 dark:bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden group">
+                    <div className="relative z-10 text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Total Barang Masuk</p>
+                        <h3 className="text-3xl font-bold mb-4">{stats.totalIn.toLocaleString()} <span className="text-sm font-normal opacity-70">Unit</span></h3>
+                        <button className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity mx-auto">
+                            Rincian <ChevronRight size={10} />
+                        </button>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
+                        <ArrowUpRight size={100} />
+                    </div>
+                </div>
+
+                {/* Transaction Count */}
+                <div className="bg-blue-500 dark:bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden group">
+                    <div className="relative z-10 text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Jumlah Transaksi</p>
+                        <h3 className="text-3xl font-bold mb-4">{stats.txCount}</h3>
+                        <button className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity mx-auto">
+                            Rincian <ChevronRight size={10} />
+                        </button>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
+                        <Activity size={100} />
+                    </div>
+                </div>
+
+                {/* Active Stock */}
+                <div className="bg-blue-500 dark:bg-blue-600 rounded-2xl p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden group">
+                    <div className="relative z-10 text-center">
+                        <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Stok Item Aktif</p>
+                        <h3 className="text-3xl font-bold mb-4">{stats.activeItems}</h3>
+                        <button className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1 opacity-60 hover:opacity-100 transition-opacity mx-auto">
+                            Rincian <ChevronRight size={10} />
+                        </button>
+                    </div>
+                    <div className="absolute -bottom-4 -right-4 opacity-10 transform rotate-12 group-hover:scale-110 transition-transform duration-500">
                         <Package size={100} />
-                    </div>
-                </div>
-
-                <div className={`bg-white p-4 rounded-xl shadow-sm border flex flex-col justify-between h-32 relative overflow-hidden group transition-colors ${stockStatus.lowStockItems.length > 0 ? 'border-red-200 bg-red-50/30' : 'border-slate-200'}`}>
-                    <div className="flex justify-between items-start z-10">
-                        <div>
-                            <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Low Stock Alerts</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-1">{stockStatus.lowStockItems.length}</h3>
-                        </div>
-                        <div className={`p-2 rounded-lg ${stockStatus.lowStockItems.length > 0 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-400'}`}>
-                            <AlertTriangle size={20} />
-                        </div>
-                    </div>
-                    <div className="z-10">
-                         <p className="text-xs text-slate-500 font-medium">
-                            Requires immediate attention
-                         </p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-32">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Inbound (30d)</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-1">+{movementStats.monthIn.toLocaleString()}</h3>
-                        </div>
-                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                            <TrendingUp size={20} />
-                        </div>
-                    </div>
-                    <div>
-                         <p className="text-xs text-slate-500 font-medium">Base units received</p>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-32">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Outbound (30d)</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-1">-{movementStats.monthOut.toLocaleString()}</h3>
-                        </div>
-                        <div className="p-2 bg-slate-100 text-slate-600 rounded-lg">
-                            <TrendingDown size={20} />
-                        </div>
-                    </div>
-                     <div>
-                         <p className="text-xs text-slate-500 font-medium">Base units distributed</p>
                     </div>
                 </div>
             </div>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Bottom Widgets */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-96">
                 
-                {/* Movement Trend */}
-                <div className="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                {/* Movement Chart */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                            <Activity size={16} className="text-blue-500" />
-                            Stock Movement Trends (Last 14 Days)
-                        </h3>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Pergerakan Stok Keluar</h3>
+                        <div className="flex gap-2">
+                            <span className="text-xs font-bold px-3 py-1 bg-blue-50 text-blue-600 rounded-full cursor-pointer">Harian</span>
+                            <span className="text-xs font-bold px-3 py-1 text-slate-400 cursor-pointer">Bulanan</span>
+                        </div>
                     </div>
-                    <div className="h-[250px] w-full">
+                    <div className="flex-1 w-full min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={movementStats.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <XAxis dataKey="date" tick={{fontSize: 10}} stroke="#cbd5e1" axisLine={false} tickLine={false} dy={5}/>
-                                <YAxis tick={{fontSize: 10}} stroke="#cbd5e1" axisLine={false} tickLine={false} />
+                                <XAxis dataKey="date" tick={{fontSize: 10, fill: '#94a3b8'}} stroke="#e2e8f0" axisLine={false} tickLine={false} dy={10} />
+                                <YAxis tick={{fontSize: 10, fill: '#94a3b8'}} stroke="#e2e8f0" axisLine={false} tickLine={false} />
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                 <Tooltip 
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    cursor={{ stroke: '#94a3b8', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', padding: '8px 12px' }}
+                                    cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
                                 />
-                                <Area type="monotone" dataKey="in" name="Inbound" stroke="#10b981" fillOpacity={1} fill="url(#colorIn)" strokeWidth={2} />
-                                <Area type="monotone" dataKey="out" name="Outbound" stroke="#ef4444" fillOpacity={1} fill="url(#colorOut)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Warehouse Distribution */}
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <MapPin size={16} className="text-blue-500" />
-                        Stock by Location
-                    </h3>
-                    <div className="flex-1 flex items-center justify-center relative">
-                        <ResponsiveContainer width="100%" height={200}>
-                            <PieChart>
-                                <Pie
-                                    data={warehouseDistribution}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={50}
-                                    outerRadius={70}
-                                    fill="#8884d8"
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    stroke="none"
-                                >
-                                    {warehouseDistribution.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend iconSize={8} wrapperStyle={{fontSize: '11px'}} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        {/* Center Text */}
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-2xl font-bold text-slate-300 opacity-20"><Package size={40}/></span>
-                        </div>
+                {/* Top Items List */}
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Item Terlaris (Outbound)</h3>
+                        <span className="text-xs font-bold text-blue-500 cursor-pointer">Semua Produk</span>
                     </div>
-                </div>
-            </div>
+                    
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">
+                        <span>Peringkat & Nama</span>
+                        <span>Unit Terjual</span>
+                    </div>
 
-            {/* Bottom Row: Lists */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Critical Low Stock */}
-                <div className="bg-white rounded-xl shadow-sm border border-red-100 overflow-hidden flex flex-col h-[400px]">
-                    <div className="p-4 bg-red-50/50 border-b border-red-100 flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-red-700 flex items-center gap-2">
-                            <AlertTriangle size={16} />
-                            Critical Low Stock
-                        </h3>
-                        <span className="text-xs font-bold bg-white px-2 py-1 rounded text-red-500 border border-red-100">
-                            {stockStatus.lowStockItems.length} Items
-                        </span>
-                    </div>
-                    <div className="flex-1 overflow-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase sticky top-0">
-                                <tr>
-                                    <th className="p-3">Item Info</th>
-                                    <th className="p-3 text-right">Current</th>
-                                    <th className="p-3 text-right">Min</th>
-                                    <th className="p-3 text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-sm divide-y divide-slate-50">
-                                {stockStatus.lowStockItems.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="p-8 text-center text-slate-400 italic">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center"><Package size={20}/></div>
-                                                <span>Stock levels are healthy. Great job!</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    stockStatus.lowStockItems.map((entry, idx) => (
-                                        <tr key={idx} className="hover:bg-red-50/30 transition-colors">
-                                            <td className="p-3">
-                                                <div className="font-medium text-slate-700">{entry.item.name}</div>
-                                                <div className="text-xs text-slate-400 font-mono">{entry.item.code}</div>
-                                            </td>
-                                            <td className="p-3 text-right font-mono font-bold text-red-600">
-                                                {entry.current}
-                                            </td>
-                                            <td className="p-3 text-right font-mono text-slate-500">
-                                                {entry.min}
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full whitespace-nowrap">
-                                                    Restock
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                    <div className="flex-1 overflow-auto space-y-4 pr-2">
+                        {topItems.length === 0 ? (
+                            <div className="text-center text-slate-400 italic mt-10">Belum ada data transaksi keluar.</div>
+                        ) : (
+                            topItems.map((item, index) => (
+                                <div key={index} className="flex justify-between items-center group">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-md ${
+                                            index === 0 ? 'bg-yellow-400' : 
+                                            index === 1 ? 'bg-slate-400' : 
+                                            index === 2 ? 'bg-orange-400' : 'bg-blue-100 text-blue-600'
+                                        }`}>
+                                            {index + 1}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200 group-hover:text-blue-600 transition-colors">{item.name}</div>
+                                            <div className="text-[10px] text-slate-400">{item.code} • {item.category}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-sm font-bold text-slate-800 dark:text-slate-100">{item.qty.toLocaleString()}</div>
+                                        <div className="text-[10px] text-slate-400">Total Qty</div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
-                {/* Recent Transactions */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[400px]">
-                    <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                         <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                            <Clock size={16} className="text-blue-500" />
-                            Recent Activity
-                        </h3>
-                         <button className="text-xs text-blue-600 hover:underline flex items-center gap-1">View All <ArrowRight size={10}/></button>
-                    </div>
-                    <div className="flex-1 overflow-auto p-0">
-                         {transactions.length === 0 ? (
-                            <div className="p-8 text-center text-slate-400 italic">No transactions recorded yet.</div>
-                         ) : (
-                             <div className="divide-y divide-slate-50">
-                                 {transactions.slice(0, 8).map(tx => (
-                                     <div key={tx.id} className="p-3 hover:bg-slate-50 flex items-center justify-between group cursor-default">
-                                         <div className="flex items-center gap-3">
-                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border ${
-                                                 tx.type === 'IN' || tx.type === 'ADJUSTMENT' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                 tx.type === 'OUT' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                 'bg-blue-50 text-blue-600 border-blue-100'
-                                             }`}>
-                                                 {tx.type === 'IN' ? <ArrowDownRight size={14}/> : 
-                                                  tx.type === 'OUT' ? <ArrowUpRight size={14}/> : 'TR'}
-                                             </div>
-                                             <div>
-                                                 <div className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                                                     {tx.referenceNo}
-                                                     {tx.deliveryOrderNo && <span className="text-[10px] bg-slate-100 text-slate-500 px-1 rounded font-normal">DO: {tx.deliveryOrderNo}</span>}
-                                                 </div>
-                                                 <div className="text-xs text-slate-500">
-                                                    {new Date(tx.date).toLocaleDateString()} • {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}
-                                                 </div>
-                                             </div>
-                                         </div>
-                                         <div className="text-right">
-                                             <div className="text-sm font-mono font-bold text-slate-700">
-                                                 {tx.items.length} Lines
-                                             </div>
-                                             <div className="text-[10px] text-slate-400 uppercase font-bold">{tx.type}</div>
-                                         </div>
-                                     </div>
-                                 ))}
-                             </div>
-                         )}
-                    </div>
-                </div>
             </div>
         </div>
     );

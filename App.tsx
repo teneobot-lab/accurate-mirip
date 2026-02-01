@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
 import { InventoryView } from './components/InventoryView';
@@ -10,11 +11,12 @@ import { StockCardModal } from './components/StockCardModal';
 import { ThemeToggle } from './components/ThemeToggle';
 import { ClockWidget } from './components/ClockWidget';
 import MusicPlayer from './components/MusicPlayer';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   // Transaction Modal State
   const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
@@ -45,8 +47,8 @@ function App() {
         : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
       }`}
     >
-      <Icon size={18} className="mr-3" />
-      {label}
+      <Icon size={18} className="mr-3 flex-shrink-0" />
+      <span className="whitespace-nowrap">{label}</span>
       {activeTab === id && <ChevronRight size={16} className="ml-auto opacity-50" />}
     </button>
   );
@@ -55,15 +57,15 @@ function App() {
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
       
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30">
-        <div className="h-16 flex items-center px-6 border-b border-slate-800">
-           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20">
+      <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} bg-slate-900 flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30 transition-all duration-300 ease-in-out overflow-hidden`}>
+        <div className="h-16 flex items-center px-6 border-b border-slate-800 whitespace-nowrap">
+           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20 flex-shrink-0">
               <WhIcon className="text-white" size={20} />
            </div>
            <h1 className="font-bold text-lg text-white tracking-tight">GudangPro</h1>
         </div>
 
-        <div className="p-4 flex-1 overflow-y-auto">
+        <div className="p-4 flex-1 overflow-y-auto whitespace-nowrap scrollbar-hide">
            <div className="text-xs font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest">Main Menu</div>
            <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
            <NavItem id="INVENTORY" label="Stock Inventory" icon={Package} />
@@ -72,11 +74,11 @@ function App() {
            
            <div className="mt-8 text-xs font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest">Quick Actions</div>
            <div className="space-y-2">
-              <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-slate-800 rounded-lg flex items-center transition-colors">
-                 <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></div> Inbound
+              <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-slate-800 rounded-lg flex items-center transition-colors whitespace-nowrap">
+                 <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3 flex-shrink-0"></div> Inbound
               </button>
-              <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-800 rounded-lg flex items-center transition-colors">
-                 <div className="w-2 h-2 rounded-full bg-red-500 mr-3"></div> Outbound
+              <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-800 rounded-lg flex items-center transition-colors whitespace-nowrap">
+                 <div className="w-2 h-2 rounded-full bg-red-500 mr-3 flex-shrink-0"></div> Outbound
               </button>
            </div>
            
@@ -85,7 +87,7 @@ function App() {
            </div>
         </div>
         
-        <div className="p-4 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center">
+        <div className="p-4 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center whitespace-nowrap">
            <span>v1.2.0 &copy; 2024</span>
            <span className="font-bold text-blue-500">Premium</span>
         </div>
@@ -94,15 +96,24 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
          <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shadow-sm z-20 transition-colors">
-             <div className="flex-shrink-0 flex flex-col">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight">
-                    {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
-                    {activeTab === 'INVENTORY' && 'Inventory Master Data'}
-                    {activeTab === 'REPORTS' && 'Stock Mutation Reports'}
-                    {activeTab === 'SETTINGS' && 'System Configuration'}
-                    {activeTab === 'REJECT' && 'Reject / Afkir Management'}
-                </h2>
-                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Warehouse Management System</div>
+             <div className="flex items-center gap-4">
+                <button 
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                    title="Toggle Sidebar"
+                >
+                    <Menu size={20} />
+                </button>
+                <div className="flex-shrink-0 flex flex-col">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                        {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
+                        {activeTab === 'INVENTORY' && 'Inventory Master Data'}
+                        {activeTab === 'REPORTS' && 'Stock Mutation Reports'}
+                        {activeTab === 'SETTINGS' && 'System Configuration'}
+                        {activeTab === 'REJECT' && 'Reject / Afkir Management'}
+                    </h2>
+                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Warehouse Management System</div>
+                </div>
              </div>
              
              {/* Center Widgets */}

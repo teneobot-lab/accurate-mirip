@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Transaction, Item, Warehouse } from '../types';
@@ -266,7 +267,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         }
     };
 
-    // --- Export Functions ---
     const handleExportExcel = () => {
         const wsData = flattenedMutations.map(m => ({
             Date: m.date,
@@ -384,9 +384,9 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 p-4 gap-4 overflow-hidden">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 gap-4 overflow-hidden transition-colors">
             {/* Advanced Filters Bar */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col gap-4">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col gap-4 transition-colors">
                 {/* Row 1: Search, Refresh, Quick Dates */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2 flex-1 min-w-[300px]">
@@ -397,41 +397,41 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                 placeholder="Search Ref No, Item Code, Name, or Notes..." 
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 border rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+                                className="w-full pl-9 pr-4 py-2 border rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 shadow-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                             />
                         </div>
-                        <button onClick={refreshData} className="p-2 text-slate-500 hover:bg-slate-100 rounded-md border border-slate-200 bg-white shadow-sm" title="Refresh Data">
+                        <button onClick={refreshData} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm" title="Refresh Data">
                             <RefreshCw size={18} />
                         </button>
                     </div>
 
                     <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0">
-                         <button onClick={() => setDateRange('TODAY')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 rounded text-slate-600 transition-all">Today</button>
-                         <button onClick={() => setDateRange('WEEK')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 rounded text-slate-600 transition-all">Last 7 Days</button>
-                         <button onClick={() => setDateRange('MONTH')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 rounded text-slate-600 transition-all">Last 30 Days</button>
-                         <button onClick={() => setDateRange('ALL')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 rounded text-slate-600 transition-all">All Time</button>
+                         <button onClick={() => setDateRange('TODAY')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-blue-300 rounded text-slate-600 dark:text-slate-300 transition-all">Today</button>
+                         <button onClick={() => setDateRange('WEEK')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-blue-300 rounded text-slate-600 dark:text-slate-300 transition-all">Last 7 Days</button>
+                         <button onClick={() => setDateRange('MONTH')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-blue-300 rounded text-slate-600 dark:text-slate-300 transition-all">Last 30 Days</button>
+                         <button onClick={() => setDateRange('ALL')} className="whitespace-nowrap px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-blue-300 rounded text-slate-600 dark:text-slate-300 transition-all">All Time</button>
                     </div>
                 </div>
 
                 {/* Row 2: Detailed Filters */}
-                <div className="flex flex-wrap gap-4 items-end pt-2 border-t border-slate-100">
+                <div className="flex flex-wrap gap-4 items-end pt-2 border-t border-slate-100 dark:border-slate-800">
                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><Calendar size={12}/> Date Range</label>
-                        <div className="flex items-center bg-slate-50 p-0.5 rounded border border-slate-200">
-                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent border-0 text-sm outline-none px-2 py-1 text-slate-600 focus:ring-0" />
+                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><Calendar size={12}/> Date Range</label>
+                        <div className="flex items-center bg-slate-50 dark:bg-slate-800 p-0.5 rounded border border-slate-200 dark:border-slate-700">
+                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent border-0 text-sm outline-none px-2 py-1 text-slate-600 dark:text-slate-300 focus:ring-0" />
                             <span className="text-slate-400 text-xs px-1">to</span>
-                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent border-0 text-sm outline-none px-2 py-1 text-slate-600 focus:ring-0" />
+                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent border-0 text-sm outline-none px-2 py-1 text-slate-600 dark:text-slate-300 focus:ring-0" />
                         </div>
                     </div>
                     
                     {/* Autocomplete Item Filter */}
                     <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]" ref={itemInputRef}>
-                         <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><Package size={12}/> Specific Item</label>
+                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><Package size={12}/> Specific Item</label>
                          <div className="relative">
                             <div className="relative">
                                 <input 
                                     type="text" 
-                                    className={`w-full border pl-3 pr-8 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white ${filterItem !== 'ALL' ? 'bg-blue-50 border-blue-200 text-blue-800 font-semibold' : ''}`}
+                                    className={`w-full border pl-3 pr-8 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 ${filterItem !== 'ALL' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 font-semibold' : ''}`}
                                     placeholder="Type to filter item..."
                                     value={itemSearchQuery}
                                     onChange={e => {
@@ -453,9 +453,9 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                             
                             {/* Autocomplete Dropdown */}
                             {showItemSuggestions && (
-                                <ul className="absolute z-50 left-0 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <ul className="absolute z-50 left-0 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                                     <li 
-                                        className="px-3 py-2 hover:bg-slate-50 text-xs text-slate-500 italic cursor-pointer border-b border-slate-50"
+                                        className="px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs text-slate-500 dark:text-slate-400 italic cursor-pointer border-b border-slate-50 dark:border-slate-700"
                                         onClick={clearItemFilter}
                                     >
                                         -- All Items --
@@ -466,11 +466,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                     {itemSuggestions.map((item, idx) => (
                                         <li 
                                             key={item.id}
-                                            className={`px-3 py-2 cursor-pointer flex justify-between items-center ${idx === highlightedItemIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                            className={`px-3 py-2 cursor-pointer flex justify-between items-center ${idx === highlightedItemIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
                                             onClick={() => selectItemFilter(item)}
                                         >
                                             <span className="text-sm">{item.name}</span>
-                                            <span className={`text-xs font-mono ${idx === highlightedItemIndex ? 'text-blue-200' : 'text-slate-400'}`}>{item.code}</span>
+                                            <span className={`text-xs font-mono ${idx === highlightedItemIndex ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'}`}>{item.code}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -479,31 +479,31 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><User size={12}/> Supplier/Cust</label>
+                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><User size={12}/> Supplier/Cust</label>
                          <input 
                             type="text" 
                             value={filterSupplier}
                             onChange={e => setFilterSupplier(e.target.value)}
                             placeholder="Name..."
-                            className="border px-3 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 w-32"
+                            className="border px-3 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 w-32 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                          />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><Truck size={12}/> DO No.</label>
+                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><Truck size={12}/> DO No.</label>
                          <input 
                             type="text" 
                             value={filterDo}
                             onChange={e => setFilterDo(e.target.value)}
                             placeholder="DO-..."
-                            className="border px-3 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 w-32"
+                            className="border px-3 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 w-32 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                          />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase">Warehouse</label>
+                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Warehouse</label>
                          <div className="relative">
-                            <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="appearance-none border pl-3 pr-8 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white w-32">
+                            <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="appearance-none border pl-3 pr-8 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 w-32">
                                 <option value="ALL">All WH</option>
                                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                             </select>
@@ -512,9 +512,9 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
+                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Type</label>
                          <div className="relative">
-                            <select value={filterType} onChange={e => setFilterType(e.target.value)} className="appearance-none border pl-3 pr-8 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white w-32">
+                            <select value={filterType} onChange={e => setFilterType(e.target.value)} className="appearance-none border pl-3 pr-8 py-1.5 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 w-32">
                                 <option value="ALL">All Types</option>
                                 <option value="IN">Inbound</option>
                                 <option value="OUT">Outbound</option>
@@ -553,19 +553,19 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 <div className="w-full md:w-1/3 flex flex-col gap-4 overflow-hidden">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 gap-4 flex-shrink-0">
-                        <div className="bg-white p-4 rounded-lg shadow-sm border border-emerald-100 flex flex-col items-center justify-center">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Total IN</span>
-                            <span className="text-2xl font-bold text-emerald-600 font-mono mt-1">+{summary.totalIn}</span>
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center justify-center">
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total IN</span>
+                            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">+{summary.totalIn}</span>
                         </div>
-                        <div className="bg-white p-4 rounded-lg shadow-sm border border-red-100 flex flex-col items-center justify-center">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Total OUT</span>
-                            <span className="text-2xl font-bold text-red-600 font-mono mt-1">-{summary.totalOut}</span>
+                        <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-red-100 dark:border-red-900/30 flex flex-col items-center justify-center">
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total OUT</span>
+                            <span className="text-2xl font-bold text-red-600 dark:text-red-400 font-mono mt-1">-{summary.totalOut}</span>
                         </div>
                     </div>
 
                     {/* Top 3 Outbound Chart */}
-                    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-col flex-1 min-h-[200px]">
-                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col flex-1 min-h-[200px]">
+                        <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
                             <TrendingDown size={14} className="text-red-500"/> Top 3 Outbound Items
                         </h3>
                         <div className="flex-1 min-h-0">
@@ -576,12 +576,12 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart layout="vertical" data={topOutboundChartData} margin={{top: 5, right: 30, left: 20, bottom: 5}}>
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-                                        <XAxis type="number" tick={{fontSize: 10}} stroke="#cbd5e1" axisLine={false} tickLine={false} />
-                                        <YAxis dataKey="code" type="category" tick={{fontSize: 10}} stroke="#cbd5e1" axisLine={false} tickLine={false} width={40} />
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#334155" opacity={0.3} />
+                                        <XAxis type="number" tick={{fontSize: 10, fill: '#94a3b8'}} stroke="#cbd5e1" axisLine={false} tickLine={false} />
+                                        <YAxis dataKey="code" type="category" tick={{fontSize: 10, fill: '#94a3b8'}} stroke="#cbd5e1" axisLine={false} tickLine={false} width={40} />
                                         <Tooltip 
-                                            contentStyle={{ fontSize: '12px', borderRadius: '4px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                                            cursor={{fill: '#f8fafc'}}
+                                            contentStyle={{ fontSize: '12px', borderRadius: '4px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: '#1e293b', color: '#f8fafc' }} 
+                                            cursor={{fill: '#334155', opacity: 0.2}}
                                         />
                                         <Bar dataKey="qty" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={20}>
                                             {topOutboundChartData.map((entry, index) => (
@@ -597,36 +597,36 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 </div>
 
                 {/* Dense Mutation Table - Right Side */}
-                <div className="w-full md:w-2/3 bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col overflow-hidden">
-                    <div className="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                        <h3 className="text-xs font-bold text-slate-600 uppercase">
+                <div className="w-full md:w-2/3 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">
                              {filterItem !== 'ALL' 
                                 ? `Mutation History: ${items.find(i => i.id === filterItem)?.name}`
                                 : 'All Transactions Log'
                              }
                         </h3>
-                        <span className="text-[10px] font-bold text-slate-400">{flattenedMutations.length} Records</span>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{flattenedMutations.length} Records</span>
                     </div>
                     <div className="overflow-auto flex-1">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-white text-xs font-bold text-slate-600 uppercase tracking-wide sticky top-0 z-10 shadow-sm">
+                            <thead className="bg-white dark:bg-slate-900 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide sticky top-0 z-10 shadow-sm">
                                 <tr>
-                                    <th className="p-3 border-b border-slate-200 whitespace-nowrap bg-slate-50">Date</th>
-                                    <th className="p-3 border-b border-slate-200 whitespace-nowrap bg-slate-50">Ref No.</th>
-                                    <th className="p-3 border-b border-slate-200 bg-slate-50">Type</th>
-                                    <th className="p-3 border-b border-slate-200 bg-slate-50">Warehouse</th>
-                                    <th className="p-3 border-b border-slate-200 bg-slate-50">Item</th>
-                                    <th className="p-3 border-b border-slate-200 text-right bg-slate-50">In</th>
-                                    <th className="p-3 border-b border-slate-200 text-right bg-slate-50">Out</th>
-                                    <th className="p-3 border-b border-slate-200 text-center bg-slate-50">Unit</th>
-                                    <th className="p-3 border-b border-slate-200 bg-slate-50">Info</th>
-                                    <th className="p-3 border-b border-slate-200 text-center w-10 bg-slate-50">Act</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap bg-slate-50 dark:bg-slate-800">Date</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 whitespace-nowrap bg-slate-50 dark:bg-slate-800">Ref No.</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">Type</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">Warehouse</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">Item</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right bg-slate-50 dark:bg-slate-800">In</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right bg-slate-50 dark:bg-slate-800">Out</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800">Unit</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">Info</th>
+                                    <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-center w-10 bg-slate-50 dark:bg-slate-800">Act</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-xs divide-y divide-slate-50">
+                            <tbody className="text-xs divide-y divide-slate-50 dark:divide-slate-800">
                                 {flattenedMutations.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10} className="p-12 text-center text-slate-400 italic bg-slate-50/50">
+                                        <td colSpan={10} className="p-12 text-center text-slate-400 italic bg-slate-50/50 dark:bg-slate-900">
                                             <div className="flex flex-col items-center gap-2">
                                                 <Search size={32} className="opacity-20" />
                                                 <span>No records found matching your criteria.</span>
@@ -634,37 +634,37 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         </td>
                                     </tr>
                                 ) : flattenedMutations.map((m, i) => (
-                                    <tr key={i} className="hover:bg-blue-50/50 transition-colors group">
-                                        <td className="p-3 whitespace-nowrap text-slate-500 font-medium">{m.date}</td>
-                                        <td className="p-3 font-mono text-slate-600">{m.ref}</td>
+                                    <tr key={i} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors group">
+                                        <td className="p-3 whitespace-nowrap text-slate-500 dark:text-slate-400 font-medium">{m.date}</td>
+                                        <td className="p-3 font-mono text-slate-600 dark:text-slate-300">{m.ref}</td>
                                         <td className="p-3">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${
-                                                m.type === 'IN' || m.type === 'TRANSFER IN' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                m.type === 'OUT' ? 'bg-red-50 text-red-700 border-red-100' :
-                                                'bg-blue-50 text-blue-700 border-blue-100'
+                                                m.type === 'IN' || m.type === 'TRANSFER IN' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30' :
+                                                m.type === 'OUT' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900/30' :
+                                                'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/30'
                                             }`}>
                                                 {m.type}
                                             </span>
                                         </td>
-                                        <td className="p-3 text-slate-600">{m.wh}</td>
-                                        <td className="p-3 font-medium text-slate-700">
+                                        <td className="p-3 text-slate-600 dark:text-slate-300">{m.wh}</td>
+                                        <td className="p-3 font-medium text-slate-700 dark:text-slate-200">
                                             <div className="flex flex-col">
                                                 <span>{m.itemCode}</span>
-                                                {filterItem === 'ALL' && <span className="text-slate-400 font-normal text-[10px]">{m.itemName}</span>}
+                                                {filterItem === 'ALL' && <span className="text-slate-400 dark:text-slate-500 font-normal text-[10px]">{m.itemName}</span>}
                                             </div>
                                         </td>
-                                        <td className="p-3 text-right font-mono font-medium text-emerald-600 bg-emerald-50/30">{m.in > 0 ? `+${m.in}` : ''}</td>
-                                        <td className="p-3 text-right font-mono font-medium text-red-600 bg-red-50/30">{m.out > 0 ? `-${m.out}` : ''}</td>
-                                        <td className="p-3 text-center text-slate-500">{m.unit}</td>
-                                        <td className="p-3 text-slate-500 max-w-[150px]">
+                                        <td className="p-3 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-900/10">{m.in > 0 ? `+${m.in}` : ''}</td>
+                                        <td className="p-3 text-right font-mono font-medium text-red-600 dark:text-red-400 bg-red-50/30 dark:bg-red-900/10">{m.out > 0 ? `-${m.out}` : ''}</td>
+                                        <td className="p-3 text-center text-slate-500 dark:text-slate-400">{m.unit}</td>
+                                        <td className="p-3 text-slate-500 dark:text-slate-400 max-w-[150px]">
                                             <div className="flex flex-col gap-0.5">
                                                 {(m.supplier && m.supplier !== '-') && (
-                                                    <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
+                                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
                                                         <User size={8} /> {m.supplier}
                                                     </span>
                                                 )}
                                                 {(m.doNo && m.doNo !== '-') && (
-                                                    <span className="text-[10px] font-mono bg-slate-100 px-1 rounded w-fit flex items-center gap-1">
+                                                    <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 px-1 rounded w-fit flex items-center gap-1">
                                                         <Truck size={8} /> {m.doNo}
                                                     </span>
                                                 )}
@@ -674,7 +674,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         <td className="p-3 text-center">
                                             <button 
                                                 onClick={() => handleEditClick(m.txId)}
-                                                className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"
+                                                className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 p-1.5 rounded transition-colors"
                                                 title="Edit Transaction"
                                             >
                                                 <Edit3 size={14} />

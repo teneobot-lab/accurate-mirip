@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
@@ -389,24 +390,24 @@ export const RejectView: React.FC = () => {
     const getUnits = (item: Item) => [{ name: item.baseUnit }, ...item.conversions];
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 p-4 gap-4">
-            <div className="bg-white p-3 rounded-lg shadow-sm border border-slate-200 flex justify-between items-center">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 gap-4 transition-colors">
+            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
                 <div className="flex gap-2">
                     <button 
                         onClick={() => setActiveTab('NEW')}
-                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'NEW' ? 'bg-red-50 text-red-600 border border-red-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'NEW' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <CornerDownLeft size={16}/> New Reject Entry
                     </button>
                     <button 
                         onClick={() => setActiveTab('HISTORY')}
-                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'HISTORY' ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'HISTORY' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <History size={16}/> Reject History
                     </button>
                      <button 
                         onClick={() => setActiveTab('DATABASE')}
-                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'DATABASE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'text-slate-500 hover:bg-slate-50'}`}
+                        className={`px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition-colors ${activeTab === 'DATABASE' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <Database size={16}/> Database Reject
                     </button>
@@ -415,72 +416,72 @@ export const RejectView: React.FC = () => {
 
             {activeTab === 'NEW' && (
                 <div className="flex flex-col gap-4 flex-1 overflow-hidden">
-                    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex flex-wrap gap-4 items-end">
                         <div className="flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><Calendar size={12}/> Date</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="border p-2 rounded text-sm w-36 focus:ring-1 focus:ring-red-500 outline-none" />
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><Calendar size={12}/> Date</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="border p-2 rounded text-sm w-36 focus:ring-1 focus:ring-red-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" />
                         </div>
                         <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><MapPin size={12}/> Outlet / Location</label>
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1"><MapPin size={12}/> Outlet / Location</label>
                             <div className="flex gap-2">
                                 <select 
                                     value={selectedOutlet} 
                                     onChange={e => setSelectedOutlet(e.target.value)} 
-                                    className="border p-2 rounded text-sm flex-1 outline-none focus:ring-1 focus:ring-red-500"
+                                    className="border p-2 rounded text-sm flex-1 outline-none focus:ring-1 focus:ring-red-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                 >
                                     {outlets.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
-                                <button onClick={() => setShowAddOutlet(true)} className="p-2 bg-slate-100 rounded hover:bg-slate-200 text-slate-600"><Plus size={16}/></button>
+                                <button onClick={() => setShowAddOutlet(true)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"><Plus size={16}/></button>
                             </div>
                         </div>
                         <div className="flex gap-2">
-                             <button onClick={() => fileInputRef.current?.click()} className="px-3 py-2 bg-slate-800 text-white rounded text-sm hover:bg-slate-900 flex items-center gap-2 shadow-sm">
+                             <button onClick={() => fileInputRef.current?.click()} className="px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded text-sm hover:bg-slate-900 dark:hover:bg-slate-600 flex items-center gap-2 shadow-sm">
                                 <Upload size={14}/> Import Transaction
                             </button>
                             <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx" onChange={handleTransactionImport} />
                         </div>
                     </div>
 
-                    <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
                         <div className="flex-1 overflow-auto">
                             <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0 z-10">
+                                <thead className="bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase sticky top-0 z-10">
                                     <tr>
-                                        <th className="p-3 border-b w-10 text-center">#</th>
-                                        <th className="p-3 border-b">Item</th>
-                                        <th className="p-3 border-b w-24 text-right">Qty</th>
-                                        <th className="p-3 border-b w-24">Unit</th>
-                                        <th className="p-3 border-b w-24 text-right">Base</th>
-                                        <th className="p-3 border-b">Reason</th>
-                                        <th className="p-3 border-b w-10 text-center">Act</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700 w-10 text-center">#</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700">Item</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700 w-24 text-right">Qty</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700 w-24">Unit</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700 w-24 text-right">Base</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700">Reason</th>
+                                        <th className="p-3 border-b border-slate-200 dark:border-slate-700 w-10 text-center">Act</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
                                     {rejectLines.map((line, idx) => (
-                                        <tr key={`line-${line.itemId}-${idx}`} className="border-b border-slate-50 hover:bg-red-50/10">
-                                            <td className="p-2 text-center text-slate-400">{idx + 1}</td>
+                                        <tr key={`line-${line.itemId}-${idx}`} className="border-b border-slate-50 dark:border-slate-800 hover:bg-red-50/10 dark:hover:bg-red-900/10 transition-colors">
+                                            <td className="p-2 text-center text-slate-400 dark:text-slate-500">{idx + 1}</td>
                                             <td className="p-2">
-                                                <div className="font-medium text-slate-700">{line.name}</div>
-                                                <div className="text-xs text-slate-400 font-mono">{line.sku}</div>
+                                                <div className="font-medium text-slate-700 dark:text-slate-200">{line.name}</div>
+                                                <div className="text-xs text-slate-400 dark:text-slate-500 font-mono">{line.sku}</div>
                                             </td>
-                                            <td className="p-2 text-right font-bold font-mono text-red-600">{line.qty}</td>
-                                            <td className="p-2 text-slate-500">{line.unit}</td>
-                                            <td className="p-2 text-right font-mono text-slate-400">{Number(line.baseQty.toFixed(2))}</td>
-                                            <td className="p-2 text-slate-600">{line.reason}</td>
+                                            <td className="p-2 text-right font-bold font-mono text-red-600 dark:text-red-400">{line.qty}</td>
+                                            <td className="p-2 text-slate-500 dark:text-slate-400">{line.unit}</td>
+                                            <td className="p-2 text-right font-mono text-slate-400 dark:text-slate-500">{Number(line.baseQty.toFixed(2))}</td>
+                                            <td className="p-2 text-slate-600 dark:text-slate-300">{line.reason}</td>
                                             <td className="p-2 text-center">
-                                                <button onClick={() => handleRemoveLine(idx)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                                                <button onClick={() => handleRemoveLine(idx)} className="text-slate-400 hover:text-red-500 dark:hover:text-red-400"><Trash2 size={16}/></button>
                                             </td>
                                         </tr>
                                     ))}
-                                    <tr key="input-row-stable" className="bg-red-50/20 border-t-2 border-red-100">
-                                        <td className="p-2 text-center text-red-300"><Plus size={16} className="mx-auto"/></td>
+                                    <tr key="input-row-stable" className="bg-red-50/20 dark:bg-red-900/10 border-t-2 border-red-100 dark:border-red-900/30">
+                                        <td className="p-2 text-center text-red-300 dark:text-red-400"><Plus size={16} className="mx-auto"/></td>
                                         <td className="p-2 relative">
                                             <div className="relative">
                                                 <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
                                                 <input 
                                                     ref={queryRef}
                                                     type="text" 
-                                                    className="w-full pl-8 pr-2 py-1.5 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                                    className="w-full pl-8 pr-2 py-1.5 border border-red-200 dark:border-red-900/50 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
                                                     placeholder="Scan or type item..."
                                                     value={query}
                                                     onChange={e => setQuery(e.target.value)}
@@ -489,18 +490,18 @@ export const RejectView: React.FC = () => {
                                                     autoComplete="off"
                                                 />
                                                 {showSuggestions && (
-                                                    <div className="absolute left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                                    <div className="absolute left-0 top-full mt-1 w-[400px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
                                                         {suggestions.map((item, idx) => (
                                                             <div 
                                                                 key={item.id}
-                                                                className={`px-3 py-2 cursor-pointer flex justify-between items-center ${idx === highlightedIndex ? 'bg-red-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                                                className={`px-3 py-2 cursor-pointer flex justify-between items-center ${idx === highlightedIndex ? 'bg-red-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
                                                                 onClick={() => selectItem(item)}
                                                             >
                                                                 <div>
                                                                     <div className="font-medium text-sm">{item.name}</div>
-                                                                    <div className={`text-xs ${idx === highlightedIndex ? 'text-red-100' : 'text-slate-400'}`}>{item.code}</div>
+                                                                    <div className={`text-xs ${idx === highlightedIndex ? 'text-red-100' : 'text-slate-400 dark:text-slate-500'}`}>{item.code}</div>
                                                                 </div>
-                                                                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${idx === highlightedIndex ? 'bg-red-500' : 'bg-slate-100'}`}>{item.baseUnit}</span>
+                                                                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${idx === highlightedIndex ? 'bg-red-500' : 'bg-slate-100 dark:bg-slate-700'}`}>{item.baseUnit}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -511,7 +512,7 @@ export const RejectView: React.FC = () => {
                                             <input 
                                                 ref={qtyRef}
                                                 type="number" 
-                                                className="w-full text-right py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                                className="w-full text-right py-1.5 px-2 border border-red-200 dark:border-red-900/50 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
                                                 placeholder="Qty"
                                                 value={pendingQty}
                                                 onChange={e => setPendingQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
@@ -521,7 +522,7 @@ export const RejectView: React.FC = () => {
                                         <td className="p-2">
                                             <select 
                                                 ref={unitRef}
-                                                className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                                className="w-full py-1.5 px-2 border border-red-200 dark:border-red-900/50 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
                                                 value={pendingUnit}
                                                 onChange={e => setPendingUnit(e.target.value)}
                                                 onKeyDown={e => e.key === 'Enter' && reasonRef.current?.focus()}
@@ -532,14 +533,14 @@ export const RejectView: React.FC = () => {
                                                 ))}
                                             </select>
                                         </td>
-                                        <td className="p-2 text-right text-slate-400 font-mono text-xs italic bg-slate-50">
+                                        <td className="p-2 text-right text-slate-400 dark:text-slate-500 font-mono text-xs italic bg-slate-50 dark:bg-slate-800/30">
                                             {pendingItem && pendingQty !== '' ? Number(calculateBase(Number(pendingQty), pendingUnit, pendingItem).toFixed(2)) : '-'}
                                         </td>
                                         <td className="p-2">
                                             <input 
                                                 ref={reasonRef}
                                                 type="text" 
-                                                className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                                                className="w-full py-1.5 px-2 border border-red-200 dark:border-red-900/50 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
                                                 placeholder="Reason"
                                                 value={pendingReason}
                                                 onChange={e => setPendingReason(e.target.value)}
@@ -563,12 +564,12 @@ export const RejectView: React.FC = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                             <div className="text-xs text-slate-500">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                             <div className="text-xs text-slate-500 dark:text-slate-400">
                                  {rejectLines.length} Items ready.
                              </div>
                              <div className="flex gap-2">
-                                 <button onClick={handleSessionClipboard} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded text-sm hover:bg-slate-50 flex items-center gap-2 shadow-sm">
+                                 <button onClick={handleSessionClipboard} className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded text-sm hover:bg-slate-50 dark:hover:bg-slate-600 flex items-center gap-2 shadow-sm">
                                     <Copy size={16}/> Copy to Clipboard
                                  </button>
                                  <button onClick={handleSaveBatch} className="px-6 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 font-bold flex items-center gap-2 shadow-sm">
@@ -581,15 +582,15 @@ export const RejectView: React.FC = () => {
             )}
 
             {activeTab === 'HISTORY' && (
-                <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 justify-between items-center bg-slate-50">
+                <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap gap-4 justify-between items-center bg-slate-50 dark:bg-slate-800">
                         <div className="flex items-center gap-4">
-                            <div className="text-sm font-bold text-slate-700">Batch History</div>
-                            <div className="flex items-center gap-2 bg-white p-1 rounded border border-slate-200">
-                                <label className="text-[10px] font-bold text-slate-400 pl-1 uppercase">Date Range:</label>
-                                <input type="date" value={historyStartDate} onChange={e => setHistoryStartDate(e.target.value)} className="text-xs border-0 outline-none text-slate-600 bg-transparent" />
-                                <span className="text-slate-300">-</span>
-                                <input type="date" value={historyEndDate} onChange={e => setHistoryEndDate(e.target.value)} className="text-xs border-0 outline-none text-slate-600 bg-transparent" />
+                            <div className="text-sm font-bold text-slate-700 dark:text-slate-200">Batch History</div>
+                            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1 rounded border border-slate-200 dark:border-slate-700">
+                                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 pl-1 uppercase">Date Range:</label>
+                                <input type="date" value={historyStartDate} onChange={e => setHistoryStartDate(e.target.value)} className="text-xs border-0 outline-none text-slate-600 dark:text-slate-300 bg-transparent" />
+                                <span className="text-slate-300 dark:text-slate-600">-</span>
+                                <input type="date" value={historyEndDate} onChange={e => setHistoryEndDate(e.target.value)} className="text-xs border-0 outline-none text-slate-600 dark:text-slate-300 bg-transparent" />
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -603,7 +604,7 @@ export const RejectView: React.FC = () => {
                     </div>
                     <div className="overflow-auto flex-1">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0">
+                            <thead className="bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase sticky top-0">
                                 <tr>
                                     <th className="p-3">ID</th>
                                     <th className="p-3">Date</th>
@@ -612,22 +613,22 @@ export const RejectView: React.FC = () => {
                                     <th className="p-3 text-center">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50 text-sm">
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
                                 {filteredBatches.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="p-8 text-center text-slate-400 italic">No batches found.</td>
+                                        <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No batches found.</td>
                                     </tr>
                                 ) : filteredBatches.map(batch => (
-                                    <tr key={batch.id} className="hover:bg-slate-50">
-                                        <td className="p-3 font-mono text-slate-500">{batch.id}</td>
-                                        <td className="p-3">{batch.date}</td>
-                                        <td className="p-3 font-medium text-slate-700">{batch.outlet}</td>
-                                        <td className="p-3 text-right font-bold text-red-600">{batch.items.length}</td>
+                                    <tr key={batch.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                        <td className="p-3 font-mono text-slate-500 dark:text-slate-400">{batch.id}</td>
+                                        <td className="p-3 text-slate-700 dark:text-slate-300">{batch.date}</td>
+                                        <td className="p-3 font-medium text-slate-700 dark:text-slate-200">{batch.outlet}</td>
+                                        <td className="p-3 text-right font-bold text-red-600 dark:text-red-400">{batch.items.length}</td>
                                         <td className="p-3 text-center flex justify-center gap-2">
-                                            <button onClick={() => handleBatchClipboard(batch)} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded">
+                                            <button onClick={() => handleBatchClipboard(batch)} className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">
                                                 <Copy size={16}/>
                                             </button>
-                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded">
+                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded">
                                                 <Eye size={16}/>
                                             </button>
                                             <button 
@@ -637,7 +638,7 @@ export const RejectView: React.FC = () => {
                                                         setBatches(StorageService.getRejectBatches());
                                                     }
                                                 }} 
-                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                                className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
                                             >
                                                 <Trash2 size={16}/>
                                             </button>
@@ -651,28 +652,28 @@ export const RejectView: React.FC = () => {
             )}
 
             {activeTab === 'DATABASE' && (
-                <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
+                <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex flex-wrap justify-between items-center gap-4">
                         <div className="flex items-center gap-2 relative">
-                            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
+                            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input 
                                 type="text" 
                                 placeholder="Search Master Data..." 
-                                className="pl-8 pr-3 py-1.5 border rounded text-sm w-64 outline-none focus:ring-1 focus:ring-emerald-500"
+                                className="pl-8 pr-3 py-1.5 border rounded text-sm w-64 outline-none focus:ring-1 focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                                 value={dbSearch}
                                 onChange={e => setDbSearch(e.target.value)}
                             />
                             {selectedDbIds.size > 0 && (
-                                <button onClick={handleDbBulkDelete} className="ml-2 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-bold hover:bg-red-100 flex items-center gap-1">
+                                <button onClick={handleDbBulkDelete} className="ml-2 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center gap-1">
                                     <Trash2 size={14}/> Delete ({selectedDbIds.size})
                                 </button>
                             )}
                         </div>
                         <div className="flex gap-2">
-                             <button onClick={handleDownloadMasterTemplate} className="px-3 py-1.5 border bg-white text-slate-600 rounded text-xs flex items-center gap-2 hover:bg-slate-50">
+                             <button onClick={handleDownloadMasterTemplate} className="px-3 py-1.5 border bg-white dark:bg-slate-700 dark:border-slate-600 text-slate-600 dark:text-slate-200 rounded text-xs flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-600">
                                 <Download size={14}/> Master Template
                             </button>
-                            <button onClick={() => masterFileInputRef.current?.click()} className="px-3 py-1.5 bg-slate-800 text-white rounded text-xs flex items-center gap-2 hover:bg-slate-900 shadow-sm">
+                            <button onClick={() => masterFileInputRef.current?.click()} className="px-3 py-1.5 bg-slate-800 dark:bg-slate-700 text-white rounded text-xs flex items-center gap-2 hover:bg-slate-900 dark:hover:bg-slate-600 shadow-sm">
                                 <Upload size={14}/> Import Master Data
                             </button>
                             <input type="file" ref={masterFileInputRef} className="hidden" accept=".xlsx" onChange={handleImportMasterData} />
@@ -680,7 +681,7 @@ export const RejectView: React.FC = () => {
                     </div>
                     <div className="flex-1 overflow-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0">
+                            <thead className="bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase sticky top-0">
                                 <tr>
                                     <th className="p-3 w-10 text-center">
                                         <input type="checkbox" onChange={handleDbSelectAll} checked={items.length > 0 && selectedDbIds.size === items.length} />
@@ -693,23 +694,23 @@ export const RejectView: React.FC = () => {
                                     <th className="p-3 text-center">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50 text-sm">
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
                                 {items.filter(i => i.name.toLowerCase().includes(dbSearch.toLowerCase()) || i.code.toLowerCase().includes(dbSearch.toLowerCase())).map(item => (
-                                    <tr key={item.id} className={`hover:bg-slate-50 ${selectedDbIds.has(item.id) ? 'bg-blue-50/50' : ''}`}>
+                                    <tr key={item.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${selectedDbIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
                                         <td className="p-3 text-center">
                                             <input type="checkbox" checked={selectedDbIds.has(item.id)} onChange={() => handleDbSelectRow(item.id)} />
                                         </td>
-                                        <td className="p-3 font-mono text-slate-500">{item.code}</td>
-                                        <td className="p-3 font-medium text-slate-700">{item.name}</td>
-                                        <td className="p-3"><span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-bold">{item.baseUnit}</span></td>
-                                        <td className="p-3 text-slate-500">{item.category}</td>
-                                        <td className="p-3 text-xs text-slate-500">
+                                        <td className="p-3 font-mono text-slate-500 dark:text-slate-400">{item.code}</td>
+                                        <td className="p-3 font-medium text-slate-700 dark:text-slate-200">{item.name}</td>
+                                        <td className="p-3"><span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded text-xs font-bold">{item.baseUnit}</span></td>
+                                        <td className="p-3 text-slate-500 dark:text-slate-400">{item.category}</td>
+                                        <td className="p-3 text-xs text-slate-500 dark:text-slate-400">
                                             {item.conversions.map(c => `${c.name} (${c.operator === '/' ? '/' : '*'}${c.ratio})`).join(', ') || '-'}
                                         </td>
                                         <td className="p-3 text-center">
                                             <button 
                                                 onClick={() => setEditingItem(JSON.parse(JSON.stringify(item)))}
-                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                                className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded"
                                             >
                                                 <Edit3 size={16}/>
                                             </button>
@@ -724,11 +725,11 @@ export const RejectView: React.FC = () => {
 
             {showAddOutlet && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-80">
-                        <h3 className="font-bold text-slate-700 mb-4">Add New Outlet</h3>
-                        <input autoFocus className="w-full border p-2 rounded mb-4" placeholder="Outlet Name" value={newOutletName} onChange={e => setNewOutletName(e.target.value)} />
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-xl w-80 border border-slate-200 dark:border-slate-800">
+                        <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-4">Add New Outlet</h3>
+                        <input autoFocus className="w-full border p-2 rounded mb-4 dark:bg-slate-800 dark:border-slate-700 dark:text-white" placeholder="Outlet Name" value={newOutletName} onChange={e => setNewOutletName(e.target.value)} />
                         <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowAddOutlet(false)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded">Cancel</button>
+                            <button onClick={() => setShowAddOutlet(false)} className="px-3 py-1.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded">Cancel</button>
                             <button 
                                 onClick={() => {
                                     if(newOutletName) {
@@ -748,17 +749,17 @@ export const RejectView: React.FC = () => {
 
             {viewingBatch && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[80vh]">
-                        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-lg">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-3xl flex flex-col max-h-[80vh] border border-slate-200 dark:border-slate-800">
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-t-lg">
                             <div>
-                                <h3 className="font-bold text-slate-800">Reject Batch Details</h3>
-                                <p className="text-xs text-slate-500 font-mono">{viewingBatch.id} • {viewingBatch.date} • {viewingBatch.outlet}</p>
+                                <h3 className="font-bold text-slate-800 dark:text-slate-200">Reject Batch Details</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{viewingBatch.id} • {viewingBatch.date} • {viewingBatch.outlet}</p>
                             </div>
-                            <button onClick={() => setViewingBatch(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                            <button onClick={() => setViewingBatch(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={20}/></button>
                         </div>
                         <div className="flex-1 overflow-auto p-0">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-slate-100 text-xs text-slate-500 uppercase">
+                                <thead className="bg-slate-100 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 uppercase">
                                     <tr>
                                         <th className="p-3">Item</th>
                                         <th className="p-3 text-right">Qty</th>
@@ -767,24 +768,24 @@ export const RejectView: React.FC = () => {
                                         <th className="p-3">Reason</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                                     {viewingBatch.items.map((line, i) => (
                                         <tr key={i}>
                                             <td className="p-3">
-                                                <div className="font-medium text-slate-700">{line.name}</div>
-                                                <div className="text-xs text-slate-400 font-mono">{line.sku}</div>
+                                                <div className="font-medium text-slate-700 dark:text-slate-200">{line.name}</div>
+                                                <div className="text-xs text-slate-400 dark:text-slate-500 font-mono">{line.sku}</div>
                                             </td>
-                                            <td className="p-3 text-right font-bold text-red-600">{line.qty}</td>
-                                            <td className="p-3 text-slate-500">{line.unit}</td>
-                                            <td className="p-3 text-right font-mono text-slate-400">{Number(line.baseQty.toFixed(2))}</td>
-                                            <td className="p-3 text-slate-600">{line.reason}</td>
+                                            <td className="p-3 text-right font-bold text-red-600 dark:text-red-400">{line.qty}</td>
+                                            <td className="p-3 text-slate-500 dark:text-slate-400">{line.unit}</td>
+                                            <td className="p-3 text-right font-mono text-slate-400 dark:text-slate-500">{Number(line.baseQty.toFixed(2))}</td>
+                                            <td className="p-3 text-slate-600 dark:text-slate-300">{line.reason}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-                        <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-lg text-right">
-                             <button onClick={() => setViewingBatch(null)} className="px-4 py-2 bg-white border border-slate-300 rounded text-sm text-slate-600 hover:bg-slate-50">Close</button>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 rounded-b-lg text-right">
+                             <button onClick={() => setViewingBatch(null)} className="px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-sm text-slate-600 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600">Close</button>
                         </div>
                     </div>
                 </div>
@@ -792,19 +793,19 @@ export const RejectView: React.FC = () => {
 
             {editingItem && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="p-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-700">Manage Units: {editingItem.code}</h3>
-                            <button onClick={() => setEditingItem(null)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-700 dark:text-slate-200">Manage Units: {editingItem.code}</h3>
+                            <button onClick={() => setEditingItem(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={18}/></button>
                         </div>
-                        <div className="p-4 max-h-[60vh] overflow-y-auto bg-slate-50/50">
-                            <div className="mb-4 text-xs text-slate-500"> Base Unit: <strong className="text-slate-800">{editingItem.baseUnit}</strong> </div>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto bg-slate-50/50 dark:bg-slate-900/50">
+                            <div className="mb-4 text-xs text-slate-500 dark:text-slate-400"> Base Unit: <strong className="text-slate-800 dark:text-slate-200">{editingItem.baseUnit}</strong> </div>
                             <div className="space-y-3">
                                 {editingItem.conversions.map((conv, idx) => (
-                                    <div key={idx} className="bg-white p-3 rounded border border-slate-200 shadow-sm flex items-center gap-2">
+                                    <div key={idx} className="bg-white dark:bg-slate-800 p-3 rounded border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-2">
                                         <div className="flex-1">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Name</label>
-                                            <input className="w-full border rounded px-2 py-1 text-sm" value={conv.name} onChange={e => {
+                                            <input className="w-full border rounded px-2 py-1 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white" value={conv.name} onChange={e => {
                                                 const nc = [...editingItem.conversions];
                                                 nc[idx].name = e.target.value;
                                                 setEditingItem({...editingItem, conversions: nc});
@@ -813,7 +814,7 @@ export const RejectView: React.FC = () => {
                                         <div className="flex flex-col items-center pt-4"> <ArrowRight size={14} className="text-slate-300"/> </div>
                                         <div className="w-20">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Operator</label>
-                                            <select className="w-full border rounded px-1 py-1 text-sm bg-slate-50" value={conv.operator || '*'} onChange={e => {
+                                            <select className="w-full border rounded px-1 py-1 text-sm bg-slate-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" value={conv.operator || '*'} onChange={e => {
                                                 const nc = [...editingItem.conversions];
                                                 nc[idx].operator = e.target.value as '*' | '/';
                                                 setEditingItem({...editingItem, conversions: nc});
@@ -824,7 +825,7 @@ export const RejectView: React.FC = () => {
                                         </div>
                                         <div className="w-24">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Ratio</label>
-                                            <input type="number" className="w-full border rounded px-2 py-1 text-sm" value={conv.ratio} onChange={e => {
+                                            <input type="number" className="w-full border rounded px-2 py-1 text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-white" value={conv.ratio} onChange={e => {
                                                 const nc = [...editingItem.conversions];
                                                 nc[idx].ratio = parseFloat(e.target.value);
                                                 setEditingItem({...editingItem, conversions: nc});
@@ -839,10 +840,10 @@ export const RejectView: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                            <button onClick={() => setEditingItem({...editingItem, conversions: [...editingItem.conversions, { name: '', ratio: 1, operator: '*' }]})} className="mt-4 w-full py-2 border-2 border-dashed border-blue-200 text-blue-600 rounded hover:bg-blue-50 text-sm font-bold flex items-center justify-center gap-2"> <Plus size={16}/> Add Unit </button>
+                            <button onClick={() => setEditingItem({...editingItem, conversions: [...editingItem.conversions, { name: '', ratio: 1, operator: '*' }]})} className="mt-4 w-full py-2 border-2 border-dashed border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-sm font-bold flex items-center justify-center gap-2"> <Plus size={16}/> Add Unit </button>
                         </div>
-                        <div className="p-3 border-t border-slate-200 flex justify-end gap-2">
-                             <button onClick={() => setEditingItem(null)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded text-sm">Cancel</button>
+                        <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+                             <button onClick={() => setEditingItem(null)} className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded text-sm">Cancel</button>
                              <button onClick={handleSaveConversions} className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 shadow-sm">Save Changes</button>
                         </div>
                     </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Warehouse, Partner, AppUser } from '../types';
@@ -7,13 +8,13 @@ type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS';
 
 // Dense Table Row Component
 const DenseRow = ({ children }: { children: React.ReactNode }) => (
-    <tr className="hover:bg-blue-50 transition-colors group border-b border-slate-200 last:border-0 text-xs text-slate-700">
+    <tr className="hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors group border-b border-slate-200 dark:border-slate-800 last:border-0 text-xs text-slate-700 dark:text-slate-300">
         {children}
     </tr>
 );
 
 const DenseCell = ({ children, className = '' }: { children?: React.ReactNode, className?: string }) => (
-    <td className={`p-1.5 border-r border-slate-100 last:border-r-0 ${className}`}>
+    <td className={`p-1.5 border-r border-slate-100 dark:border-slate-800 last:border-r-0 ${className}`}>
         {children}
     </td>
 );
@@ -107,34 +108,34 @@ export const SettingsView: React.FC = () => {
     };
 
     return (
-        <div className="flex h-full bg-slate-50">
+        <div className="flex h-full bg-slate-50 dark:bg-slate-950 transition-colors">
             {/* Sub Sidebar */}
-            <div className="w-56 bg-white border-r border-slate-200 flex flex-col">
-                <div className="p-4 border-b border-slate-100">
-                    <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Configuration</h2>
+            <div className="w-56 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+                <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+                    <h2 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Configuration</h2>
                 </div>
                 <div className="p-2 space-y-1">
                     <button 
                         onClick={() => setActiveTab('WAREHOUSE')}
-                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 ${activeTab === 'WAREHOUSE' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 transition-colors ${activeTab === 'WAREHOUSE' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <Building2 size={16} /> Warehouses
                     </button>
                     <button 
                         onClick={() => setActiveTab('SUPPLIER')}
-                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 ${activeTab === 'SUPPLIER' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 transition-colors ${activeTab === 'SUPPLIER' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <Building2 size={16} /> Suppliers
                     </button>
                     <button 
                         onClick={() => setActiveTab('CUSTOMER')}
-                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 ${activeTab === 'CUSTOMER' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 transition-colors ${activeTab === 'CUSTOMER' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <Users size={16} /> Customers
                     </button>
                     <button 
                         onClick={() => setActiveTab('USERS')}
-                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 ${activeTab === 'USERS' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center gap-3 transition-colors ${activeTab === 'USERS' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     >
                         <UserCircle size={16} /> User Management
                     </button>
@@ -144,7 +145,7 @@ export const SettingsView: React.FC = () => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Toolbar */}
-                <div className="bg-white border-b border-slate-200 p-3 flex justify-between items-center shadow-sm">
+                <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-3 flex justify-between items-center shadow-sm transition-colors">
                     <div className="flex items-center gap-2">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -153,7 +154,7 @@ export const SettingsView: React.FC = () => {
                                 placeholder="Search data..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-3 py-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none w-64"
+                                className="pl-9 pr-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded text-sm focus:ring-1 focus:ring-blue-500 outline-none w-64 bg-white dark:bg-slate-800 dark:text-slate-200"
                             />
                         </div>
                     </div>
@@ -166,35 +167,35 @@ export const SettingsView: React.FC = () => {
                 </div>
 
                 {/* Dense Table */}
-                <div className="flex-1 overflow-auto bg-white p-4">
-                    <div className="border border-slate-300 rounded overflow-hidden">
+                <div className="flex-1 overflow-auto bg-white dark:bg-slate-900 p-4 transition-colors">
+                    <div className="border border-slate-300 dark:border-slate-700 rounded overflow-hidden">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-100 text-slate-600 text-[11px] font-bold uppercase tracking-wider sticky top-0">
+                            <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider sticky top-0">
                                 <tr>
-                                    <th className="p-2 border-r border-slate-300 w-10 text-center">#</th>
+                                    <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-10 text-center">#</th>
                                     {activeTab === 'WAREHOUSE' && (
                                         <>
-                                            <th className="p-2 border-r border-slate-300">Warehouse Name</th>
-                                            <th className="p-2 border-r border-slate-300">Location</th>
-                                            <th className="p-2 border-r border-slate-300">PIC</th>
-                                            <th className="p-2 border-r border-slate-300">Phone</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Warehouse Name</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Location</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">PIC</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Phone</th>
                                         </>
                                     )}
                                     {(activeTab === 'SUPPLIER' || activeTab === 'CUSTOMER') && (
                                         <>
-                                            <th className="p-2 border-r border-slate-300 w-1/4">Name</th>
-                                            <th className="p-2 border-r border-slate-300">Contact</th>
-                                            <th className="p-2 border-r border-slate-300">Address</th>
-                                            <th className="p-2 border-r border-slate-300 w-24">NPWP</th>
-                                            <th className="p-2 border-r border-slate-300 w-16 text-center">Term</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-1/4">Name</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Contact</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Address</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-24">NPWP</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-16 text-center">Term</th>
                                         </>
                                     )}
                                     {activeTab === 'USERS' && (
                                         <>
-                                            <th className="p-2 border-r border-slate-300">Full Name</th>
-                                            <th className="p-2 border-r border-slate-300">Email Login</th>
-                                            <th className="p-2 border-r border-slate-300 w-32">Role</th>
-                                            <th className="p-2 border-r border-slate-300 w-24 text-center">Status</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Full Name</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Email Login</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-32">Role</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-24 text-center">Status</th>
                                         </>
                                     )}
                                     <th className="p-2 w-20 text-center">Action</th>
@@ -203,11 +204,11 @@ export const SettingsView: React.FC = () => {
                             <tbody>
                                 {filteredData().map((item: any, idx) => (
                                     <DenseRow key={item.id}>
-                                        <DenseCell className="text-center text-slate-500 bg-slate-50">{idx + 1}</DenseCell>
+                                        <DenseCell className="text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800">{idx + 1}</DenseCell>
                                         
                                         {activeTab === 'WAREHOUSE' && (
                                             <>
-                                                <DenseCell><span className="font-semibold text-slate-700">{item.name}</span></DenseCell>
+                                                <DenseCell><span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span></DenseCell>
                                                 <DenseCell>{item.location}</DenseCell>
                                                 <DenseCell>{item.pic || '-'}</DenseCell>
                                                 <DenseCell className="font-mono">{item.phone || '-'}</DenseCell>
@@ -216,11 +217,11 @@ export const SettingsView: React.FC = () => {
 
                                         {(activeTab === 'SUPPLIER' || activeTab === 'CUSTOMER') && (
                                             <>
-                                                <DenseCell><span className="font-semibold text-slate-700">{item.name}</span></DenseCell>
+                                                <DenseCell><span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span></DenseCell>
                                                 <DenseCell>
                                                     <div className="flex flex-col text-[10px]">
                                                         {item.phone && <span className="flex items-center gap-1"><Phone size={8}/> {item.phone}</span>}
-                                                        {item.email && <span className="flex items-center gap-1 text-blue-600"><Mail size={8}/> {item.email}</span>}
+                                                        {item.email && <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400"><Mail size={8}/> {item.email}</span>}
                                                     </div>
                                                 </DenseCell>
                                                 <DenseCell><span className="truncate block max-w-xs" title={item.address}>{item.address}</span></DenseCell>
@@ -231,25 +232,25 @@ export const SettingsView: React.FC = () => {
 
                                         {activeTab === 'USERS' && (
                                             <>
-                                                <DenseCell><span className="font-semibold text-slate-700">{item.name}</span></DenseCell>
-                                                <DenseCell className="text-blue-600">{item.email}</DenseCell>
+                                                <DenseCell><span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span></DenseCell>
+                                                <DenseCell className="text-blue-600 dark:text-blue-400">{item.email}</DenseCell>
                                                 <DenseCell>
-                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.role === 'ADMIN' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.role === 'ADMIN' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
                                                         {item.role}
                                                     </span>
                                                 </DenseCell>
                                                 <DenseCell className="text-center">
-                                                    <span className={`text-[10px] font-bold ${item.status === 'ACTIVE' ? 'text-emerald-600' : 'text-red-500'}`}>{item.status}</span>
+                                                    <span className={`text-[10px] font-bold ${item.status === 'ACTIVE' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>{item.status}</span>
                                                 </DenseCell>
                                             </>
                                         )}
 
                                         <DenseCell className="text-center">
                                             <div className="flex justify-center gap-1">
-                                                <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1 text-blue-600 hover:bg-blue-100 rounded">
+                                                <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded">
                                                     <Edit3 size={14} />
                                                 </button>
-                                                <button onClick={() => handleDelete(item.id, activeTab === 'WAREHOUSE' ? 'WH' : activeTab === 'USERS' ? 'USER' : 'PARTNER')} className="p-1 text-red-600 hover:bg-red-100 rounded">
+                                                <button onClick={() => handleDelete(item.id, activeTab === 'WAREHOUSE' ? 'WH' : activeTab === 'USERS' ? 'USER' : 'PARTNER')} className="p-1 text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30 rounded">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
@@ -258,7 +259,7 @@ export const SettingsView: React.FC = () => {
                                 ))}
                                 {filteredData().length === 0 && (
                                     <tr>
-                                        <td colSpan={10} className="p-8 text-center text-slate-400 italic">No records found.</td>
+                                        <td colSpan={10} className="p-8 text-center text-slate-400 dark:text-slate-500 italic">No records found.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -270,12 +271,12 @@ export const SettingsView: React.FC = () => {
             {/* Universal Modal Form */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden border border-slate-200">
-                        <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-700 uppercase text-sm">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-800">
+                        <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-700 dark:text-slate-200 uppercase text-sm">
                                 {editData?.id ? 'Edit' : 'Add New'} {activeTab}
                             </h3>
-                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={18} /></button>
                         </div>
                         
                         <form onSubmit={(e) => { e.preventDefault(); handleSave(editData); }} className="p-6 space-y-4">
@@ -284,21 +285,21 @@ export const SettingsView: React.FC = () => {
                             {activeTab === 'WAREHOUSE' && (
                                 <>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Warehouse Name</label>
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Warehouse Name</label>
                                         <input required type="text" className="input-dense" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} placeholder="e.g. Gudang Pusat" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Phone</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Phone</label>
                                             <input type="text" className="input-dense" value={editData.phone || ''} onChange={e => setEditData({...editData, phone: e.target.value})} />
                                         </div>
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">PIC Name</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">PIC Name</label>
                                             <input type="text" className="input-dense" value={editData.pic || ''} onChange={e => setEditData({...editData, pic: e.target.value})} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Address / Location</label>
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Address / Location</label>
                                         <textarea className="input-dense" rows={3} value={editData.location || ''} onChange={e => setEditData({...editData, location: e.target.value})} />
                                     </div>
                                 </>
@@ -308,31 +309,31 @@ export const SettingsView: React.FC = () => {
                             {(activeTab === 'SUPPLIER' || activeTab === 'CUSTOMER') && (
                                 <>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Company / Name</label>
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Company / Name</label>
                                         <input required type="text" className="input-dense" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Phone</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Phone</label>
                                             <input required type="text" className="input-dense" value={editData.phone || ''} onChange={e => setEditData({...editData, phone: e.target.value})} />
                                         </div>
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Email</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Email</label>
                                             <input type="email" className="input-dense" value={editData.email || ''} onChange={e => setEditData({...editData, email: e.target.value})} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">NPWP</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">NPWP</label>
                                             <input type="text" className="input-dense" value={editData.npwp || ''} onChange={e => setEditData({...editData, npwp: e.target.value})} />
                                         </div>
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Payment Term (Days)</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Payment Term (Days)</label>
                                             <input type="number" className="input-dense" value={editData.term || ''} onChange={e => setEditData({...editData, term: e.target.value})} />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Address</label>
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Address</label>
                                         <textarea className="input-dense" rows={2} value={editData.address || ''} onChange={e => setEditData({...editData, address: e.target.value})} />
                                     </div>
                                 </>
@@ -342,16 +343,16 @@ export const SettingsView: React.FC = () => {
                             {activeTab === 'USERS' && (
                                 <>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Full Name</label>
                                         <input required type="text" className="input-dense" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} />
                                     </div>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Email Address</label>
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Email Address</label>
                                         <input required type="email" className="input-dense" value={editData.email || ''} onChange={e => setEditData({...editData, email: e.target.value})} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Role</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Role</label>
                                             <select className="input-dense" value={editData.role || 'STAFF'} onChange={e => setEditData({...editData, role: e.target.value})}>
                                                 <option value="ADMIN">Administrator</option>
                                                 <option value="MANAGER">Manager</option>
@@ -359,7 +360,7 @@ export const SettingsView: React.FC = () => {
                                             </select>
                                         </div>
                                         <div className="grid grid-cols-1 gap-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Status</label>
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Status</label>
                                             <select className="input-dense" value={editData.status || 'ACTIVE'} onChange={e => setEditData({...editData, status: e.target.value})}>
                                                 <option value="ACTIVE">Active</option>
                                                 <option value="INACTIVE">Inactive</option>
@@ -369,8 +370,8 @@ export const SettingsView: React.FC = () => {
                                 </>
                             )}
 
-                            <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded text-sm font-medium">Cancel</button>
+                            <div className="pt-4 flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-sm font-medium">Cancel</button>
                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded text-sm font-medium shadow-sm flex items-center gap-2">
                                     <Save size={16} /> Save Data
                                 </button>
@@ -383,15 +384,31 @@ export const SettingsView: React.FC = () => {
             <style>{`
                 .input-dense {
                     width: 100%;
-                    border: 1px solid #cbd5e1;
+                    border-width: 1px;
+                    border-style: solid;
                     padding: 0.35rem 0.5rem;
                     font-size: 0.875rem;
                     border-radius: 0.25rem;
                     outline: none;
                 }
-                .input-dense:focus {
-                    border-color: #3b82f6;
-                    box-shadow: 0 0 0 1px #3b82f6;
+                /* Default Light Mode Styles applied by parent classes, overriding specific colors here for dynamic dark mode support via @apply or similar in CSS, but inline styles need handling */
+                :global(.dark) .input-dense {
+                    background-color: #1e293b;
+                    border-color: #334155;
+                    color: #e2e8f0;
+                }
+                :global(.dark) .input-dense:focus {
+                     border-color: #3b82f6;
+                     box-shadow: 0 0 0 1px #3b82f6;
+                }
+                :global(:not(.dark)) .input-dense {
+                     background-color: #ffffff;
+                     border-color: #cbd5e1;
+                     color: #0f172a;
+                }
+                :global(:not(.dark)) .input-dense:focus {
+                     border-color: #3b82f6;
+                     box-shadow: 0 0 0 1px #3b82f6;
                 }
             `}</style>
         </div>
