@@ -91,7 +91,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       const matches = items.filter(i => 
           i.code.toLowerCase().includes(lower) || 
           i.name.toLowerCase().includes(lower)
-      ).slice(0, 5); // Limit to 5
+      ).slice(0, 8); // Limit to 8
       
       setSuggestions(matches);
       setShowSuggestions(matches.length > 0);
@@ -519,24 +519,35 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     onKeyDown={handleQueryKeyDown}
                                     onFocus={() => { if(query) setShowSuggestions(true); }}
                                 />
-                                {/* Autocomplete Dropdown */}
+                                {/* Autocomplete Dropdown - Centered */}
                                 {showSuggestions && (
-                                    <div className="absolute left-0 bottom-full mb-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
-                                        <div className="text-[10px] bg-slate-50 px-2 py-1 text-slate-400 font-bold uppercase border-b border-slate-100">Select Item</div>
-                                        {suggestions.map((item, idx) => (
-                                            <div 
-                                                key={item.id}
-                                                className={`px-3 py-2 cursor-pointer flex justify-between items-center ${idx === highlightedIndex ? 'bg-blue-500 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
-                                                onClick={() => selectItem(item)}
-                                            >
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-sm">{item.name}</span>
-                                                    <span className={`text-xs ${idx === highlightedIndex ? 'text-blue-100' : 'text-slate-400'}`}>{item.code}</span>
-                                                </div>
-                                                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${idx === highlightedIndex ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{item.baseUnit}</span>
+                                    <>
+                                        {/* Invisible backdrop to close on click outside */}
+                                        <div className="fixed inset-0 z-[60] cursor-default" onClick={() => setShowSuggestions(false)}></div>
+                                        
+                                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] max-w-[90vw] bg-white border border-slate-200 rounded-xl shadow-2xl z-[70] max-h-[50vh] flex flex-col overflow-hidden ring-1 ring-slate-900/5">
+                                            <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
+                                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Select Item ({suggestions.length})</span>
+                                                <span className="text-[10px] text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded">Use Arrow Keys & Enter</span>
                                             </div>
-                                        ))}
-                                    </div>
+                                            <div className="overflow-y-auto p-0">
+                                                {suggestions.map((item, idx) => (
+                                                    <div 
+                                                        key={item.id}
+                                                        className={`px-4 py-3 cursor-pointer flex justify-between items-center border-b border-slate-50 last:border-0 transition-colors ${idx === highlightedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                                        onClick={() => selectItem(item)}
+                                                        onMouseEnter={() => setHighlightedIndex(idx)}
+                                                    >
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <span className={`font-semibold text-sm ${idx === highlightedIndex ? 'text-white' : 'text-slate-800'}`}>{item.name}</span>
+                                                            <span className={`text-xs ${idx === highlightedIndex ? 'text-blue-100' : 'text-slate-500'}`}>{item.code} • {item.category}</span>
+                                                        </div>
+                                                        <span className={`text-xs font-mono px-2 py-1 rounded font-bold ${idx === highlightedIndex ? 'bg-blue-500 text-white border border-blue-400' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{item.baseUnit}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         </td>
