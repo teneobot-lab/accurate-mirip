@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
@@ -25,7 +24,7 @@ export const RejectView: React.FC = () => {
     const [pendingItem, setPendingItem] = useState<Item | null>(null);
     const [pendingQty, setPendingQty] = useState<number | ''>('');
     const [pendingUnit, setPendingUnit] = useState('');
-    const [pendingReason, setPendingReason] = useState('');
+    // Note: pendingReason state removed to fix cursor jumping issue. Using ref instead.
 
     // --- History State ---
     const [batches, setBatches] = useState<RejectBatch[]>([]);
@@ -130,7 +129,10 @@ export const RejectView: React.FC = () => {
         if (!pendingItem) return;
         const qty = Number(pendingQty);
         if (qty <= 0) return alert("Invalid Qty");
-        if (!pendingReason.trim()) return alert("Reason is required");
+        
+        // Use Ref for Reason to avoid re-render cursor issues (Uncontrolled Input)
+        const reasonVal = reasonRef.current?.value || '';
+        if (!reasonVal.trim()) return alert("Reason is required");
 
         const baseQty = calculateBase(qty, pendingUnit, pendingItem);
 
@@ -141,7 +143,7 @@ export const RejectView: React.FC = () => {
             qty: qty,
             unit: pendingUnit,
             baseQty: baseQty,
-            reason: pendingReason
+            reason: reasonVal
         };
 
         setRejectLines([...rejectLines, newLine]);
@@ -150,7 +152,8 @@ export const RejectView: React.FC = () => {
         setPendingItem(null);
         setQuery('');
         setPendingQty('');
-        setPendingReason('');
+        // Clear Ref value manually
+        if (reasonRef.current) reasonRef.current.value = '';
         queryRef.current?.focus();
     };
 
@@ -498,7 +501,7 @@ export const RejectView: React.FC = () => {
                                 </thead>
                                 <tbody className="text-sm">
                                     {rejectLines.map((line, idx) => (
-                                        <tr key={idx} className="border-b border-slate-50 hover:bg-red-50/10">
+                                        <tr key={`line-${idx}`} className="border-b border-slate-50 hover:bg-red-50/10">
                                             <td className="p-2 text-center text-slate-400">{idx + 1}</td>
                                             <td className="p-2">
                                                 <div className="font-medium text-slate-700">{line.name}</div>
@@ -513,7 +516,7 @@ export const RejectView: React.FC = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    <tr className="bg-red-50/20 border-t-2 border-red-100">
+                                    <tr key="input-row" className="bg-red-50/20 border-t-2 border-red-100">
                                         <td className="p-2 text-center text-red-300"><Plus size={16} className="mx-auto"/></td>
                                         <td className="p-2 relative">
                                             <div className="relative">
@@ -527,6 +530,7 @@ export const RejectView: React.FC = () => {
                                                     onChange={e => setQuery(e.target.value)}
                                                     onKeyDown={handleQueryKeyDown}
                                                     onFocus={() => { if(query) setShowSuggestions(true); }}
+                                                    autoComplete="off"
                                                 />
                                                 {showSuggestions && (
                                                     <div className="absolute left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
@@ -581,9 +585,14 @@ export const RejectView: React.FC = () => {
                                                 type="text" 
                                                 className="w-full py-1.5 px-2 border border-red-200 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none"
                                                 placeholder="Reason"
-                                                value={pendingReason}
-                                                onChange={e => setPendingReason(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && handleAddLine()}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        handleAddLine();
+                                                    }
+                                                }}
+                                                autoComplete="off"
+                                                spellCheck="false"
                                             />
                                         </td>
                                         <td className="p-2 text-center">
