@@ -43,7 +43,9 @@ export interface Partner {
 export interface AppUser {
   id: string;
   name: string;
-  email: string;
+  username: string; // Changed/Added for login
+  password?: string; // Added for login validation
+  email?: string; // Optional now
   role: 'ADMIN' | 'MANAGER' | 'STAFF';
   status: 'ACTIVE' | 'INACTIVE';
 }

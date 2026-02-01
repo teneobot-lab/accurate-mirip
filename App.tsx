@@ -10,11 +10,16 @@ import { RejectView } from './components/RejectView';
 import { StockCardModal } from './components/StockCardModal';
 import { ThemeToggle } from './components/ThemeToggle';
 import { ClockWidget } from './components/ClockWidget';
+import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
+  // Auth State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
@@ -32,6 +37,17 @@ function App() {
     const theme = StorageService.getTheme();
     if (theme === 'dark') document.documentElement.classList.add('dark');
   }, []);
+
+  const handleLogin = (user: any) => {
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+      setActiveTab('DASHBOARD');
+  };
 
   const handleEditTransaction = (tx: Transaction) => {
       setEditingTransaction(tx);
@@ -52,6 +68,11 @@ function App() {
       {activeTab === id && <ChevronRight size={16} className="ml-auto opacity-50" />}
     </button>
   );
+
+  // --- RENDER LOGIN PAGE IF NOT LOGGED IN ---
+  if (!isLoggedIn) {
+      return <LoginPage onLogin={handleLogin} />;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
@@ -84,6 +105,10 @@ function App() {
            
            <div className="mt-8 border-t border-slate-800 pt-4">
                <NavItem id="SETTINGS" label="Settings" icon={Settings} />
+               <button onClick={handleLogout} className="flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all text-red-400 hover:bg-red-900/20 hover:text-red-300 mt-2">
+                   <LogOut size={18} className="mr-3 flex-shrink-0" />
+                   <span className="whitespace-nowrap">Log Out</span>
+               </button>
            </div>
         </div>
         
@@ -126,8 +151,14 @@ function App() {
                 <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
                 <ThemeToggle />
                 
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold border border-blue-400 shadow-md">
-                    AD
+                <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700">
+                    <div className="text-right hidden sm:block">
+                        <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{currentUser?.name}</div>
+                        <div className="text-[10px] text-slate-400 uppercase font-bold">{currentUser?.role}</div>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold border border-blue-400 shadow-md">
+                        {currentUser?.name.substring(0,2).toUpperCase() || 'AD'}
+                    </div>
                 </div>
              </div>
          </header>

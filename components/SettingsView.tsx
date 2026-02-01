@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Warehouse, Partner, AppUser } from '../types';
-import { Plus, Edit3, Trash2, Search, MapPin, Users, Building2, UserCircle, Save, X, Phone, Mail, FileText } from 'lucide-react';
+import { Plus, Edit3, Trash2, Search, MapPin, Users, Building2, UserCircle, Save, X, Phone, Mail, FileText, Key } from 'lucide-react';
 
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS';
 
@@ -78,6 +78,8 @@ export const SettingsView: React.FC = () => {
             const payload: AppUser = {
                 id: data.id || crypto.randomUUID(),
                 name: data.name,
+                username: data.username,
+                password: data.password, // Saving password for login
                 email: data.email,
                 role: data.role,
                 status: data.status || 'ACTIVE'
@@ -102,7 +104,7 @@ export const SettingsView: React.FC = () => {
             return partners.filter(p => p.type === 'CUSTOMER' && (p.name.toLowerCase().includes(lower) || p.phone.includes(lower)));
         }
         if (activeTab === 'USERS') {
-            return users.filter(u => u.name.toLowerCase().includes(lower) || u.email.toLowerCase().includes(lower));
+            return users.filter(u => u.name.toLowerCase().includes(lower) || u.username.toLowerCase().includes(lower));
         }
         return [];
     };
@@ -193,7 +195,7 @@ export const SettingsView: React.FC = () => {
                                     {activeTab === 'USERS' && (
                                         <>
                                             <th className="p-2 border-r border-slate-300 dark:border-slate-700">Full Name</th>
-                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Email Login</th>
+                                            <th className="p-2 border-r border-slate-300 dark:border-slate-700">Username</th>
                                             <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-32">Role</th>
                                             <th className="p-2 border-r border-slate-300 dark:border-slate-700 w-24 text-center">Status</th>
                                         </>
@@ -233,7 +235,7 @@ export const SettingsView: React.FC = () => {
                                         {activeTab === 'USERS' && (
                                             <>
                                                 <DenseCell><span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span></DenseCell>
-                                                <DenseCell className="text-blue-600 dark:text-blue-400">{item.email}</DenseCell>
+                                                <DenseCell className="text-blue-600 dark:text-blue-400 font-mono font-medium">{item.username}</DenseCell>
                                                 <DenseCell>
                                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${item.role === 'ADMIN' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
                                                         {item.role}
@@ -344,11 +346,21 @@ export const SettingsView: React.FC = () => {
                                 <>
                                     <div className="grid grid-cols-1 gap-1">
                                         <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Full Name</label>
-                                        <input required type="text" className="input-dense" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} />
+                                        <input required type="text" className="input-dense" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} placeholder="e.g. John Doe" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-1">
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Username</label>
+                                            <input required type="text" className="input-dense" value={editData.username || ''} onChange={e => setEditData({...editData, username: e.target.value})} placeholder="johndoe" />
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-1">
+                                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Password</label>
+                                            <input required type="text" className="input-dense" value={editData.password || ''} onChange={e => setEditData({...editData, password: e.target.value})} placeholder="Secret123" />
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-1 gap-1">
-                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Email Address</label>
-                                        <input required type="email" className="input-dense" value={editData.email || ''} onChange={e => setEditData({...editData, email: e.target.value})} />
+                                        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Email (Optional)</label>
+                                        <input type="email" className="input-dense" value={editData.email || ''} onChange={e => setEditData({...editData, email: e.target.value})} placeholder="john@example.com" />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="grid grid-cols-1 gap-1">
@@ -391,7 +403,6 @@ export const SettingsView: React.FC = () => {
                     border-radius: 0.25rem;
                     outline: none;
                 }
-                /* Default Light Mode Styles applied by parent classes, overriding specific colors here for dynamic dark mode support via @apply or similar in CSS, but inline styles need handling */
                 :global(.dark) .input-dense {
                     background-color: #1e293b;
                     border-color: #334155;
