@@ -1,10 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Warehouse, Partner, AppUser } from '../types';
 import { Plus, Edit3, Trash2, Search, MapPin, Users, Building2, UserCircle, Save, X, Phone, Mail, FileText } from 'lucide-react';
 
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS';
+
+// Dense Table Row Component
+const DenseRow = ({ children }: { children: React.ReactNode }) => (
+    <tr className="hover:bg-blue-50 transition-colors group border-b border-slate-200 last:border-0 text-xs text-slate-700">
+        {children}
+    </tr>
+);
+
+const DenseCell = ({ children, className = '' }: { children?: React.ReactNode, className?: string }) => (
+    <td className={`p-1.5 border-r border-slate-100 last:border-r-0 ${className}`}>
+        {children}
+    </td>
+);
 
 export const SettingsView: React.FC = () => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('WAREHOUSE');
@@ -93,19 +105,6 @@ export const SettingsView: React.FC = () => {
         }
         return [];
     };
-
-    // Dense Table Row Component
-    const DenseRow = ({ children }: { children: React.ReactNode }) => (
-        <tr className="hover:bg-blue-50 transition-colors group border-b border-slate-200 last:border-0 text-xs text-slate-700">
-            {children}
-        </tr>
-    );
-
-    const DenseCell = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
-        <td className={`p-1.5 border-r border-slate-100 last:border-r-0 ${className}`}>
-            {children}
-        </td>
-    );
 
     return (
         <div className="flex h-full bg-slate-50">

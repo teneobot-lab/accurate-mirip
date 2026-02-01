@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
-import { Trash2, Plus, Save, Upload, Download, Copy, Search, Calendar, MapPin, FileSpreadsheet, History, Eye, X, CornerDownLeft, Database, Edit3, ArrowRight } from 'lucide-react';
+import { Trash2, Plus, Save, Upload, Download, Copy, Search, Calendar, MapPin, FileSpreadsheet, History, Eye, X, CornerDownLeft, Database, Edit3, ArrowRight, CheckSquare, Square, FlaskConical } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export const RejectView: React.FC = () => {
@@ -29,10 +30,17 @@ export const RejectView: React.FC = () => {
     // --- History State ---
     const [batches, setBatches] = useState<RejectBatch[]>([]);
     const [viewingBatch, setViewingBatch] = useState<RejectBatch | null>(null);
+    const [historyStartDate, setHistoryStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return d.toISOString().split('T')[0];
+    });
+    const [historyEndDate, setHistoryEndDate] = useState(new Date().toISOString().split('T')[0]);
 
     // --- Database Tab State ---
     const [dbSearch, setDbSearch] = useState('');
-    const [editingItem, setEditingItem] = useState<Item | null>(null); // For conversion editing
+    const [editingItem, setEditingItem] = useState<Item | null>(null);
+    const [selectedDbIds, setSelectedDbIds] = useState<Set<string>>(new Set());
 
     // --- Refs ---
     const queryRef = useRef<HTMLInputElement>(null);
@@ -52,6 +60,7 @@ export const RejectView: React.FC = () => {
         setBatches(StorageService.getRejectBatches());
         const savedOutlets = StorageService.getRejectOutlets();
         if (savedOutlets.length > 0 && !selectedOutlet) setSelectedOutlet(savedOutlets[0]);
+        setSelectedDbIds(new Set());
     };
 
     // --- Search & Autocomplete ---
@@ -169,47 +178,70 @@ export const RejectView: React.FC = () => {
         alert("Reject Batch Saved!");
     };
 
-    // --- History Export Logic (Bulk) ---
-    const handleHistoryClipboard = () => {
-        // Format: Blocks of batch data
-        let text = "";
-        batches.forEach(batch => {
-            const dateStr = batch.date.split('-').reverse().join(''); 
-            const shortDate = dateStr.substring(0, 4) + dateStr.substring(6, 8);
-            text += `Data Reject ${batch.outlet} ${shortDate}\n`;
-            batch.items.forEach(line => {
-                text += `- ${line.name} ${line.qty} ${line.unit} ${line.reason}\n`;
-            });
-            text += "\n";
+    // --- Filtered Batches ---
+    const filteredBatches = useMemo(() => {
+        return batches.filter(b => b.date >= historyStartDate && b.date <= historyEndDate);
+    }, [batches, historyStartDate, historyEndDate]);
+
+    // --- Copy Clipboard Logic (Per Batch) ---
+    const handleBatchClipboard = (batch: RejectBatch) => {
+        const dateStr = batch.date.split('-').reverse().join(''); 
+        const shortDate = dateStr.substring(0, 4) + dateStr.substring(6, 8);
+        let text = `Data Reject ${batch.outlet} ${shortDate}\n`;
+        batch.items.forEach(line => {
+            text += `- ${line.name} ${line.qty} ${line.unit} ${line.reason}\n`;
         });
-        navigator.clipboard.writeText(text).then(() => alert("All History Copied to Clipboard!"));
+        navigator.clipboard.writeText(text).then(() => alert("Copied to Clipboard!"));
     };
 
-    const handleHistoryExcel = () => {
-        // Flatten all history
-        const rows: any[] = [];
-        batches.forEach(batch => {
+    // --- Matrix Export (Flattened by Date) ---
+    const handleMatrixExport = () => {
+        if (filteredBatches.length === 0) {
+            alert("No data in selected date range.");
+            return;
+        }
+
+        // 1. Get all unique dates in range and sort them
+        const uniqueDates: string[] = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
+
+        // 2. Map Items by SKU -> Date -> Qty
+        // Structure: { [sku]: { name, unit, [date1]: qty, [date2]: qty } }
+        const matrix: Record<string, any> = {};
+
+        filteredBatches.forEach(batch => {
             batch.items.forEach(line => {
-                rows.push({
-                    Date: batch.date,
-                    Outlet: batch.outlet,
-                    SKU: line.sku,
-                    'Item Name': line.name,
-                    Qty: line.qty === 0 ? '' : line.qty,
-                    Unit: line.unit,
-                    'Base Qty': line.baseQty === 0 ? '' : Number(line.baseQty.toFixed(1)),
-                    Reason: line.reason
-                });
+                if (!matrix[line.sku]) {
+                    matrix[line.sku] = {
+                        'Kode Barang': line.sku,
+                        'Nama Barang': line.name,
+                        'Satuan': line.unit, // Taking the unit from the first occurrence. Ideal? Maybe.
+                    };
+                    // Initialize all date columns to 0 or null
+                    uniqueDates.forEach(d => matrix[line.sku][d] = 0);
+                }
+                
+                // Sum quantity (assuming same unit or just sum raw number as requested "padat")
+                const current = matrix[line.sku][batch.date] || 0;
+                matrix[line.sku][batch.date] = current + line.qty;
             });
         });
 
+        // 3. Convert to Array
+        const rows = Object.values(matrix).map(row => {
+            // Process row to clean up 0s -> empty string
+            const cleanRow: any = { ...row };
+            uniqueDates.forEach((d: string) => {
+                if (cleanRow[d] === 0) cleanRow[d] = '';
+                else cleanRow[d] = Number(cleanRow[d].toFixed(1)); // 1 decimal
+            });
+            return cleanRow;
+        });
+
+        // 4. Create Workbook
         const ws = XLSX.utils.json_to_sheet(rows);
-        
-        // Simulating Yellow Header by manually selecting range A1:H1 if possible (library limit)
-        // We will just create the file
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Reject History");
-        XLSX.writeFile(wb, `All_Reject_History_${new Date().toISOString().split('T')[0]}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Matrix Report");
+        XLSX.writeFile(wb, `Reject_Matrix_${historyStartDate}_to_${historyEndDate}.xlsx`);
     };
 
     // --- New Entry Export Logic (Single Session) ---
@@ -303,6 +335,92 @@ export const RejectView: React.FC = () => {
              loadData();
              setEditingItem(null);
         }
+    };
+
+    const handleDbSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) {
+            const allIds = items.map(i => i.id);
+            setSelectedDbIds(new Set(allIds));
+        } else {
+            setSelectedDbIds(new Set());
+        }
+    };
+
+    const handleDbSelectRow = (id: string) => {
+        const newSet = new Set(selectedDbIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedDbIds(newSet);
+    };
+
+    const handleDbBulkDelete = () => {
+        if (selectedDbIds.size === 0) return;
+        if (confirm(`Delete ${selectedDbIds.size} items?`)) {
+            StorageService.deleteItems(Array.from(selectedDbIds));
+            loadData();
+        }
+    };
+
+    // --- Sample Data Generator ---
+    const handleGenerateSampleData = () => {
+        if (!confirm("Generate 1 month of sample reject data? This will add dummy data to your history.")) return;
+
+        const newBatches: RejectBatch[] = [];
+        const today = new Date();
+        const outletsList = outlets.length > 0 ? outlets : ['Outlet Pusat', 'Outlet Cabang'];
+        
+        // Ensure we have outlets if empty
+        if(outlets.length === 0) {
+            outletsList.forEach(o => StorageService.saveRejectOutlet(o));
+            setOutlets(StorageService.getRejectOutlets());
+        }
+
+        // Generate for last 30 days
+        for (let i = 0; i < 30; i++) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+
+            // Random number of batches per day (0 to 3)
+            const numBatches = Math.floor(Math.random() * 4); 
+
+            for (let b = 0; b < numBatches; b++) {
+                 const batchItems: RejectItem[] = [];
+                 // Random items (1 to 5 items per batch)
+                 const numItems = Math.floor(Math.random() * 5) + 1;
+                 
+                 for(let k=0; k<numItems; k++) {
+                     if(items.length === 0) break;
+                     const randomItem = items[Math.floor(Math.random() * items.length)];
+                     const qty = Math.floor(Math.random() * 10) + 1;
+                     
+                     batchItems.push({
+                         itemId: randomItem.id,
+                         sku: randomItem.code,
+                         name: randomItem.name,
+                         qty: qty,
+                         unit: randomItem.baseUnit,
+                         baseQty: qty, // Simplified for mock
+                         reason: ['Expired', 'Broken', 'Rotten', 'Damaged'][Math.floor(Math.random() * 4)]
+                     });
+                 }
+
+                 if (batchItems.length > 0) {
+                     const batch: RejectBatch = {
+                         id: `MOCK-${Date.now()}-${i}-${b}`,
+                         date: dateStr,
+                         outlet: outletsList[Math.floor(Math.random() * outletsList.length)],
+                         createdAt: Date.now(),
+                         items: batchItems
+                     };
+                     newBatches.push(batch);
+                     StorageService.saveRejectBatch(batch);
+                 }
+            }
+        }
+        
+        loadData();
+        alert(`Generated ${newBatches.length} sample batches.`);
     };
 
     // --- Helpers ---
@@ -411,7 +529,7 @@ export const RejectView: React.FC = () => {
                                                     onFocus={() => { if(query) setShowSuggestions(true); }}
                                                 />
                                                 {showSuggestions && (
-                                                    <div className="absolute left-0 bottom-full mb-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                                    <div className="absolute left-0 top-full mt-1 w-[400px] bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
                                                         {suggestions.map((item, idx) => (
                                                             <div 
                                                                 key={item.id}
@@ -497,14 +615,22 @@ export const RejectView: React.FC = () => {
             {/* --- TAB: HISTORY --- */}
             {activeTab === 'HISTORY' && (
                 <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                        <div className="text-sm font-bold text-slate-700">Batch History</div>
+                    <div className="p-4 border-b border-slate-200 flex flex-wrap gap-4 justify-between items-center bg-slate-50">
+                        <div className="flex items-center gap-4">
+                            <div className="text-sm font-bold text-slate-700">Batch History</div>
+                            <div className="flex items-center gap-2 bg-white p-1 rounded border border-slate-200">
+                                <label className="text-[10px] font-bold text-slate-400 pl-1 uppercase">Date Range:</label>
+                                <input type="date" value={historyStartDate} onChange={e => setHistoryStartDate(e.target.value)} className="text-xs border-0 outline-none text-slate-600 bg-transparent" />
+                                <span className="text-slate-300">-</span>
+                                <input type="date" value={historyEndDate} onChange={e => setHistoryEndDate(e.target.value)} className="text-xs border-0 outline-none text-slate-600 bg-transparent" />
+                            </div>
+                        </div>
                         <div className="flex gap-2">
-                            <button onClick={handleHistoryClipboard} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded text-xs hover:bg-slate-100 flex items-center gap-2 shadow-sm">
-                                <Copy size={14}/> Copy All History
+                            <button onClick={handleGenerateSampleData} className="px-3 py-1.5 bg-purple-600 text-white rounded text-xs hover:bg-purple-700 flex items-center gap-2 shadow-sm" title="Generate 1 Month Sample Data">
+                                <FlaskConical size={14}/> Test Data
                             </button>
-                            <button onClick={handleHistoryExcel} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 flex items-center gap-2 shadow-sm">
-                                <FileSpreadsheet size={14}/> Export All Flat
+                            <button onClick={handleMatrixExport} className="px-3 py-1.5 bg-emerald-600 text-white rounded text-xs hover:bg-emerald-700 flex items-center gap-2 shadow-sm">
+                                <FileSpreadsheet size={14}/> Export Matrix
                             </button>
                         </div>
                     </div>
@@ -515,19 +641,28 @@ export const RejectView: React.FC = () => {
                                     <th className="p-3">ID</th>
                                     <th className="p-3">Date</th>
                                     <th className="p-3">Outlet</th>
-                                    <th className="p-3 text-right">Items Count</th>
+                                    <th className="p-3 text-right">Items</th>
                                     <th className="p-3 text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50 text-sm">
-                                {batches.map(batch => (
+                                {filteredBatches.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="p-8 text-center text-slate-400 italic">No batches found in selected date range.</td>
+                                    </tr>
+                                ) : filteredBatches.map(batch => (
                                     <tr key={batch.id} className="hover:bg-slate-50">
                                         <td className="p-3 font-mono text-slate-500">{batch.id}</td>
                                         <td className="p-3">{batch.date}</td>
                                         <td className="p-3 font-medium text-slate-700">{batch.outlet}</td>
                                         <td className="p-3 text-right font-bold text-red-600">{batch.items.length}</td>
                                         <td className="p-3 text-center flex justify-center gap-2">
-                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Eye size={16}/></button>
+                                            <button onClick={() => handleBatchClipboard(batch)} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded" title="Copy to Clipboard">
+                                                <Copy size={16}/>
+                                            </button>
+                                            <button onClick={() => setViewingBatch(batch)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="View Details">
+                                                <Eye size={16}/>
+                                            </button>
                                             <button 
                                                 onClick={() => {
                                                     if(confirm('Delete this batch?')) {
@@ -552,7 +687,7 @@ export const RejectView: React.FC = () => {
             {activeTab === 'DATABASE' && (
                 <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-wrap justify-between items-center gap-4">
-                        <div className="relative">
+                        <div className="flex items-center gap-2 relative">
                             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"/>
                             <input 
                                 type="text" 
@@ -561,6 +696,11 @@ export const RejectView: React.FC = () => {
                                 value={dbSearch}
                                 onChange={e => setDbSearch(e.target.value)}
                             />
+                            {selectedDbIds.size > 0 && (
+                                <button onClick={handleDbBulkDelete} className="ml-2 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-bold hover:bg-red-100 flex items-center gap-1">
+                                    <Trash2 size={14}/> Delete ({selectedDbIds.size})
+                                </button>
+                            )}
                         </div>
                         <div className="flex gap-2">
                              <button onClick={handleDownloadMasterTemplate} className="px-3 py-1.5 border bg-white text-slate-600 rounded text-xs flex items-center gap-2 hover:bg-slate-50">
@@ -576,6 +716,9 @@ export const RejectView: React.FC = () => {
                         <table className="w-full text-left">
                             <thead className="bg-slate-100 text-xs font-bold text-slate-600 uppercase sticky top-0">
                                 <tr>
+                                    <th className="p-3 w-10 text-center">
+                                        <input type="checkbox" onChange={handleDbSelectAll} checked={items.length > 0 && selectedDbIds.size === items.length} />
+                                    </th>
                                     <th className="p-3">SKU</th>
                                     <th className="p-3">Name</th>
                                     <th className="p-3">Base Unit</th>
@@ -586,7 +729,10 @@ export const RejectView: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-50 text-sm">
                                 {items.filter(i => i.name.toLowerCase().includes(dbSearch.toLowerCase()) || i.code.toLowerCase().includes(dbSearch.toLowerCase())).map(item => (
-                                    <tr key={item.id} className="hover:bg-slate-50">
+                                    <tr key={item.id} className={`hover:bg-slate-50 ${selectedDbIds.has(item.id) ? 'bg-blue-50/50' : ''}`}>
+                                        <td className="p-3 text-center">
+                                            <input type="checkbox" checked={selectedDbIds.has(item.id)} onChange={() => handleDbSelectRow(item.id)} />
+                                        </td>
                                         <td className="p-3 font-mono text-slate-500">{item.code}</td>
                                         <td className="p-3 font-medium text-slate-700">{item.name}</td>
                                         <td className="p-3"><span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-bold">{item.baseUnit}</span></td>
