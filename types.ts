@@ -1,4 +1,5 @@
 
+
 export interface UnitConversion {
   name: string;
   ratio: number;
@@ -59,6 +60,9 @@ export interface TransactionItem {
   qty: number;
   ratio: number;
   note?: string;
+  // Added optional name and code to resolve type errors in TransactionForm and support display in ReportsView
+  name?: string;
+  code?: string;
 }
 
 export interface Transaction {

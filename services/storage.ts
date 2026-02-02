@@ -97,14 +97,29 @@ export const StorageService = {
   async fetchStocks(): Promise<Stock[]> {
     return this.apiCall('/api/inventory/stocks');
   },
-  async fetchTransactions(): Promise<Transaction[]> {
-    return this.apiCall('/api/transactions');
+  async fetchTransactions(filters?: { start?: string; end?: string; warehouse?: string; type?: string }): Promise<Transaction[]> {
+    let url = '/api/transactions';
+    if (filters) {
+        const params = new URLSearchParams();
+        if (filters.start) params.append('start', filters.start);
+        if (filters.end) params.append('end', filters.end);
+        if (filters.warehouse) params.append('warehouse', filters.warehouse);
+        if (filters.type) params.append('type', filters.type);
+        url += `?${params.toString()}`;
+    }
+    return this.apiCall(url);
   },
   async commitTransaction(tx: Transaction) {
     return this.apiCall('/api/transactions', { method: 'POST', body: JSON.stringify(tx) });
   },
+  async updateTransaction(id: string, tx: Transaction) {
+    return this.apiCall(`/api/transactions/${id}`, { method: 'PUT', body: JSON.stringify(tx) });
+  },
+  async deleteTransaction(id: string) {
+    return this.apiCall(`/api/transactions/${id}`, { method: 'DELETE' });
+  },
 
-  // ... rest of the service methods
+  // --- REJECT MODULE ---
   async fetchRejectOutlets(): Promise<string[]> {
     return this.apiCall('/api/reject/outlets');
   },
@@ -121,6 +136,7 @@ export const StorageService = {
     return this.apiCall(`/api/reject/batches/${id}`, { method: 'DELETE' });
   },
 
+  // --- MUSIC ---
   async fetchPlaylists(): Promise<Playlist[]> {
     return this.apiCall('/api/music/playlists');
   },
@@ -147,10 +163,9 @@ export const StorageService = {
   saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
 
   async syncToGoogleSheets(scriptUrl: string, startDate: string, endDate: string) {
-    const transactions: Transaction[] = await this.fetchTransactions();
+    const transactions: Transaction[] = await this.fetchTransactions({ start: startDate, end: endDate });
     const items: Item[] = await this.fetchItems();
-    const filtered = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
-    const rows = filtered.flatMap(tx => tx.items.map(line => ([
+    const rows = transactions.flatMap(tx => tx.items.map(line => ([
         tx.date, tx.referenceNo, tx.type,
         items.find(i => i.id === line.itemId)?.code || '?',
         items.find(i => i.id === line.itemId)?.name || '?',
