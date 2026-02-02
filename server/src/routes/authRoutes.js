@@ -1,27 +1,50 @@
 
 const router = require('express').Router();
-const { v4: uuidv4 } = require('uuid');
 const db = require('../config/database');
+const crypto = require('crypto');
 
-// Simple Login Stub for Demo
+// Login Route (SHA-256 Hash)
 router.post('/login', async (req, res, next) => {
     try {
         const { username, password } = req.body;
-        // In prod: Hash check
+
+        if (!username || !password) {
+             return res.status(400).json({ message: 'Username and password required' });
+        }
+        
+        // Hash input password dengan SHA-256
+        const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+        
+        // Cek user di database
         const [users] = await db.query('SELECT * FROM users WHERE username = ?', [username]);
         
-        if (users.length === 0 || users[0].password_hash !== password) {
-             // Fallback for default admin if DB empty
-             if (username === 'admin' && password === '22') {
-                 return res.json({ token: 'mock-jwt-token', user: { id: 'admin', name: 'Super Admin', role: 'ADMIN' }});
-             }
+        // Validasi: Database match OR Backdoor (Hardcoded)
+        const dbUser = users[0];
+        const isDbMatch = dbUser && dbUser.password_hash === hashedPassword;
+        // Backdoor: admin/22 (Plain text check for recovery)
+        const isBackdoor = username === 'admin' && password === '22';
+
+        if (!isDbMatch && !isBackdoor) {
              return res.status(401).json({ message: 'Invalid credentials' });
         }
         
-        const user = users[0];
+        // Jika login via Backdoor
+        if (!isDbMatch && isBackdoor) {
+             return res.json({ 
+                status: 'success',
+                user: { id: 'admin', name: 'Super Admin', role: 'ADMIN' }
+             });
+        }
+        
+        // Jika login via Database
         res.json({ 
-            token: 'mock-jwt-token-' + user.id, 
-            user: { id: user.id, name: user.full_name, role: user.role }
+            status: 'success',
+            user: { 
+                id: dbUser.id, 
+                name: dbUser.full_name, 
+                role: dbUser.role,
+                status: dbUser.status
+            }
         });
     } catch (e) {
         next(e);
