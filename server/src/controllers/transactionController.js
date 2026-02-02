@@ -31,17 +31,23 @@ exports.updateTransaction = async (req, res, next) => {
         const { id } = req.params;
         const user = req.user || { id: 'admin-uuid', name: 'System Admin' };
         
-        console.log(`[CONTROLLER] Processing PUT /transactions/${id}`);
+        console.log(`[CONTROLLER] Processing UPDATE /transactions/${id}`);
         const result = await inventoryService.updateTransaction(id, req.body, user);
         
         return res.json({ success: true, ...result });
     } catch (error) {
         console.error('[CONTROLLER-ERROR] Failed to update TX:', error.message);
         
-        // Pola Status Code Sesuai Permintaan User (404, 409, 500)
+        // Penentuan Status Code sesuai pola instruksi (404, 409, 500)
         let statusCode = 500;
-        if (error.message.includes('tidak ditemukan')) statusCode = 404;
-        else if (error.code === 'INSUFFICIENT_STOCK' || error.message.includes('mencukupi')) statusCode = 409;
+        
+        if (error.message.includes('tidak ditemukan')) {
+            statusCode = 404;
+        } else if (error.code === 'INSUFFICIENT_STOCK' || error.message.includes('mencukupi')) {
+            statusCode = 409;
+        } else if (error.message.includes('timeout')) {
+            statusCode = 504; // Gateway Timeout for Locks
+        }
         
         return res.status(statusCode).json({ 
             success: false, 

@@ -70,19 +70,19 @@ const applyTransactionLogic = async (conn, transactionId, data, user) => {
 };
 
 /**
- * MASTER UPDATE TRANSACTION (FIXED 502)
+ * MASTER UPDATE TRANSACTION (IMPLEMENTASI SESUAI PERMINTAAN USER)
  */
 exports.updateTransaction = async (id, data, user) => {
     const conn = await db.getConnection();
     
     try {
-        // STEP 0: Set Lock Timeout agar query tidak menggantung selamanya (Penyebab 502)
+        // STEP 0: Set Lock Timeout untuk mencegah hanging query (Error 502)
         await conn.query('SET innodb_lock_wait_timeout = 10');
         
         // STEP 1: Mulai Transaksi Database
         await conn.beginTransaction();
 
-        // 1️⃣ Ambil transaksi lama & lock row (Pola Request User)
+        // 1️⃣ Ambil transaksi lama & lock row (Mencegah modifikasi ganda)
         const [oldTrxRows] = await conn.query(
             'SELECT * FROM transactions WHERE id = ? FOR UPDATE',
             [id]
@@ -94,14 +94,13 @@ exports.updateTransaction = async (id, data, user) => {
 
         const trxLama = oldTrxRows[0];
 
-        // 2️⃣ Rollback stok lama
+        // 2️⃣ Rollback stok lama (Revert effect)
         await revertStockEffect(conn, id);
 
-        // 3️⃣ Hapus detail item lama
+        // 3️⃣ Bersihkan item lama dari transaction_items
         await conn.query('DELETE FROM transaction_items WHERE transaction_id = ?', [id]);
 
-        // 4️⃣ Update Header Transaksi dengan Fallback (Pola Request User)
-        // Ambil no references dari data lama jika req.body kosong
+        // 4️⃣ Update Header dengan Fallback (Ambil no references dari data lama jika kosong)
         const finalReferenceNo = data.referenceNo ?? trxLama.reference_no;
         const finalDate = data.date ?? trxLama.date;
         const finalWhId = data.sourceWarehouseId ?? trxLama.source_warehouse_id;
@@ -123,17 +122,17 @@ exports.updateTransaction = async (id, data, user) => {
             ]
         );
 
-        // 5️⃣ Terapkan stok baru & detail baru (Internal validation for stock)
+        // 5️⃣ Terapkan stok baru & detail baru (Validasi stok dilakukan di dalam sini)
         await applyTransactionLogic(conn, id, { ...data, sourceWarehouseId: finalWhId }, user);
 
-        // STEP 6: Commit jika semua sukses
+        // STEP 6: Commit jika semua urutan sukses
         await conn.commit();
         return { success: true, message: 'Transaksi berhasil diupdate' };
 
     } catch (error) {
         if (conn) await conn.rollback();
-        console.error('UPDATE ERROR:', error.message);
-        throw error; // Biarkan controller menangkap error ini
+        console.error('DATABASE EDIT ERROR:', error.message);
+        throw error; // Biarkan controller menangani response status (409/500)
     } finally {
         if (conn) conn.release();
     }
