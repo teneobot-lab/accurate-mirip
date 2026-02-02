@@ -65,12 +65,15 @@ export interface TransactionItem {
   code?: string;
 }
 
+// Fixed: Added partnerId and partnerName to Transaction interface to resolve missing property errors in TransactionForm and ReportsView
 export interface Transaction {
   id: string;
   date: string;
   referenceNo: string;
   deliveryOrderNo?: string;
   supplier?: string;
+  partnerId?: string;
+  partnerName?: string;
   type: TransactionType;
   sourceWarehouseId: string;
   targetWarehouseId?: string;

@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info } from 'lucide-react';
+import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface Props {
@@ -27,12 +27,21 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [lines, setLines] = useState<TransactionItem[]>(initialData?.items || []);
 
-  // Row Entry State
+  // Row Entry & Autocomplete States
   const [query, setQuery] = useState('');
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingUnit, setPendingUnit] = useState('');
-  const [pendingQty, setPendingQty] = useState<number>(1);
+  const [pendingQty, setPendingQty] = useState<number | string>(1);
   const [pendingNote, setPendingNote] = useState('');
+
+  // Refs for Navigation
+  const itemInputRef = useRef<HTMLInputElement>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -53,8 +62,51 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     load();
   }, [type, initialData]);
 
+  // Fuzzy Search Logic
+  useEffect(() => {
+    if (!query || pendingItem) {
+        setFilteredItems([]);
+        setIsDropdownOpen(false);
+        return;
+    }
+    const lowerQuery = query.toLowerCase();
+    const results = items.filter(it => 
+        it.name.toLowerCase().includes(lowerQuery) || 
+        it.code.toLowerCase().includes(lowerQuery)
+    ).slice(0, 10);
+    setFilteredItems(results);
+    setIsDropdownOpen(results.length > 0);
+    setSelectedIndex(0);
+  }, [query, items, pendingItem]);
+
+  const selectItem = (item: Item) => {
+    setPendingItem(item);
+    setPendingUnit(item.baseUnit);
+    setQuery(item.name);
+    setIsDropdownOpen(false);
+    // Fokus otomatis ke Qty setelah barang dipilih
+    setTimeout(() => qtyInputRef.current?.focus(), 10);
+  };
+
+  const handleItemKeyDown = (e: React.KeyboardEvent) => {
+    if (isDropdownOpen) {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setSelectedIndex(prev => (prev + 1) % filteredItems.length);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            selectItem(filteredItems[selectedIndex]);
+        } else if (e.key === 'Escape') {
+            setIsDropdownOpen(false);
+        }
+    }
+  };
+
   const handleAddLine = () => {
-    if (!pendingItem) return;
+    if (!pendingItem || !pendingQty || Number(pendingQty) <= 0) return;
     
     let ratio = 1;
     if (pendingUnit !== pendingItem.baseUnit) {
@@ -66,19 +118,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
     const newLine: TransactionItem = {
       itemId: pendingItem.id,
-      qty: pendingQty,
+      qty: Number(pendingQty),
       unit: pendingUnit || pendingItem.baseUnit,
       ratio: ratio,
       note: pendingNote,
       name: pendingItem.name,
       code: pendingItem.code
     };
+    
     setLines([...lines, newLine]);
+    
+    // Reset form entry
     setQuery('');
     setPendingItem(null);
     setPendingUnit('');
     setPendingQty(1);
     setPendingNote('');
+    
+    // Kembalikan fokus ke input barang untuk inputan berikutnya
+    setTimeout(() => itemInputRef.current?.focus(), 10);
   };
 
   const handleSubmit = async () => {
@@ -94,8 +152,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             sourceWarehouseId: selectedWh,
             partnerId: selectedPartnerId,
             items: lines.map(line => ({
-                item_id: line.itemId, // Mengirim item_id sesuai snippet backend
-                itemId: line.itemId,   // Tetap kirim itemId untuk kompatibilitas
+                item_id: line.itemId,
                 qty: line.qty,
                 unit: line.unit,
                 conversionRatio: line.ratio || 1,
@@ -125,8 +182,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       <div className="bg-[#f3f4f6] dark:bg-slate-900 rounded-3xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-white/20 animate-in zoom-in duration-300">
         
         {/* Title Bar */}
-        <div className="bg-slate-900 text-white px-8 py-5 flex justify-between items-center shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 bg-blue-600/10 rounded-full blur-3xl -mr-12 -mt-12"></div>
+        <div className="bg-slate-900 text-white px-8 py-5 flex justify-between items-center shadow-lg relative">
             <div className="relative z-10 flex items-center gap-4">
                 <div className={`p-3 rounded-2xl ${type === 'IN' ? 'bg-emerald-600' : 'bg-red-600'} shadow-lg`}>
                    {initialData ? <Edit3 size={20}/> : <Plus size={20}/>}
@@ -138,7 +194,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Waresix Transaction Control System</p>
                 </div>
             </div>
-            <button onClick={onClose} className="relative z-10 hover:bg-white/10 rounded-full p-2 transition-all"><X size={24}/></button>
+            <button onClick={onClose} className="hover:bg-white/10 rounded-full p-2 transition-all"><X size={24}/></button>
         </div>
 
         {/* Header Block */}
@@ -205,7 +261,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         {/* Transaction Grid */}
         <div className="flex-1 overflow-auto bg-white dark:bg-slate-950 px-8 py-6">
             <table className="w-full text-[11px] border-separate border-spacing-y-2">
-                <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 text-slate-400 font-black uppercase tracking-[0.2em] sticky top-0 z-10">
+                <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 text-slate-400 font-black uppercase tracking-[0.2em] sticky top-0 z-20">
                     <tr>
                         <th className="p-3 w-12 text-center">#</th>
                         <th className="p-3">Master Item</th>
@@ -232,35 +288,79 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </td>
                             <td className="p-4 text-slate-500 italic font-medium">{l.note || '-'}</td>
                             <td className="p-4 text-center rounded-r-2xl">
-                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
+                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={16}/></button>
                             </td>
                         </tr>
                     ))}
                     
-                    {/* Add Line Entry */}
+                    {/* Add Line Entry with Custom Autocomplete */}
                     <tr className="bg-slate-100 dark:bg-slate-900 border border-dashed dark:border-slate-800 rounded-2xl">
                         <td className="p-3 text-center"><Plus size={16} className="text-blue-500 mx-auto"/></td>
+                        <td className="p-2 relative">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    ref={itemInputRef}
+                                    type="text"
+                                    className="w-full bg-transparent p-2 outline-none text-xs font-black placeholder:text-slate-400" 
+                                    placeholder="Cari Kode atau Nama Barang..."
+                                    value={query}
+                                    onChange={e => {
+                                        setQuery(e.target.value);
+                                        if (pendingItem) setPendingItem(null);
+                                    }}
+                                    onKeyDown={handleItemKeyDown}
+                                    onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                                    onFocus={() => { if(query && !pendingItem) setIsDropdownOpen(true); }}
+                                />
+                                {pendingItem && <button onClick={() => {setPendingItem(null); setQuery(''); itemInputRef.current?.focus();}} className="text-slate-400 hover:text-red-500"><X size={14}/></button>}
+                            </div>
+
+                            {/* Autocomplete Dropdown */}
+                            {isDropdownOpen && (
+                                <div ref={dropdownRef} className="absolute left-0 top-full mt-1 w-[400px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-1">
+                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-b dark:border-slate-700 text-[9px] font-black uppercase text-slate-400 flex justify-between">
+                                        <span>Hasil Pencarian</span>
+                                        <span className="flex items-center gap-1"><CornerDownLeft size={8}/> Enter untuk pilih</span>
+                                    </div>
+                                    <div className="max-h-60 overflow-y-auto">
+                                        {filteredItems.map((it, idx) => (
+                                            <div 
+                                                key={it.id}
+                                                className={`p-3 cursor-pointer flex justify-between items-center border-b dark:border-slate-700 last:border-0 transition-colors ${idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                                                onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
+                                                onMouseEnter={() => setSelectedIndex(idx)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-1.5 rounded-lg ${idx === selectedIndex ? 'bg-blue-500 text-white' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'}`}>
+                                                        <Package size={14}/>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-black">{it.name}</span>
+                                                        <span className={`text-[9px] font-bold ${idx === selectedIndex ? 'text-blue-100' : 'text-slate-400'}`}>{it.code}</span>
+                                                    </div>
+                                                </div>
+                                                <ArrowRight size={14} className={idx === selectedIndex ? 'opacity-100' : 'opacity-0'}/>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </td>
                         <td className="p-2">
                             <input 
-                                list="item-list-entry"
-                                className="w-full bg-transparent p-2 outline-none text-xs font-black placeholder:text-slate-400" 
-                                placeholder="Cari Kode atau Nama Barang..."
-                                value={query}
-                                onChange={e => {
-                                    setQuery(e.target.value);
-                                    const it = items.find(x => x.name === e.target.value || x.code === e.target.value);
-                                    if(it) {
-                                        setPendingItem(it);
-                                        setPendingUnit(it.baseUnit);
+                                ref={qtyInputRef}
+                                type="number" 
+                                className="w-full bg-transparent p-2 outline-none text-right font-mono font-black text-sm disabled:opacity-30" 
+                                value={pendingQty} 
+                                onChange={e => setPendingQty(e.target.value)} 
+                                disabled={!pendingItem}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddLine();
                                     }
                                 }}
                             />
-                            <datalist id="item-list-entry">
-                                {items.map(it => <option key={it.id} value={it.name}>{it.code}</option>)}
-                            </datalist>
-                        </td>
-                        <td className="p-2">
-                            <input type="number" className="w-full bg-transparent p-2 outline-none text-right font-mono font-black text-sm" value={pendingQty} onChange={e => setPendingQty(Number(e.target.value))} />
                         </td>
                         <td className="p-2 text-center">
                             <select 
@@ -279,10 +379,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </select>
                         </td>
                         <td className="p-2">
-                            <input type="text" placeholder="Catatan baris..." className="w-full bg-transparent p-2 outline-none text-xs italic" value={pendingNote} onChange={e => setPendingNote(e.target.value)} />
+                            <input type="text" placeholder="Catatan baris..." className="w-full bg-transparent p-2 outline-none text-xs italic" value={pendingNote} onChange={e => setPendingNote(e.target.value)} disabled={!pendingItem} />
                         </td>
                         <td className="p-2 text-center">
-                            <button onClick={handleAddLine} className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 shadow-lg transition-all active:scale-90"><CornerDownLeft size={16}/></button>
+                            <button onClick={handleAddLine} className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 shadow-lg transition-all active:scale-90"><Plus size={16}/></button>
                         </td>
                     </tr>
                 </tbody>
@@ -290,7 +390,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
 
         {/* Footer Area */}
-        <div className="p-8 bg-white dark:bg-slate-900 border-t dark:border-slate-800 flex justify-between items-center shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+        <div className="p-8 bg-white dark:bg-slate-900 border-t dark:border-slate-800 flex justify-between items-center shadow-lg">
              <div className="flex gap-8">
                 <div className="flex flex-col">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total SKU</span>
@@ -302,7 +402,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </div>
              </div>
              <div className="flex gap-6 items-center">
-                <button onClick={onClose} className="text-xs font-black text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors uppercase tracking-[0.2em]">Batal</button>
+                <button onClick={onClose} className="text-xs font-black text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-[0.2em]">Batal</button>
                 <button 
                     onClick={handleSubmit} 
                     disabled={isSubmitting || !selectedWh}
