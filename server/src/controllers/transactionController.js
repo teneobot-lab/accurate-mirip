@@ -5,7 +5,8 @@ const db = require('../config/database');
 exports.createTransaction = async (req, res, next) => {
     try {
         const { type } = req.body;
-        const user = { id: 'admin-uuid', name: 'System Admin' }; 
+        // Gunakan fallback user jika tidak ada di req.user
+        const user = req.user || { id: 'admin-uuid', name: 'System Admin' }; 
 
         let result;
         if (type === 'IN') {
@@ -13,11 +14,12 @@ exports.createTransaction = async (req, res, next) => {
         } else if (type === 'OUT') {
             result = await inventoryService.processOutboundTransaction(req.body, user);
         } else {
-            return res.status(400).json({ message: 'Tipe transaksi tidak didukung' });
+            return res.status(400).json({ status: 'error', message: 'Tipe transaksi tidak didukung' });
         }
 
-        res.status(201).json({ status: 'success', data: result });
+        return res.status(201).json({ status: 'success', data: result });
     } catch (error) {
+        // Teruskan ke errorHandler global
         next(error);
     }
 };
@@ -25,10 +27,18 @@ exports.createTransaction = async (req, res, next) => {
 exports.updateTransaction = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const user = { id: 'admin-uuid' };
+        const user = req.user || { id: 'admin-uuid', name: 'System Admin' };
+        
+        console.log(`[CONTROLLER] Received update request for TX: ${id}`);
         const result = await inventoryService.updateTransaction(id, req.body, user);
-        res.json({ status: 'success', data: result });
+        
+        return res.json({ status: 'success', data: result });
     } catch (error) {
+        console.error(`[CONTROLLER-ERROR] Failed to update TX: ${error.message}`);
+        // Kirim status error eksplisit jika message mengandung stok tidak cukup
+        if (error.message.includes('Stok tidak cukup')) {
+            return res.status(400).json({ status: 'error', message: error.message });
+        }
         next(error);
     }
 };
@@ -37,7 +47,7 @@ exports.deleteTransaction = async (req, res, next) => {
     try {
         const { id } = req.params;
         await inventoryService.deleteTransaction(id);
-        res.json({ status: 'success', message: 'Transaksi berhasil dihapus dan stok diperbarui' });
+        return res.json({ status: 'success', message: 'Transaksi berhasil dihapus dan stok diperbarui' });
     } catch (error) {
         next(error);
     }
@@ -84,10 +94,10 @@ exports.getTransactions = async (req, res, next) => {
             tx.sourceWarehouseId = tx.source_warehouse_id;
             tx.referenceNo = tx.reference_no;
             tx.partnerName = tx.partner_name;
-            tx.partnerId = tx.partner_id; // Added mapping
+            tx.partnerId = tx.partner_id;
         }
 
-        res.json(txs);
+        return res.json(txs);
     } catch (error) {
         next(error);
     }
