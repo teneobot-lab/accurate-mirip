@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, FileSpreadsheet } from 'lucide-react';
 import { useToast } from './Toast';
+import * as XLSX from 'xlsx';
 
 export const InventoryView: React.FC = () => {
     const { showToast } = useToast();
@@ -14,6 +15,7 @@ export const InventoryView: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showImportModal, setShowImportModal] = useState(false);
     const [importText, setImportText] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Editing State
     const [editingCell, setEditingCell] = useState<{ itemId: string, field: 'minStock' | 'baseUnit' } | null>(null);
@@ -84,12 +86,69 @@ export const InventoryView: React.FC = () => {
         }
     };
 
-    const handleImport = () => {
+    // --- XLSX Import / Export Logic ---
+
+    const handleDownloadTemplate = () => {
+        const headers = [['Code', 'Name', 'Category', 'BaseUnit', 'MinStock']];
+        // Sample data
+        const data = [
+            ['BRG001', 'Contoh Barang A', 'Elektronik', 'Pcs', 10],
+            ['BRG002', 'Contoh Barang B', 'Alat Tulis', 'Pack', 5]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet([...headers, ...data]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+        XLSX.writeFile(wb, "Template_Import_Barang.xlsx");
+    };
+
+    const handleImportXlsx = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsName = wb.SheetNames[0];
+                const ws = wb.Sheets[wsName];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                if (data.length === 0) {
+                    showToast("File Excel kosong.", 'warning');
+                    return;
+                }
+
+                const importedItems: Item[] = data.map((row: any) => ({
+                    id: crypto.randomUUID(),
+                    code: String(row.Code || row.Kode || '').trim(),
+                    name: String(row.Name || row.Nama || '').trim(),
+                    category: String(row.Category || row.Kategori || 'General').trim(),
+                    baseUnit: String(row.BaseUnit || row.Satuan || 'Pcs').trim(),
+                    minStock: Number(row.MinStock || row.StokMinimal || 0),
+                    conversions: []
+                })).filter(i => i.code && i.name);
+
+                if (importedItems.length > 0) {
+                    StorageService.importItems(importedItems);
+                    loadData();
+                    showToast(`Berhasil mengimpor ${importedItems.length} barang.`, 'success');
+                } else {
+                    showToast("Tidak ada data valid untuk diimpor (Cek kolom Code dan Name).", 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memproses file Excel.", 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
+        e.target.value = ''; // Reset input
+    };
+
+    const handleImportJson = () => {
         try {
-            // Very simple JSON import
             const parsed = JSON.parse(importText);
             if (Array.isArray(parsed)) {
-                // In real app, extensive validation here
                 StorageService.importItems(parsed);
                 setShowImportModal(false);
                 setImportText('');
@@ -133,7 +192,6 @@ export const InventoryView: React.FC = () => {
         if (!editingConversions) return;
         const item = items.find(i => i.id === editingConversions.itemId);
         if (item) {
-            // Filter out empty names or invalid ratios
             const validConversions = editingConversions.data.filter(c => c.name.trim() !== '' && c.ratio > 0);
             const newItem = { ...item, conversions: validConversions };
             StorageService.saveItem(newItem);
@@ -153,13 +211,11 @@ export const InventoryView: React.FC = () => {
     };
 
     const handleCreateItem = () => {
-        // Validation
         if (!newItemForm.code || !newItemForm.name || !newItemForm.baseUnit) {
             showToast("Please fill in Code, Name, and Base Unit.", 'warning');
             return;
         }
 
-        // Check for duplicate code
         const existing = items.find(i => i.code === newItemForm.code);
         if (existing) {
              showToast("Item code already exists!", 'error');
@@ -209,10 +265,23 @@ export const InventoryView: React.FC = () => {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={loadData} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-md"><RefreshCw size={18} /></button>
-                    <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700">
-                        <Upload size={16} /> Import
+                    <button onClick={loadData} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-md" title="Refresh"><RefreshCw size={18} /></button>
+                    
+                    <button 
+                        onClick={handleDownloadTemplate} 
+                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700"
+                    >
+                        <Download size={16} /> Template
                     </button>
+
+                    <button 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="flex items-center gap-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded text-sm font-medium hover:bg-slate-900 dark:hover:bg-slate-600 shadow-sm"
+                    >
+                        <Upload size={16} /> Import XLSX
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleImportXlsx} accept=".xlsx, .xls" className="hidden" />
+
                     <button 
                         onClick={() => setShowNewItemModal(true)} 
                         className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 shadow-sm"
@@ -326,7 +395,7 @@ export const InventoryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Import Modal */}
+            {/* JSON Import Modal (Fallback/Legacy) */}
             {showImportModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
                     <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-1/2 shadow-xl border border-slate-200 dark:border-slate-700">
@@ -339,7 +408,7 @@ export const InventoryView: React.FC = () => {
                         />
                         <div className="flex justify-end gap-3">
                             <button onClick={() => setShowImportModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 rounded">Cancel</button>
-                            <button onClick={handleImport} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Import Data</button>
+                            <button onClick={handleImportJson} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Import Data</button>
                         </div>
                     </div>
                 </div>
