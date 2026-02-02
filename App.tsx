@@ -95,11 +95,12 @@ function App() {
         
         {/* Sidebar */}
         <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} bg-slate-900 flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30 transition-all duration-300 ease-in-out overflow-hidden`}>
-          <div className="h-16 flex items-center px-6 border-b border-slate-800 whitespace-nowrap">
-             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg shadow-blue-500/20 flex-shrink-0">
-                <WhIcon className="text-white" size={20} />
+          <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-800 whitespace-nowrap bg-slate-950">
+             <div className="flex items-center leading-none">
+                <span className="text-white font-black text-2xl tracking-tighter">ware</span>
+                <span className="text-red-600 font-black text-2xl tracking-tighter">SIX</span>
              </div>
-             <h1 className="font-bold text-lg text-white tracking-tight">GudangPro</h1>
+             <div className="text-[10px] font-bold text-slate-500 tracking-[0.3em] mt-1">MANAGEMENT</div>
           </div>
 
           <div className="p-4 flex-1 overflow-y-auto whitespace-nowrap scrollbar-hide">
