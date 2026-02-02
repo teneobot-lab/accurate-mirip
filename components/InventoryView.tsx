@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, FileSpreadsheet } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2 } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -13,18 +13,9 @@ export const InventoryView: React.FC = () => {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const [showImportModal, setShowImportModal] = useState(false);
-    const [importText, setImportText] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Editing State
-    const [editingCell, setEditingCell] = useState<{ itemId: string, field: 'minStock' | 'baseUnit' | 'initialStock' } | null>(null);
-    const [editValue, setEditValue] = useState<string | number>('');
-
-    // Conversion Editing State
-    const [editingConversions, setEditingConversions] = useState<{ itemId: string, itemCode: string, itemName: string, baseUnit: string, data: UnitConversion[] } | null>(null);
-
-    // New Item State
     const [showNewItemModal, setShowNewItemModal] = useState(false);
     const [newItemForm, setNewItemForm] = useState({
         code: '',
@@ -35,28 +26,36 @@ export const InventoryView: React.FC = () => {
         initialStock: 0
     });
 
-    const loadData = () => {
-        setItems(StorageService.getItems());
-        setStocks(StorageService.getStocks());
-        setWarehouses(StorageService.getWarehouses());
-        setSelectedIds(new Set());
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const [fetchedItems, fetchedWh, fetchedStocks] = await Promise.all([
+                StorageService.fetchItems(),
+                StorageService.fetchWarehouses(),
+                StorageService.fetchStocks()
+            ]);
+            setItems(fetchedItems);
+            setWarehouses(fetchedWh);
+            setStocks(fetchedStocks);
+        } catch (error) {
+            showToast("Gagal memuat database server.", "error");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
         loadData();
     }, []);
 
-    // Derived state for table view
     const inventoryData = useMemo(() => {
         return items.map(item => {
             const itemStocks = stocks.filter(s => s.itemId === item.id);
-            const totalStock = itemStocks.reduce((acc, s) => acc + s.qty, 0);
-            
+            const totalStock = itemStocks.reduce((acc, s) => acc + Number(s.qty), 0);
             const whBreakdown = warehouses.map(wh => {
                 const s = itemStocks.find(stk => stk.warehouseId === wh.id);
-                return { whId: wh.id, qty: s ? s.qty : 0 };
+                return { whId: wh.id, qty: s ? Number(s.qty) : 0 };
             });
-
             return { ...item, totalStock, whBreakdown };
         }).filter(item => 
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -64,561 +63,119 @@ export const InventoryView: React.FC = () => {
         );
     }, [items, stocks, warehouses, searchTerm]);
 
-    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.checked) {
-            setSelectedIds(new Set(inventoryData.map(i => i.id)));
-        } else {
-            setSelectedIds(new Set());
-        }
-    };
-
-    const handleSelectRow = (id: string) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedIds(newSet);
-    };
-
-    const handleBulkDelete = () => {
-        if (window.confirm(`Are you sure you want to delete ${selectedIds.size} items?`)) {
-            StorageService.deleteItems(Array.from(selectedIds));
-            loadData();
-            showToast(`Deleted ${selectedIds.size} items`, 'success');
-        }
-    };
-
-    // --- XLSX Import / Export Logic ---
-
-    const handleDownloadTemplate = () => {
-        const headers = [['Code', 'Name', 'Category', 'BaseUnit', 'MinStock', 'InitialStock', 'WarehouseName']];
-        // Get first warehouse name as example
-        const exampleWh = warehouses.length > 0 ? warehouses[0].name : 'Gudang Utama';
-        
-        const data = [
-            ['BRG001', 'Contoh Barang A', 'Elektronik', 'Pcs', 10, 100, exampleWh],
-            ['BRG002', 'Contoh Barang B', 'Alat Tulis', 'Pack', 5, 50, exampleWh]
-        ];
-        const ws = XLSX.utils.aoa_to_sheet([...headers, ...data]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-        XLSX.writeFile(wb, "Template_Import_Inventory.xlsx");
-    };
-
-    const handleImportXlsx = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const bstr = evt.target?.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsName = wb.SheetNames[0];
-                const ws = wb.Sheets[wsName];
-                const data = XLSX.utils.sheet_to_json(ws);
-
-                if (data.length === 0) {
-                    showToast("File Excel kosong.", 'warning');
-                    return;
-                }
-
-                const importedItems: Item[] = [];
-                let stockUpdates = 0;
-
-                data.forEach((row: any) => {
-                    const code = String(row.Code || row.Kode || '').trim();
-                    const name = String(row.Name || row.Nama || '').trim();
-                    
-                    if (code && name) {
-                        const itemId = crypto.randomUUID();
-                        const initialStock = Number(row.InitialStock || row.StokAwal || 0);
-                        const whName = String(row.WarehouseName || row.NamaGudang || '').trim();
-
-                        const item: Item = {
-                            id: itemId,
-                            code,
-                            name,
-                            category: String(row.Category || row.Kategori || 'General').trim(),
-                            baseUnit: String(row.BaseUnit || row.Satuan || 'Pcs').trim(),
-                            minStock: Number(row.MinStock || row.StokMinimal || 0),
-                            initialStock: initialStock,
-                            conversions: []
-                        };
-                        importedItems.push(item);
-
-                        // If initial stock > 0, find warehouse and update
-                        if (initialStock > 0 && whName) {
-                            const warehouse = warehouses.find(w => w.name.toLowerCase() === whName.toLowerCase());
-                            if (warehouse) {
-                                StorageService.updateStock(itemId, warehouse.id, initialStock);
-                                stockUpdates++;
-                            } else if (warehouses.length > 0) {
-                                // Default to first warehouse if name not found but initial stock provided
-                                StorageService.updateStock(itemId, warehouses[0].id, initialStock);
-                                stockUpdates++;
-                            }
-                        } else if (initialStock > 0 && warehouses.length > 0) {
-                             // Default to first warehouse
-                             StorageService.updateStock(itemId, warehouses[0].id, initialStock);
-                             stockUpdates++;
-                        }
-                    }
-                });
-
-                if (importedItems.length > 0) {
-                    StorageService.importItems(importedItems);
-                    loadData();
-                    showToast(`Berhasil mengimpor ${importedItems.length} barang dan ${stockUpdates} saldo awal.`, 'success');
-                } else {
-                    showToast("Tidak ada data valid untuk diimpor (Cek kolom Code dan Name).", 'error');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast("Gagal memproses file Excel.", 'error');
-            }
-        };
-        reader.readAsBinaryString(file);
-        e.target.value = ''; // Reset input
-    };
-
-    const handleImportJson = () => {
-        try {
-            const parsed = JSON.parse(importText);
-            if (Array.isArray(parsed)) {
-                StorageService.importItems(parsed);
-                setShowImportModal(false);
-                setImportText('');
-                loadData();
-                showToast(`Successfully imported ${parsed.length} items.`, 'success');
-            } else {
-                showToast("Invalid format. Expected JSON Array.", 'error');
-            }
-        } catch (e) {
-            showToast("JSON Parse Error.", 'error');
-        }
-    };
-
-    // Inline Editing Handlers
-    const handleStartEdit = (itemId: string, field: 'minStock' | 'baseUnit' | 'initialStock', value: string | number) => {
-        setEditingCell({ itemId, field });
-        setEditValue(value);
-    };
-
-    const handleSaveEdit = () => {
-        if (!editingCell) return;
-
-        const { itemId, field } = editingCell;
-        const item = items.find(i => i.id === itemId);
-        if (item) {
-            const newItem = { ...item };
-            if (field === 'minStock') {
-                newItem.minStock = Number(editValue);
-            } else if (field === 'baseUnit') {
-                newItem.baseUnit = String(editValue);
-            } else if (field === 'initialStock') {
-                newItem.initialStock = Number(editValue);
-            }
-            StorageService.saveItem(newItem);
-            loadData();
-            showToast("Item updated", 'success');
-        }
-        setEditingCell(null);
-        setEditValue('');
-    };
-
-    const handleSaveConversions = () => {
-        if (!editingConversions) return;
-        const item = items.find(i => i.id === editingConversions.itemId);
-        if (item) {
-            const validConversions = editingConversions.data.filter(c => c.name.trim() !== '' && c.ratio > 0);
-            const newItem = { ...item, conversions: validConversions };
-            StorageService.saveItem(newItem);
-            loadData();
-            showToast("Conversions saved", 'success');
-        }
-        setEditingConversions(null);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleSaveEdit();
-        } else if (e.key === 'Escape') {
-            setEditingCell(null);
-            setEditValue('');
-        }
-    };
-
-    const handleCreateItem = () => {
-        if (!newItemForm.code || !newItemForm.name || !newItemForm.baseUnit) {
-            showToast("Please fill in Code, Name, and Base Unit.", 'warning');
+    const handleCreateItem = async () => {
+        if (!newItemForm.code || !newItemForm.name) {
+            showToast("Kode dan Nama wajib diisi.", 'warning');
             return;
         }
-
-        const existing = items.find(i => i.code === newItemForm.code);
-        if (existing) {
-             showToast("Item code already exists!", 'error');
-             return;
+        try {
+            const newItem: any = {
+                ...newItemForm,
+                conversions: []
+            };
+            await StorageService.saveItem(newItem);
+            showToast("Barang berhasil disimpan ke Database.", 'success');
+            setShowNewItemModal(false);
+            setNewItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0 });
+            loadData();
+        } catch (e) {
+            showToast("Gagal menyimpan ke server.", "error");
         }
-
-        const newItem: Item = {
-            id: crypto.randomUUID(),
-            code: newItemForm.code,
-            name: newItemForm.name,
-            category: newItemForm.category,
-            baseUnit: newItemForm.baseUnit,
-            minStock: Number(newItemForm.minStock),
-            initialStock: Number(newItemForm.initialStock),
-            conversions: []
-        };
-        
-        StorageService.saveItem(newItem);
-        
-        // If initial stock set, put in first warehouse
-        if (newItem.initialStock && newItem.initialStock > 0 && warehouses.length > 0) {
-            StorageService.updateStock(newItem.id, warehouses[0].id, newItem.initialStock);
-        }
-
-        loadData();
-        setShowNewItemModal(false);
-        setNewItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0 });
-        showToast("Item created successfully", 'success');
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-4 gap-4 transition-colors">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-3 gap-3 transition-colors font-sans">
             {/* Toolbar */}
-            <div className="bg-white dark:bg-slate-900 p-3 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex justify-between items-center transition-colors">
-                <div className="flex items-center gap-3">
+            <div className="bg-white dark:bg-slate-900 p-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                <div className="flex items-center gap-2">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             type="text" 
-                            placeholder="Search code or name..." 
+                            placeholder="Cari item di MySQL..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 pr-4 py-2 border rounded-md text-sm outline-none focus:ring-1 focus:ring-blue-500 w-64 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                            className="pl-8 pr-3 py-1.5 border rounded-md text-xs outline-none focus:ring-1 focus:ring-blue-500 w-64 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                         />
                     </div>
-                    {selectedIds.size > 0 && (
-                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700">
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{selectedIds.size} Selected</span>
-                            <div className="h-4 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
-                            <button onClick={handleBulkDelete} className="text-red-600 hover:text-red-700 text-xs font-semibold flex items-center gap-1">
-                                <Trash2 size={14} /> Delete
-                            </button>
-                        </div>
-                    )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={loadData} className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 rounded-md" title="Refresh"><RefreshCw size={18} /></button>
-                    
-                    <button 
-                        onClick={handleDownloadTemplate} 
-                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700"
-                    >
-                        <Download size={16} /> Template
+                    <button onClick={loadData} className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">
+                        <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
                     </button>
-
-                    <button 
-                        onClick={() => fileInputRef.current?.click()} 
-                        className="flex items-center gap-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded text-sm font-medium hover:bg-slate-900 dark:hover:bg-slate-600 shadow-sm"
-                    >
-                        <Upload size={16} /> Import XLSX
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleImportXlsx} accept=".xlsx, .xls" className="hidden" />
-
-                    <button 
-                        onClick={() => setShowNewItemModal(true)} 
-                        className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 shadow-sm"
-                    >
-                        <Box size={16} /> New Item
+                    <button onClick={() => setShowNewItemModal(true)} className="btn-primary flex items-center gap-1.5 text-[11px]">
+                        <Plus size={14} /> Item Baru
                     </button>
                 </div>
             </div>
 
-            {/* Dense Table */}
-            <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col transition-colors">
-                <div className="overflow-auto flex-1">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wide sticky top-0 z-10">
-                            <tr>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 w-10 text-center">
-                                    <input type="checkbox" onChange={handleSelectAll} checked={inventoryData.length > 0 && selectedIds.size === inventoryData.length} />
-                                </th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700">Code</th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700">Item Name</th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700">Category</th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right text-slate-500 bg-slate-50 dark:bg-slate-800/40">Stok Awal</th>
-                                {warehouses.map(wh => (
-                                    <th key={wh.id} className="p-3 border-b border-slate-200 dark:border-slate-700 text-right text-blue-600 dark:text-blue-400">{wh.name}</th>
-                                ))}
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right bg-slate-200 dark:bg-slate-800/50">Total</th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right text-orange-600 dark:text-orange-400">Min Stock</th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-center">Unit</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-sm">
-                            {inventoryData.map((item, idx) => (
-                                <tr key={item.id} className={`hover:bg-blue-50 dark:hover:bg-slate-800/50 border-b border-slate-50 dark:border-slate-800 ${selectedIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
-                                    <td className="p-2 text-center">
-                                        <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => handleSelectRow(item.id)} />
-                                    </td>
-                                    <td className="p-2 font-mono text-slate-500 dark:text-slate-400 text-xs">{item.code}</td>
-                                    <td className="p-2 font-medium text-slate-700 dark:text-slate-200">
-                                        {item.name}
-                                        <div 
-                                            className="text-[10px] text-slate-400 dark:text-slate-500 font-normal mt-0.5 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 -ml-1 w-fit transition-colors select-none"
-                                            onDoubleClick={(e) => {
-                                                e.stopPropagation();
-                                                setEditingConversions({
-                                                    itemId: item.id,
-                                                    itemCode: item.code,
-                                                    itemName: item.name,
-                                                    baseUnit: item.baseUnit,
-                                                    data: JSON.parse(JSON.stringify(item.conversions))
-                                                });
-                                            }}
-                                            title="Double click to edit conversions"
-                                        >
-                                            {item.conversions.length > 0 
-                                                ? `Conversions: ${item.conversions.map(c => `${c.name} (${c.ratio})`).join(', ')}`
-                                                : 'No conversions (Double click to add)'}
-                                        </div>
-                                    </td>
-                                    <td className="p-2 text-slate-500 dark:text-slate-400">{item.category}</td>
-                                    <td className="p-2 text-right font-mono text-slate-400 dark:text-slate-500 italic bg-slate-50/20 dark:bg-slate-800/10">
-                                        {item.initialStock || 0}
-                                    </td>
-                                    {item.whBreakdown.map(bd => (
-                                        <td key={bd.whId} className="p-2 text-right font-mono text-slate-600 dark:text-slate-300">{bd.qty}</td>
+            {/* Table */}
+            <div className="flex-1 bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                <div className="overflow-auto flex-1 scrollbar-thin">
+                    {isLoading ? (
+                        <div className="h-full flex items-center justify-center flex-col gap-2 text-slate-400">
+                            <Loader2 size={32} className="animate-spin" />
+                            <span className="text-xs font-bold uppercase tracking-widest">Sinkronisasi Database...</span>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left border-collapse table-fixed">
+                            <thead className="bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700">
+                                <tr>
+                                    <th className="p-2 w-8 text-center">#</th>
+                                    <th className="p-2 w-24">Kode</th>
+                                    <th className="p-2 w-auto">Nama Barang</th>
+                                    {warehouses.map(wh => (
+                                        <th key={wh.id} className="p-2 w-20 text-right text-blue-600 border-l border-slate-200 dark:border-slate-700">{wh.name}</th>
                                     ))}
-                                    <td className={`p-2 text-right font-bold font-mono bg-slate-50/50 dark:bg-slate-800/30 ${item.totalStock <= item.minStock ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'}`}>
-                                        {item.totalStock}
-                                    </td>
-                                    <td 
-                                        className="p-2 text-right font-mono text-slate-600 dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 border-l border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                                        onDoubleClick={() => handleStartEdit(item.id, 'minStock', item.minStock)}
-                                        title="Double click to edit Min Stock"
-                                    >
-                                        {editingCell?.itemId === item.id && editingCell?.field === 'minStock' ? (
-                                            <input 
-                                                type="number"
-                                                autoFocus
-                                                className="w-16 border rounded px-1 text-right outline-none ring-2 ring-blue-500 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                                                value={editValue}
-                                                onChange={(e) => setEditValue(e.target.value)}
-                                                onBlur={handleSaveEdit}
-                                                onKeyDown={handleKeyDown}
-                                            />
-                                        ) : (
-                                            item.minStock
-                                        )}
-                                    </td>
-                                    <td 
-                                        className="p-2 text-center text-xs text-slate-500 dark:text-slate-400 badge cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800"
-                                        onDoubleClick={() => handleStartEdit(item.id, 'baseUnit', item.baseUnit)}
-                                        title="Double click to edit Base Unit"
-                                    >
-                                        {editingCell?.itemId === item.id && editingCell?.field === 'baseUnit' ? (
-                                            <input 
-                                                type="text"
-                                                autoFocus
-                                                className="w-16 border rounded px-1 text-center outline-none ring-2 ring-blue-500 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                                                value={editValue}
-                                                onChange={(e) => setEditValue(e.target.value)}
-                                                onBlur={handleSaveEdit}
-                                                onKeyDown={handleKeyDown}
-                                            />
-                                        ) : (
-                                            item.baseUnit
-                                        )}
-                                    </td>
+                                    <th className="p-2 w-20 text-right bg-blue-50 dark:bg-blue-900/20 font-black">Total</th>
+                                    <th className="p-2 w-16 text-center">Unit</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex justify-between">
-                     <span>Showing {inventoryData.length} items</span>
-                     <span>Double-click cells to edit. Template XLSX mendukung Stok Awal & Nama Gudang.</span>
+                            </thead>
+                            <tbody className="text-[11px]">
+                                {inventoryData.map((item, idx) => (
+                                    <tr key={item.id} className="hover:bg-blue-50 dark:hover:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                                        <td className="p-1.5 text-center text-slate-400">{idx + 1}</td>
+                                        <td className="p-1.5 font-mono text-slate-500">{item.code}</td>
+                                        <td className="p-1.5 font-bold text-slate-700 dark:text-slate-200">{item.name}</td>
+                                        {item.whBreakdown.map(bd => (
+                                            <td key={bd.whId} className="p-1.5 text-right font-mono border-l border-slate-50 dark:border-slate-800">{bd.qty}</td>
+                                        ))}
+                                        <td className="p-1.5 text-right font-black font-mono bg-blue-50/30">{item.totalStock}</td>
+                                        <td className="p-1.5 text-center"><span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[9px] font-bold">{item.baseUnit}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
 
-            {/* Conversion Editor Modal */}
-            {editingConversions && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-700">
-                        <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-700 dark:text-slate-200">Edit Conversions</h3>
-                            <button onClick={() => setEditingConversions(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={18} /></button>
-                        </div>
-                        <div className="p-4 bg-slate-50/50 dark:bg-slate-900/50">
-                            <div className="mb-4 text-sm text-slate-600 dark:text-slate-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-100 dark:border-blue-900/30">
-                                <p><strong className="text-slate-800 dark:text-slate-200">Item:</strong> {editingConversions.itemCode} - {editingConversions.itemName}</p>
-                                <p className="mt-1"><strong className="text-slate-800 dark:text-slate-200">Base Unit:</strong> {editingConversions.baseUnit}</p>
-                            </div>
-                            
-                            <div className="space-y-3 max-h-[350px] overflow-auto mb-4 pr-1">
-                                {editingConversions.data.map((conv, idx) => (
-                                    <div key={idx} className="bg-white dark:bg-slate-800 p-3 rounded-md shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                                        <div className="flex-1">
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Unit Name</label>
-                                            <input 
-                                                type="text" 
-                                                value={conv.name}
-                                                onChange={(e) => {
-                                                    const newData = [...editingConversions.data];
-                                                    newData[idx].name = e.target.value;
-                                                    setEditingConversions({...editingConversions, data: newData});
-                                                }}
-                                                className="w-full border rounded px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                                                placeholder="e.g. Box"
-                                            />
-                                        </div>
-                                        <div className="flex items-end justify-center pb-2 text-slate-400">
-                                            <ArrowRight size={16} />
-                                        </div>
-                                        <div className="flex-1 relative">
-                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Ratio (to Base)</label>
-                                            <div className="relative">
-                                                <input 
-                                                    type="number" 
-                                                    value={conv.ratio}
-                                                    min="0.0001"
-                                                    onChange={(e) => {
-                                                        const newData = [...editingConversions.data];
-                                                        newData[idx].ratio = parseFloat(e.target.value) || 0;
-                                                        setEditingConversions({...editingConversions, data: newData});
-                                                    }}
-                                                    className="w-full border rounded px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 pr-12 dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-                                                    placeholder="12"
-                                                />
-                                                <span className="absolute right-2 top-1.5 text-xs text-slate-400 pointer-events-none">{editingConversions.baseUnit}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-end justify-center pb-1">
-                                            <button 
-                                                onClick={() => {
-                                                    const newData = editingConversions.data.filter((_, i) => i !== idx);
-                                                    setEditingConversions({...editingConversions, data: newData});
-                                                }}
-                                                className="text-slate-300 hover:text-red-500 p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                                title="Remove Conversion"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {editingConversions.data.length === 0 && (
-                                    <div className="text-center text-slate-400 italic text-sm py-8 bg-white dark:bg-slate-800 rounded border border-dashed border-slate-200 dark:border-slate-700">
-                                        No conversions defined for this item.
-                                    </div>
-                                )}
-                            </div>
-
-                            <button 
-                                onClick={() => {
-                                    setEditingConversions({
-                                        ...editingConversions,
-                                        data: [...editingConversions.data, { name: '', ratio: 1 }]
-                                    });
-                                }}
-                                className="w-full py-2.5 border-2 border-dashed border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 transition-all flex items-center justify-center font-bold text-sm"
-                            >
-                                <Plus size={16} className="mr-2" /> Add New Conversion
-                            </button>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
-                            <button onClick={() => setEditingConversions(null)} className="px-4 py-2 text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-200 dark:hover:bg-slate-700 rounded font-medium">Cancel</button>
-                            <button onClick={handleSaveConversions} className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 font-medium shadow-sm">Save Changes</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* New Item Modal */}
+            {/* Modal */}
             {showNewItemModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white dark:bg-slate-900 rounded-lg w-full max-w-md shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                        <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-700 dark:text-slate-200 uppercase text-sm">Create New Item</h3>
-                            <button onClick={() => setShowNewItemModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={18} /></button>
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg w-full max-w-sm shadow-2xl border border-slate-200">
+                        <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 border-b flex justify-between items-center font-bold text-xs uppercase">
+                            <span>Input Item Database</span>
+                            <button onClick={() => setShowNewItemModal(false)}><X size={16}/></button>
                         </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Item Code</label>
-                                <input 
-                                    type="text" 
-                                    autoFocus
-                                    className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                    placeholder="e.g. A-001"
-                                    value={newItemForm.code}
-                                    onChange={e => setNewItemForm({...newItemForm, code: e.target.value})}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Item Name</label>
-                                <input 
-                                    type="text" 
-                                    className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                    placeholder="e.g. Coffee Beans"
-                                    value={newItemForm.name}
-                                    onChange={e => setNewItemForm({...newItemForm, name: e.target.value})}
-                                />
-                            </div>
-                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Category</label>
-                                    <input 
-                                        type="text" 
-                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                        placeholder="e.g. Beverage"
-                                        value={newItemForm.category}
-                                        onChange={e => setNewItemForm({...newItemForm, category: e.target.value})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Base Unit</label>
-                                    <input 
-                                        type="text" 
-                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                        placeholder="e.g. Pcs"
-                                        value={newItemForm.baseUnit}
-                                        onChange={e => setNewItemForm({...newItemForm, baseUnit: e.target.value})}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Min Stock Alert</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                        placeholder="10"
-                                        value={newItemForm.minStock}
-                                        onChange={e => setNewItemForm({...newItemForm, minStock: parseFloat(e.target.value) || 0})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Initial Stock</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                        placeholder="0"
-                                        value={newItemForm.initialStock}
-                                        onChange={e => setNewItemForm({...newItemForm, initialStock: parseFloat(e.target.value) || 0})}
-                                    />
-                                </div>
+                        <div className="p-4 space-y-3">
+                            <input type="text" placeholder="Kode Barang" className="input-dense" value={newItemForm.code} onChange={e => setNewItemForm({...newItemForm, code: e.target.value})} />
+                            <input type="text" placeholder="Nama Barang" className="input-dense" value={newItemForm.name} onChange={e => setNewItemForm({...newItemForm, name: e.target.value})} />
+                            <div className="grid grid-cols-2 gap-3">
+                                <input type="text" placeholder="Satuan" className="input-dense" value={newItemForm.baseUnit} onChange={e => setNewItemForm({...newItemForm, baseUnit: e.target.value})} />
+                                <input type="number" placeholder="Saldo Awal" className="input-dense" value={newItemForm.initialStock} onChange={e => setNewItemForm({...newItemForm, initialStock: Number(e.target.value)})} />
                             </div>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
-                            <button onClick={() => setShowNewItemModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded font-medium text-sm">Cancel</button>
-                            <button onClick={handleCreateItem} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-sm shadow-sm">Create Item</button>
+                        <div className="bg-slate-50 dark:bg-slate-800 p-3 border-t flex justify-end gap-2">
+                            <button onClick={handleCreateItem} className="px-4 py-1.5 bg-blue-600 text-white rounded font-bold text-xs">Simpan ke MySQL</button>
                         </div>
                     </div>
                 </div>
             )}
+            <style>{`
+                .btn-primary { @apply px-3 py-1.5 bg-blue-600 text-white rounded font-bold shadow-sm; }
+                .input-dense { @apply w-full border dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500; }
+            `}</style>
         </div>
     );
 };

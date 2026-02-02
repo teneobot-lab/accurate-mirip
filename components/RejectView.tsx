@@ -351,7 +351,8 @@ export const RejectView: React.FC = () => {
 
     const handleGenerateSampleData = () => {
         if (!confirm("Generate 1 month of sample reject data?")) return;
-        const outletsList = outlets.length > 0 ? outlets : ['Outlet Pusat', 'Outlet Cabang'];
+        // Fix: Explicitly type outletsList as string[] to avoid unknown type inference during iteration
+        const outletsList: string[] = outlets.length > 0 ? outlets : ['Outlet Pusat', 'Outlet Cabang'];
         if(outlets.length === 0) {
             outletsList.forEach(o => StorageService.saveRejectOutlet(o));
             // Fix: Explicitly cast to string[] to resolve potential 'unknown[]' mismatch on line 200
