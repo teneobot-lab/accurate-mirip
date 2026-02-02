@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3 } from 'lucide-react';
+import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface Props {
@@ -22,7 +22,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   // Form States
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [refNo, setRefNo] = useState(initialData?.referenceNo || `${type === 'IN' ? 'RI' : 'DO'}.${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}.${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`);
-  const [selectedPartnerId, setSelectedPartnerId] = useState(initialData?.partner_id || '');
+  const [selectedPartnerId, setSelectedPartnerId] = useState(initialData?.partnerId || '');
   const [selectedWh, setSelectedWh] = useState(initialData?.sourceWarehouseId || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [lines, setLines] = useState<TransactionItem[]>(initialData?.items || []);
@@ -30,6 +30,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   // Row Entry State
   const [query, setQuery] = useState('');
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
+  const [pendingUnit, setPendingUnit] = useState('');
   const [pendingQty, setPendingQty] = useState<number>(1);
   const [pendingNote, setPendingNote] = useState('');
 
@@ -54,11 +55,20 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   const handleAddLine = () => {
     if (!pendingItem) return;
+    
+    let ratio = 1;
+    if (pendingUnit !== pendingItem.baseUnit) {
+        const conv = pendingItem.conversions?.find(c => c.name === pendingUnit);
+        if (conv) {
+            ratio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
+        }
+    }
+
     const newLine: TransactionItem = {
       itemId: pendingItem.id,
       qty: pendingQty,
-      unit: pendingItem.baseUnit,
-      ratio: 1,
+      unit: pendingUnit || pendingItem.baseUnit,
+      ratio: ratio,
       note: pendingNote,
       name: pendingItem.name,
       code: pendingItem.code
@@ -66,6 +76,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setLines([...lines, newLine]);
     setQuery('');
     setPendingItem(null);
+    setPendingUnit('');
     setPendingQty(1);
     setPendingNote('');
   };
@@ -195,7 +206,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         <th className="p-3 w-12 text-center">#</th>
                         <th className="p-3">Master Item</th>
                         <th className="p-3 w-28 text-right">Kuantitas</th>
-                        <th className="p-3 w-24 text-center">Satuan</th>
+                        <th className="p-3 w-36 text-center">Satuan</th>
                         <th className="p-3 w-64">Memo Line</th>
                         <th className="p-3 w-16 text-center">Aksi</th>
                     </tr>
@@ -210,7 +221,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </td>
                             <td className="p-4 text-right font-mono font-black text-sm text-slate-800 dark:text-white">{l.qty.toLocaleString()}</td>
                             <td className="p-4 text-center">
-                                <span className="bg-white dark:bg-slate-900 px-3 py-1 rounded-full border dark:border-slate-700 text-[10px] font-black text-slate-500">{l.unit}</span>
+                                <div className="flex flex-col items-center">
+                                    <span className="bg-white dark:bg-slate-900 px-3 py-1 rounded-full border dark:border-slate-700 text-[10px] font-black text-slate-500">{l.unit}</span>
+                                    {l.ratio !== 1 && <span className="text-[8px] text-blue-400 font-bold mt-1">Ratio: {l.ratio}x</span>}
+                                </div>
                             </td>
                             <td className="p-4 text-slate-500 italic font-medium">{l.note || '-'}</td>
                             <td className="p-4 text-center rounded-r-2xl">
@@ -231,7 +245,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 onChange={e => {
                                     setQuery(e.target.value);
                                     const it = items.find(x => x.name === e.target.value || x.code === e.target.value);
-                                    if(it) setPendingItem(it);
+                                    if(it) {
+                                        setPendingItem(it);
+                                        setPendingUnit(it.baseUnit);
+                                    }
                                 }}
                             />
                             <datalist id="item-list-entry">
@@ -242,7 +259,20 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             <input type="number" className="w-full bg-transparent p-2 outline-none text-right font-mono font-black text-sm" value={pendingQty} onChange={e => setPendingQty(Number(e.target.value))} />
                         </td>
                         <td className="p-2 text-center">
-                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{pendingItem?.baseUnit || '-'}</div>
+                            <select 
+                                className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-1 text-[10px] font-black outline-none w-24"
+                                value={pendingUnit}
+                                onChange={e => setPendingUnit(e.target.value)}
+                                disabled={!pendingItem}
+                            >
+                                {pendingItem && (
+                                    <>
+                                        <option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>
+                                        {pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                    </>
+                                )}
+                                {!pendingItem && <option value="">-</option>}
+                            </select>
                         </td>
                         <td className="p-2">
                             <input type="text" placeholder="Catatan baris..." className="w-full bg-transparent p-2 outline-none text-xs italic" value={pendingNote} onChange={e => setPendingNote(e.target.value)} />
@@ -264,7 +294,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Kuantitas</span>
-                    <span className="text-lg font-black text-blue-600">{lines.reduce((acc,l)=>acc+l.qty,0).toLocaleString()} <small className="text-[10px] uppercase font-bold text-slate-400">Pcs/Base</small></span>
+                    <span className="text-lg font-black text-blue-600">{lines.reduce((acc,l)=>acc+(l.qty * (l.ratio || 1)),0).toLocaleString()} <small className="text-[10px] uppercase font-bold text-slate-400">Pcs/Base</small></span>
                 </div>
              </div>
              <div className="flex gap-6 items-center">

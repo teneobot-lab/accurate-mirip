@@ -47,7 +47,7 @@ exports.getTransactions = async (req, res, next) => {
     try {
         const { start, end, warehouse, type } = req.query;
         let query = `
-            SELECT t.*, w.name as warehouse_name, p.name as partner_name 
+            SELECT t.*, w.name as warehouse_name, p.name as partner_name, t.partner_id
             FROM transactions t
             JOIN warehouses w ON t.source_warehouse_id = w.id
             LEFT JOIN partners p ON t.partner_id = p.id
@@ -84,6 +84,7 @@ exports.getTransactions = async (req, res, next) => {
             tx.sourceWarehouseId = tx.source_warehouse_id;
             tx.referenceNo = tx.reference_no;
             tx.partnerName = tx.partner_name;
+            tx.partnerId = tx.partner_id; // Added mapping
         }
 
         res.json(txs);
