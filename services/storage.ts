@@ -63,7 +63,7 @@ export const StorageService = {
   // Playlists
   getPlaylists: (): Playlist[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYLISTS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.PLAYLISTS) || '[]') as Playlist[];
   },
   savePlaylists: (playlists: Playlist[]) => {
     if (isBrowser) localStorage.setItem(STORAGE_KEYS.PLAYLISTS, JSON.stringify(playlists));
@@ -72,7 +72,7 @@ export const StorageService = {
   // Items
   getItems: (): Item[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.ITEMS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.ITEMS) || '[]') as Item[];
   },
   saveItem: (item: Item) => {
     if (!isBrowser) return;
@@ -116,7 +116,7 @@ export const StorageService = {
   // Warehouses
   getWarehouses: (): Warehouse[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.WAREHOUSES) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.WAREHOUSES) || '[]') as Warehouse[];
   },
   saveWarehouse: (wh: Warehouse) => {
       if (!isBrowser) return;
@@ -142,7 +142,7 @@ export const StorageService = {
   // Stocks
   getStocks: (): Stock[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.STOCKS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.STOCKS) || '[]') as Stock[];
   },
   
   // --- CORE STOCK ENGINE ---
@@ -167,7 +167,7 @@ export const StorageService = {
 
   getTransactions: (): Transaction[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) || '[]') as Transaction[];
   },
 
   commitTransaction: (tx: Transaction) => {
@@ -214,7 +214,7 @@ export const StorageService = {
   // Partners
   getPartners: (): Partner[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.PARTNERS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.PARTNERS) || '[]') as Partner[];
   },
   savePartner: (p: Partner) => {
       if (!isBrowser) return;
@@ -232,7 +232,7 @@ export const StorageService = {
   // Users
   getUsers: (): AppUser[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]') as AppUser[];
   },
   saveUser: (u: AppUser) => {
       if (!isBrowser) return;
@@ -267,7 +267,7 @@ export const StorageService = {
   // Reject Module
   getRejectBatches: (): RejectBatch[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECTS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECTS) || '[]') as RejectBatch[];
   },
   saveRejectBatch: (batch: RejectBatch) => {
       if (!isBrowser) return;
@@ -278,7 +278,7 @@ export const StorageService = {
   },
   getRejectOutlets: (): string[] => {
     if (!isBrowser) return [];
-    return JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECT_OUTLETS) || '[]');
+    return JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECT_OUTLETS) || '[]') as string[];
   },
   saveRejectOutlet: (name: string) => {
       if (!isBrowser) return;

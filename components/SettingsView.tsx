@@ -7,7 +7,8 @@ import { Plus, Edit3, Trash2, Search, MapPin, Users, Building2, UserCircle, Save
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS';
 
 // Dense Table Row Component
-const DenseRow = ({ children }: { children: React.ReactNode }) => (
+// Fix: Added React.FC type to handle the key prop when used in lists
+const DenseRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <tr className="hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors group border-b border-slate-200 dark:border-slate-800 last:border-0 text-xs text-slate-700 dark:text-slate-300">
         {children}
     </tr>

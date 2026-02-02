@@ -58,9 +58,10 @@ export const RejectView: React.FC = () => {
 
     const loadData = () => {
         setItems(StorageService.getItems());
-        setOutlets(StorageService.getRejectOutlets());
+        // Fix: Explicitly cast to string[] to resolve potential 'unknown[]' mismatch
+        setOutlets(StorageService.getRejectOutlets() as string[]);
         setBatches(StorageService.getRejectBatches());
-        const savedOutlets = StorageService.getRejectOutlets();
+        const savedOutlets = StorageService.getRejectOutlets() as string[];
         if (savedOutlets.length > 0 && !selectedOutlet) setSelectedOutlet(savedOutlets[0]);
         setSelectedDbIds(new Set());
     };
