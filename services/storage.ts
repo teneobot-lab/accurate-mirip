@@ -15,8 +15,9 @@ const STORAGE_KEYS = {
   SESSION: 'gp_session'
 };
 
-// URL Backend (Port 3000 untuk ACC)
-export const API_URL = 'http://89.21.85.28:3000';
+// Menggunakan path relatif agar proxy Vercel (vercel.json) bisa menangani request
+// dan menghindari error Mixed Content (HTTPS -> HTTP)
+export const API_URL = ''; 
 
 const isBrowser = typeof window !== 'undefined';
 

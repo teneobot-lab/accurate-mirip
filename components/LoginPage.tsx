@@ -19,7 +19,8 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
         setIsLoading(true);
 
         try {
-            // Melakukan request ke API asli
+            // Menggunakan path relatif /api/auth/login.
+            // API_URL sekarang adalah string kosong (didefinisikan di services/storage.ts)
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
