@@ -3,26 +3,23 @@ const db = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * REVERT STOCK EFFECT (Anti-Deadlock Logic)
- * Mengembalikan stok lama ke kondisi semula menggunakan koneksi yang sama dalam transaksi.
+ * REVERT STOCK EFFECT
+ * Mengembalikan stok ke kondisi sebelum transaksi tersebut ada.
  */
 const revertStockEffect = async (conn, transactionId) => {
-    console.log(`[STEP 2] Reverting stock for TX: ${transactionId}`);
-    
-    // Lock header transaksi lama agar tidak disentuh proses lain
+    // Lock baris item transaksi lama agar tidak berubah saat proses hitung
+    const [items] = await conn.query('SELECT * FROM transaction_items WHERE transaction_id = ? FOR UPDATE', [transactionId]);
     const [txs] = await conn.query('SELECT * FROM transactions WHERE id = ? FOR UPDATE', [transactionId]);
+    
     if (txs.length === 0) return;
     const tx = txs[0];
-
-    // Lock baris item transaksi lama
-    const [items] = await conn.query('SELECT * FROM transaction_items WHERE transaction_id = ? FOR UPDATE', [transactionId]);
 
     for (const item of items) {
         const baseQty = Number(item.base_qty);
         const whId = tx.source_warehouse_id;
         const itId = item.item_id;
 
-        // Pastikan row stok dikunci (FOR UPDATE)
+        // Lock baris stok di tabel stock
         await conn.query(`SELECT qty FROM stock WHERE warehouse_id = ? AND item_id = ? FOR UPDATE`, [whId, itId]);
 
         if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') {
@@ -34,96 +31,111 @@ const revertStockEffect = async (conn, transactionId) => {
 };
 
 /**
- * APPLY TRANSACTION INTERNAL
- * Menerapkan data transaksi baru ke dalam stok.
+ * APPLY TRANSACTION LOGIC
+ * Menghitung dan menerapkan stok baru serta menyimpan detail item.
  */
-const applyTransactionInternal = async (conn, data, user) => {
-    const trxId = data.id;
+const applyTransactionLogic = async (conn, transactionId, data, user) => {
     const type = data.type;
-
-    console.log(`[STEP 4] Applying New ${type} Logic for TX: ${trxId}`);
-
-    // Update Header
-    await conn.query(
-        `INSERT INTO transactions (id, reference_no, type, date, source_warehouse_id, partner_id, delivery_order_no, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE 
-            reference_no=VALUES(reference_no), type=VALUES(type), date=VALUES(date), 
-            source_warehouse_id=VALUES(source_warehouse_id), partner_id=VALUES(partner_id), 
-            delivery_order_no=VALUES(delivery_order_no), notes=VALUES(notes)`,
-        [trxId, data.referenceNo, type, data.date, data.sourceWarehouseId, data.partnerId || null, data.deliveryOrderNo, data.notes, user.id]
-    );
+    const whId = data.sourceWarehouseId;
 
     for (const item of data.items) {
         const ratio = Number(item.conversionRatio || 1);
         const baseQty = Number(item.qty) * ratio;
-        const whId = data.sourceWarehouseId;
         const itId = item.itemId;
 
-        // LOCK STOK BARIS (PENTING!)
+        // 1. Lock baris stok yang akan diupdate
+        // Gunakan INSERT ON DUPLICATE untuk memastikan row ada sebelum di-lock
+        await conn.query(`INSERT INTO stock (warehouse_id, item_id, qty) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE qty = qty`, [whId, itId]);
         const [rows] = await conn.query(`SELECT qty FROM stock WHERE warehouse_id = ? AND item_id = ? FOR UPDATE`, [whId, itId]);
         const currentQty = rows.length > 0 ? Number(rows[0].qty) : 0;
 
+        // 2. Validasi Stok (OUT)
         if (type === 'OUT' && currentQty < baseQty) {
-            const err = new Error(`Stok tidak cukup untuk item ${itId}. Tersedia: ${currentQty}, Dibutuhkan: ${baseQty}`);
+            const err = new Error(`Stok tidak mencukupi untuk item ${itId}`);
             err.code = 'INSUFFICIENT_STOCK';
             throw err;
         }
 
+        // 3. Update Stok
         const op = type === 'IN' ? '+' : '-';
         await conn.query(`UPDATE stock SET qty = qty ${op} ? WHERE warehouse_id = ? AND item_id = ?`, [baseQty, whId, itId]);
 
+        // 4. Simpan Line Item
         await conn.query(
             `INSERT INTO transaction_items (transaction_id, item_id, qty, unit, conversion_ratio, base_qty, note)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [trxId, itId, item.qty, item.unit, ratio, baseQty, item.note]
+            [transactionId, itId, item.qty, item.unit, ratio, baseQty, item.note]
         );
     }
 };
 
 /**
- * EXPORT: UPDATE TRANSACTION (FIXED 502)
+ * MASTER UPDATE TRANSACTION (FIXED 502)
  */
 exports.updateTransaction = async (id, data, user) => {
-    console.log(`[START] Master Update for Transaction: ${id}`);
     const conn = await db.getConnection();
     
     try {
-        // STEP 0: Set Lock Timeout untuk mematikan query menggantung (Mencegah 502)
+        // STEP 0: Set Lock Timeout agar query tidak menggantung selamanya (Penyebab 502)
         await conn.query('SET innodb_lock_wait_timeout = 10');
         
-        // STEP 1: BEGIN TRANSACTION
+        // STEP 1: Mulai Transaksi Database
         await conn.beginTransaction();
-        console.log(`[STEP 1] DB Transaction Started`);
 
-        // STEP 2: REVERT OLD DATA
+        // 1️⃣ Ambil transaksi lama & lock row (Pola Request User)
+        const [oldTrxRows] = await conn.query(
+            'SELECT * FROM transactions WHERE id = ? FOR UPDATE',
+            [id]
+        );
+
+        if (oldTrxRows.length === 0) {
+            throw new Error('Transaksi tidak ditemukan');
+        }
+
+        const trxLama = oldTrxRows[0];
+
+        // 2️⃣ Rollback stok lama
         await revertStockEffect(conn, id);
 
-        // STEP 3: CLEANUP OLD ITEMS
-        console.log(`[STEP 3] Cleaning up old items`);
+        // 3️⃣ Hapus detail item lama
         await conn.query('DELETE FROM transaction_items WHERE transaction_id = ?', [id]);
 
-        // STEP 4: APPLY NEW DATA
-        await applyTransactionInternal(conn, { ...data, id }, user);
+        // 4️⃣ Update Header Transaksi dengan Fallback (Pola Request User)
+        // Ambil no references dari data lama jika req.body kosong
+        const finalReferenceNo = data.referenceNo ?? trxLama.reference_no;
+        const finalDate = data.date ?? trxLama.date;
+        const finalWhId = data.sourceWarehouseId ?? trxLama.source_warehouse_id;
+        const finalPartnerId = data.partnerId ?? trxLama.partner_id;
 
-        // STEP 5: COMMIT
+        await conn.query(
+            `UPDATE transactions 
+             SET reference_no = ?, date = ?, source_warehouse_id = ?, partner_id = ?, 
+                 delivery_order_no = ?, notes = ?
+             WHERE id = ?`,
+            [
+                finalReferenceNo, 
+                finalDate, 
+                finalWhId, 
+                finalPartnerId, 
+                data.deliveryOrderNo ?? trxLama.delivery_order_no, 
+                data.notes ?? trxLama.notes, 
+                id
+            ]
+        );
+
+        // 5️⃣ Terapkan stok baru & detail baru (Internal validation for stock)
+        await applyTransactionLogic(conn, id, { ...data, sourceWarehouseId: finalWhId }, user);
+
+        // STEP 6: Commit jika semua sukses
         await conn.commit();
-        console.log(`[STEP 5] Committed Successfully`);
-        
         return { success: true, message: 'Transaksi berhasil diupdate' };
 
     } catch (error) {
-        console.error(`[CRITICAL FAIL] ${error.message}`);
-        if (conn) {
-            console.log(`[ROLLBACK] Rolling back changes...`);
-            await conn.rollback();
-        }
-        throw error;
+        if (conn) await conn.rollback();
+        console.error('UPDATE ERROR:', error.message);
+        throw error; // Biarkan controller menangkap error ini
     } finally {
-        if (conn) {
-            console.log(`[RELEASE] Releasing connection to pool`);
-            conn.release();
-        }
+        if (conn) conn.release();
     }
 };
 
@@ -133,7 +145,7 @@ exports.processInboundTransaction = async (data, user) => {
         await conn.query('SET innodb_lock_wait_timeout = 10');
         await conn.beginTransaction();
         const trxId = data.id || uuidv4();
-        await applyTransactionInternal(conn, { ...data, id: trxId, type: 'IN' }, user);
+        await applyTransactionLogic(conn, trxId, { ...data, type: 'IN' }, user);
         await conn.commit();
         return { success: true, id: trxId };
     } catch (e) {
@@ -150,7 +162,7 @@ exports.processOutboundTransaction = async (data, user) => {
         await conn.query('SET innodb_lock_wait_timeout = 10');
         await conn.beginTransaction();
         const trxId = data.id || uuidv4();
-        await applyTransactionInternal(conn, { ...data, id: trxId, type: 'OUT' }, user);
+        await applyTransactionLogic(conn, trxId, { ...data, type: 'OUT' }, user);
         await conn.commit();
         return { success: true, id: trxId };
     } catch (e) {

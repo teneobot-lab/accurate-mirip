@@ -20,7 +20,7 @@ exports.createTransaction = async (req, res, next) => {
     } catch (error) {
         console.error('CREATE TX ERROR:', error);
         return res.status(error.code === 'INSUFFICIENT_STOCK' ? 409 : 500).json({
-            status: 'error',
+            success: false,
             message: error.message || 'Gagal membuat transaksi'
         });
     }
@@ -34,12 +34,14 @@ exports.updateTransaction = async (req, res, next) => {
         console.log(`[CONTROLLER] Processing PUT /transactions/${id}`);
         const result = await inventoryService.updateTransaction(id, req.body, user);
         
-        return res.json({ status: 'success', ...result });
+        return res.json({ success: true, ...result });
     } catch (error) {
         console.error('[CONTROLLER-ERROR] Failed to update TX:', error.message);
         
-        // Pola Sesuai Permintaan User:
-        const statusCode = error.code === 'INSUFFICIENT_STOCK' ? 409 : 500;
+        // Pola Status Code Sesuai Permintaan User (404, 409, 500)
+        let statusCode = 500;
+        if (error.message.includes('tidak ditemukan')) statusCode = 404;
+        else if (error.code === 'INSUFFICIENT_STOCK' || error.message.includes('mencukupi')) statusCode = 409;
         
         return res.status(statusCode).json({ 
             success: false, 
@@ -52,9 +54,9 @@ exports.deleteTransaction = async (req, res, next) => {
     try {
         const { id } = req.params;
         await inventoryService.deleteTransaction(id);
-        return res.json({ status: 'success', message: 'Transaksi berhasil dihapus dan stok diperbarui' });
+        return res.json({ success: true, message: 'Transaksi berhasil dihapus dan stok diperbarui' });
     } catch (error) {
-        return res.status(500).json({ status: 'error', message: error.message });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
