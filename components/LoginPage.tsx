@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { User, Lock, Loader2 } from 'lucide-react';
-import { StorageService } from '../services/storage';
+import { StorageService, API_URL } from '../services/storage';
 
 interface Props {
     onLogin: (user: any) => void;
@@ -13,34 +13,32 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
-        // Simulate network delay for effect
-        setTimeout(() => {
-            const users = StorageService.getUsers();
-            
-            // Check Storage for custom users
-            // Note: In a real app, never store plain text passwords. This is for client-side demo only.
-            const user = users.find(u => u.username === username && u.password === password && u.status === 'ACTIVE');
-            
-            // Logic: Superadmin (admin/22) OR Stored User
-            if (
-                (username === 'admin' && password === '22') || 
-                user
-            ) {
-                onLogin({ 
-                    name: user ? user.name : 'Super Admin', 
-                    username: username, 
-                    role: user ? user.role : 'ADMIN' 
-                });
+        try {
+            // Melakukan request ke API asli
+            const response = await fetch(`${API_URL}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.status === 'success') {
+                onLogin(result.user);
             } else {
-                setError('Invalid username or password.');
-                setIsLoading(false);
+                setError(result.message || 'Invalid username or password.');
             }
-        }, 1000);
+        } catch (err) {
+            console.error('Login error:', err);
+            setError('Could not connect to the server. Please check your connection.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

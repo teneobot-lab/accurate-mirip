@@ -15,6 +15,9 @@ const STORAGE_KEYS = {
   SESSION: 'gp_session'
 };
 
+// URL Backend (Port 3000 untuk ACC)
+export const API_URL = 'http://89.21.85.28:3000';
+
 const isBrowser = typeof window !== 'undefined';
 
 export const StorageService = {
@@ -34,6 +37,22 @@ export const StorageService = {
       localStorage.setItem(STORAGE_KEYS.REJECT_OUTLETS, JSON.stringify(['Outlet Pusat']));
       localStorage.setItem(STORAGE_KEYS.PLAYLISTS, JSON.stringify([]));
     }
+  },
+
+  // --- API HELPER ---
+  async apiCall(endpoint: string, options: RequestInit = {}) {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'API Call Failed');
+    }
+    return response.json();
   },
 
   // --- SESSION MANAGEMENT ---
@@ -92,22 +111,15 @@ export const StorageService = {
   },
   deleteItems: (ids: string[]) => {
     if (!isBrowser) return;
-    // INTEGRITY CHECK: Don't delete items that have transactions
     const txs = StorageService.getTransactions();
     const usedItemIds = new Set<string>();
     txs.forEach(t => t.items.forEach(ti => usedItemIds.add(ti.itemId)));
-    
     const safeToDelete = ids.filter(id => !usedItemIds.has(id));
     const rejected = ids.length - safeToDelete.length;
-
-    if (rejected > 0) {
-        alert(`${rejected} items could not be deleted because they are used in transactions.`);
-    }
-
+    if (rejected > 0) alert(`${rejected} items are in use and cannot be deleted.`);
     if (safeToDelete.length > 0) {
         const items = StorageService.getItems().filter(i => !safeToDelete.includes(i.id));
         localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
-        // Also clean up stocks for these items
         const stocks = StorageService.getStocks().filter(s => !safeToDelete.includes(s.itemId));
         localStorage.setItem(STORAGE_KEYS.STOCKS, JSON.stringify(stocks));
     }
@@ -127,14 +139,9 @@ export const StorageService = {
   },
   deleteWarehouse: (id: string) => {
       if (!isBrowser) return;
-      // INTEGRITY CHECK
       const txs = StorageService.getTransactions();
       const isUsed = txs.some(t => t.sourceWarehouseId === id || t.targetWarehouseId === id);
-      if (isUsed) {
-          alert("Cannot delete warehouse. It contains transaction history.");
-          return;
-      }
-      
+      if (isUsed) { alert("Warehouse has transaction history."); return; }
       const list = StorageService.getWarehouses().filter(w => w.id !== id);
       localStorage.setItem(STORAGE_KEYS.WAREHOUSES, JSON.stringify(list));
   },
@@ -145,22 +152,15 @@ export const StorageService = {
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.STOCKS) || '[]') as Stock[];
   },
   
-  // --- CORE STOCK ENGINE ---
   updateStock: (itemId: string, warehouseId: string, deltaQty: number) => {
       if (!isBrowser) return;
       const stocks = StorageService.getStocks();
       const index = stocks.findIndex(s => s.itemId === itemId && s.warehouseId === warehouseId);
-      
       if (index >= 0) {
           stocks[index].qty += deltaQty;
-          // Prevent precision errors
           stocks[index].qty = Math.round(stocks[index].qty * 10000) / 10000;
       } else {
-          stocks.push({
-              itemId,
-              warehouseId,
-              qty: deltaQty
-          });
+          stocks.push({ itemId, warehouseId, qty: deltaQty });
       }
       localStorage.setItem(STORAGE_KEYS.STOCKS, JSON.stringify(stocks));
   },
@@ -172,28 +172,18 @@ export const StorageService = {
 
   commitTransaction: (tx: Transaction) => {
     if (!isBrowser) return;
-    
-    // 1. Save Transaction Log
     const transactions = StorageService.getTransactions();
     transactions.unshift(tx);
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-
-    // 2. Update Stock Levels (Engine)
     tx.items.forEach(item => {
         const baseQty = item.qty * item.ratio;
-
         if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') {
-            // IN: Add to Source (Receiving) Warehouse
             StorageService.updateStock(item.itemId, tx.sourceWarehouseId, baseQty);
         } else if (tx.type === 'OUT') {
-            // OUT: Deduct from Source Warehouse
             StorageService.updateStock(item.itemId, tx.sourceWarehouseId, -baseQty);
         } else if (tx.type === 'TRANSFER') {
-            // TRANSFER: Deduct Source, Add Target
             StorageService.updateStock(item.itemId, tx.sourceWarehouseId, -baseQty);
-            if (tx.targetWarehouseId) {
-                StorageService.updateStock(item.itemId, tx.targetWarehouseId, baseQty);
-            }
+            if (tx.targetWarehouseId) StorageService.updateStock(item.itemId, tx.targetWarehouseId, baseQty);
         }
     });
   },
@@ -203,15 +193,11 @@ export const StorageService = {
     const transactions = StorageService.getTransactions();
     const idx = transactions.findIndex(t => t.id === tx.id);
     if (idx >= 0) {
-        // NOTE: In this MVP, we do NOT rollback and re-apply stock for edits.
-        // We assume edits are for Meta-data (Notes, RefNo) only.
-        // TransactionForm is responsible for blocking Item/Qty edits on existing records.
         transactions[idx] = tx;
         localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
     }
   },
 
-  // Partners
   getPartners: (): Partner[] => {
     if (!isBrowser) return [];
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.PARTNERS) || '[]') as Partner[];
@@ -229,7 +215,6 @@ export const StorageService = {
       localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(list));
   },
 
-  // Users
   getUsers: (): AppUser[] => {
     if (!isBrowser) return [];
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.USERS) || '[]') as AppUser[];
@@ -243,16 +228,13 @@ export const StorageService = {
   },
   deleteUser: (id: string) => {
       if (!isBrowser) return;
-      // Prevent deleting last admin
       const list = StorageService.getUsers();
       const user = list.find(u => u.id === id);
       const admins = list.filter(u => u.role === 'ADMIN');
-      
       if (user?.role === 'ADMIN' && admins.length <= 1) {
           alert("Cannot delete the last Administrator.");
           return;
       }
-
       const newList = list.filter(x => x.id !== id);
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(newList));
   },
@@ -264,7 +246,6 @@ export const StorageService = {
     return stock ? stock.qty : 0;
   },
 
-  // Reject Module
   getRejectBatches: (): RejectBatch[] => {
     if (!isBrowser) return [];
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.REJECTS) || '[]') as RejectBatch[];
@@ -274,7 +255,6 @@ export const StorageService = {
       const batches = StorageService.getRejectBatches();
       batches.unshift(batch);
       localStorage.setItem(STORAGE_KEYS.REJECTS, JSON.stringify(batches));
-      // NOTE: Rejects do NOT affect main stock per requirements.
   },
   getRejectOutlets: (): string[] => {
     if (!isBrowser) return [];
