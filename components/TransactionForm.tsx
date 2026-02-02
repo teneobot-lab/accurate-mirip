@@ -84,7 +84,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setPendingUnit(item.baseUnit);
     setQuery(item.name);
     setIsDropdownOpen(false);
-    // Fokus otomatis ke Qty setelah barang dipilih
     setTimeout(() => qtyInputRef.current?.focus(), 10);
   };
 
@@ -128,14 +127,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     
     setLines([...lines, newLine]);
     
-    // Reset form entry
     setQuery('');
     setPendingItem(null);
     setPendingUnit('');
     setPendingQty(1);
     setPendingNote('');
     
-    // Kembalikan fokus ke input barang untuk inputan berikutnya
     setTimeout(() => itemInputRef.current?.focus(), 10);
   };
 
@@ -178,46 +175,45 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-      <div className="bg-[#f3f4f6] dark:bg-slate-900 rounded-3xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-white/20 animate-in zoom-in duration-300">
+    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-[#f8fafc] dark:bg-slate-900 rounded-[28px] shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-slate-300/50 dark:border-slate-800">
         
-        {/* Title Bar */}
-        <div className="bg-slate-900 text-white px-8 py-5 flex justify-between items-center shadow-lg relative">
-            <div className="relative z-10 flex items-center gap-4">
-                <div className={`p-3 rounded-2xl ${type === 'IN' ? 'bg-emerald-600' : 'bg-red-600'} shadow-lg`}>
-                   {initialData ? <Edit3 size={20}/> : <Plus size={20}/>}
+        {/* Title Bar - HD Look */}
+        <div className="bg-white dark:bg-slate-800/80 backdrop-blur-md px-8 py-5 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-5">
+                <div className={`p-3 rounded-2xl shadow-lg shadow-gray-200 dark:shadow-none ${type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                   {initialData ? <Edit3 size={24}/> : <Plus size={24}/>}
                 </div>
                 <div>
-                   <h2 className="font-black text-lg tracking-tight uppercase">
+                   <h2 className="text-xl font-bold text-slate-800 dark:text-white leading-tight uppercase tracking-tight">
                       {initialData ? 'Update' : 'Entry'} {type === 'IN' ? 'Barang Masuk' : 'Barang Keluar'}
                    </h2>
-                   <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Waresix Transaction Control System</p>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Waresix Transaction Control</p>
                 </div>
             </div>
-            <button onClick={onClose} className="hover:bg-white/10 rounded-full p-2 transition-all"><X size={24}/></button>
+            <button onClick={onClose} className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all"><X size={20} className="text-slate-500"/></button>
         </div>
 
-        {/* Header Block */}
-        <div className="p-8 grid grid-cols-2 gap-10 bg-white dark:bg-slate-900/50 border-b dark:border-slate-800 shadow-inner">
+        {/* Header Block - Contrast Improvements */}
+        <div className="p-8 grid grid-cols-2 gap-10 bg-white dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
             <div className="space-y-6">
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{type === 'IN' ? 'Supplier' : 'Customer'}</label>
-                    <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border dark:border-slate-700">
-                        <div className="p-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-blue-500"><User size={16}/></div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">{type === 'IN' ? 'Supplier' : 'Customer'}</label>
+                    <div className="flex items-center gap-3">
                         <select 
-                            className="flex-1 bg-transparent border-none outline-none text-xs font-bold"
+                            className="accurate-input"
                             value={selectedPartnerId}
                             onChange={e => setSelectedPartnerId(e.target.value)}
                         >
-                            <option value="">-- Pilih {type === 'IN' ? 'Supplier' : 'Customer'} --</option>
+                            <option value="">-- Pilih Partner --</option>
                             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Memo</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Keterangan / Memo</label>
                     <textarea 
-                        className="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 p-4 text-xs rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 h-24 font-medium transition-all"
+                        className="accurate-input h-24 resize-none leading-relaxed"
                         placeholder="Catatan tambahan transaksi..."
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
@@ -226,28 +222,28 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </div>
 
             <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">No. Bukti</label>
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border dark:border-slate-700">
-                           <div className="p-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-slate-400"><Hash size={16}/></div>
-                           <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full bg-transparent border-none outline-none text-xs font-mono font-bold" />
+                <div className="grid grid-cols-2 gap-5">
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">No. Bukti</label>
+                        <div className="relative">
+                            <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"/>
+                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="accurate-input pl-11 font-mono font-bold text-slate-700" />
                         </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tanggal</label>
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border dark:border-slate-700">
-                           <div className="p-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-emerald-500"><Calendar size={16}/></div>
-                           <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent border-none outline-none text-xs font-bold" />
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Tanggal</label>
+                        <div className="relative">
+                            <Calendar size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"/>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="accurate-input pl-11 font-bold" />
                         </div>
                     </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gudang Penyimpanan</label>
-                    <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border dark:border-slate-700">
-                        <div className="p-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-amber-500"><Building2 size={16}/></div>
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Gudang Penyimpanan</label>
+                    <div className="relative">
+                        <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-amber-500"/>
                         <select 
-                            className="flex-1 bg-transparent border-none outline-none text-xs font-bold"
+                            className="accurate-input pl-11"
                             value={selectedWh}
                             onChange={e => setSelectedWh(e.target.value)}
                         >
@@ -259,50 +255,47 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
 
         {/* Transaction Grid */}
-        <div className="flex-1 overflow-auto bg-white dark:bg-slate-950 px-8 py-6">
-            <table className="w-full text-[11px] border-separate border-spacing-y-2">
-                <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 text-slate-400 font-black uppercase tracking-[0.2em] sticky top-0 z-20">
-                    <tr>
-                        <th className="p-3 w-12 text-center">#</th>
-                        <th className="p-3">Master Item</th>
-                        <th className="p-3 w-28 text-right">Kuantitas</th>
-                        <th className="p-3 w-36 text-center">Satuan</th>
-                        <th className="p-3 w-64">Memo Line</th>
-                        <th className="p-3 w-16 text-center">Aksi</th>
+        <div className="flex-1 overflow-auto bg-[#f8fafc] dark:bg-slate-950 px-8 py-6">
+            <table className="w-full text-left border-separate border-spacing-y-2">
+                <thead>
+                    <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <th className="px-4 py-2 w-12 text-center">#</th>
+                        <th className="px-4 py-2">Master Item</th>
+                        <th className="px-4 py-2 w-32 text-right">Kuantitas</th>
+                        <th className="px-4 py-2 w-32 text-center">Satuan</th>
+                        <th className="px-4 py-2 w-64">Memo Line</th>
+                        <th className="px-4 py-2 w-16 text-center">Aksi</th>
                     </tr>
                 </thead>
-                <tbody className="space-y-2">
+                <tbody>
                     {lines.map((l, i) => (
-                        <tr key={i} className="group bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 rounded-2xl transition-all shadow-sm">
-                            <td className="p-4 text-center font-mono text-slate-300 rounded-l-2xl">{i + 1}</td>
-                            <td className="p-4">
-                                <div className="font-black text-slate-700 dark:text-slate-200">{l.name}</div>
-                                <div className="text-[9px] text-blue-500 font-black flex items-center gap-1"><Tag size={10}/> {l.code}</div>
+                        <tr key={i} className="bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 rounded-2xl group hover:border-blue-300 transition-colors">
+                            <td className="px-4 py-3 text-center font-mono text-slate-300 rounded-l-2xl">{i + 1}</td>
+                            <td className="px-4 py-3">
+                                <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">{l.name}</div>
+                                <div className="text-[10px] font-bold text-blue-500 mt-0.5">{l.code}</div>
                             </td>
-                            <td className="p-4 text-right font-mono font-black text-sm text-slate-800 dark:text-white">{l.qty.toLocaleString()}</td>
-                            <td className="p-4 text-center">
-                                <div className="flex flex-col items-center">
-                                    <span className="bg-white dark:bg-slate-900 px-3 py-1 rounded-full border dark:border-slate-700 text-[10px] font-black text-slate-500">{l.unit}</span>
-                                    {l.ratio !== 1 && <span className="text-[8px] text-blue-400 font-bold mt-1">Ratio: {l.ratio}x</span>}
-                                </div>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-base text-slate-800 dark:text-white">{l.qty.toLocaleString()}</td>
+                            <td className="px-4 py-3 text-center">
+                                <span className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-lg text-[10px] font-bold text-slate-600 dark:text-slate-400">{l.unit}</span>
                             </td>
-                            <td className="p-4 text-slate-500 italic font-medium">{l.note || '-'}</td>
-                            <td className="p-4 text-center rounded-r-2xl">
-                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={16}/></button>
+                            <td className="px-4 py-3 text-slate-500 italic text-xs">{l.note || '-'}</td>
+                            <td className="px-4 py-3 text-center rounded-r-2xl">
+                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={16}/></button>
                             </td>
                         </tr>
                     ))}
                     
-                    {/* Add Line Entry with Custom Autocomplete */}
-                    <tr className="bg-slate-100 dark:bg-slate-900 border border-dashed dark:border-slate-800 rounded-2xl">
-                        <td className="p-3 text-center"><Plus size={16} className="text-blue-500 mx-auto"/></td>
-                        <td className="p-2 relative">
-                            <div className="flex items-center gap-2">
+                    {/* Add Line Entry Row */}
+                    <tr className="bg-slate-100/50 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
+                        <td className="px-4 py-3 text-center"><Plus size={18} className="text-blue-500 mx-auto"/></td>
+                        <td className="px-2 py-3 relative">
+                            <div className="relative">
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-transparent p-2 outline-none text-xs font-black placeholder:text-slate-400" 
-                                    placeholder="Cari Kode atau Nama Barang..."
+                                    className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 outline-none text-sm font-bold placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" 
+                                    placeholder="Cari Barang..."
                                     value={query}
                                     onChange={e => {
                                         setQuery(e.target.value);
@@ -312,32 +305,29 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
                                     onFocus={() => { if(query && !pendingItem) setIsDropdownOpen(true); }}
                                 />
-                                {pendingItem && <button onClick={() => {setPendingItem(null); setQuery(''); itemInputRef.current?.focus();}} className="text-slate-400 hover:text-red-500"><X size={14}/></button>}
+                                {pendingItem && (
+                                    <button 
+                                        onClick={() => {setPendingItem(null); setQuery(''); itemInputRef.current?.focus();}} 
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500"
+                                    ><X size={16}/></button>
+                                )}
                             </div>
 
                             {/* Autocomplete Dropdown */}
                             {isDropdownOpen && (
-                                <div ref={dropdownRef} className="absolute left-0 top-full mt-1 w-[400px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-1">
-                                    <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-b dark:border-slate-700 text-[9px] font-black uppercase text-slate-400 flex justify-between">
-                                        <span>Hasil Pencarian</span>
-                                        <span className="flex items-center gap-1"><CornerDownLeft size={8}/> Enter untuk pilih</span>
-                                    </div>
+                                <div ref={dropdownRef} className="absolute left-2 top-full mt-2 w-[400px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-[100] overflow-hidden">
+                                    <div className="bg-slate-50 dark:bg-slate-900 p-2 border-b border-slate-100 dark:border-slate-700 text-[10px] font-bold uppercase text-slate-400">Hasil Pencarian</div>
                                     <div className="max-h-60 overflow-y-auto">
                                         {filteredItems.map((it, idx) => (
                                             <div 
                                                 key={it.id}
-                                                className={`p-3 cursor-pointer flex justify-between items-center border-b dark:border-slate-700 last:border-0 transition-colors ${idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}
+                                                className={`p-3 cursor-pointer flex justify-between items-center border-b border-slate-50 dark:border-slate-700 last:border-0 ${idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                                                 onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
                                                 onMouseEnter={() => setSelectedIndex(idx)}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-1.5 rounded-lg ${idx === selectedIndex ? 'bg-blue-500 text-white' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'}`}>
-                                                        <Package size={14}/>
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs font-black">{it.name}</span>
-                                                        <span className={`text-[9px] font-bold ${idx === selectedIndex ? 'text-blue-100' : 'text-slate-400'}`}>{it.code}</span>
-                                                    </div>
+                                                <div>
+                                                    <div className="text-xs font-bold">{it.name}</div>
+                                                    <div className={`text-[10px] font-mono ${idx === selectedIndex ? 'text-blue-200' : 'text-slate-400'}`}>{it.code}</div>
                                                 </div>
                                                 <ArrowRight size={14} className={idx === selectedIndex ? 'opacity-100' : 'opacity-0'}/>
                                             </div>
@@ -346,25 +336,20 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 </div>
                             )}
                         </td>
-                        <td className="p-2">
+                        <td className="px-2 py-3">
                             <input 
                                 ref={qtyInputRef}
                                 type="number" 
-                                className="w-full bg-transparent p-2 outline-none text-right font-mono font-black text-sm disabled:opacity-30" 
+                                className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 outline-none text-right font-mono font-bold text-sm text-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
                                 value={pendingQty} 
                                 onChange={e => setPendingQty(e.target.value)} 
                                 disabled={!pendingItem}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleAddLine();
-                                    }
-                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
                             />
                         </td>
-                        <td className="p-2 text-center">
+                        <td className="px-2 py-3 text-center">
                             <select 
-                                className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-1 text-[10px] font-black outline-none w-24"
+                                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl px-2 py-2.5 text-xs font-bold outline-none w-24"
                                 value={pendingUnit}
                                 onChange={e => setPendingUnit(e.target.value)}
                                 disabled={!pendingItem}
@@ -378,11 +363,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 {!pendingItem && <option value="">-</option>}
                             </select>
                         </td>
-                        <td className="p-2">
-                            <input type="text" placeholder="Catatan baris..." className="w-full bg-transparent p-2 outline-none text-xs italic" value={pendingNote} onChange={e => setPendingNote(e.target.value)} disabled={!pendingItem} />
+                        <td className="px-2 py-3">
+                            <input type="text" placeholder="Catatan..." className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 outline-none text-xs" value={pendingNote} onChange={e => setPendingNote(e.target.value)} disabled={!pendingItem} />
                         </td>
-                        <td className="p-2 text-center">
-                            <button onClick={handleAddLine} className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 shadow-lg transition-all active:scale-90"><Plus size={16}/></button>
+                        <td className="px-4 py-3 text-center">
+                            <button onClick={handleAddLine} disabled={!pendingItem} className="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700 shadow-lg disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"><Plus size={18}/></button>
                         </td>
                     </tr>
                 </tbody>
@@ -390,23 +375,23 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
 
         {/* Footer Area */}
-        <div className="p-8 bg-white dark:bg-slate-900 border-t dark:border-slate-800 flex justify-between items-center shadow-lg">
-             <div className="flex gap-8">
+        <div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-lg z-10">
+             <div className="flex gap-10">
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total SKU</span>
-                    <span className="text-lg font-black text-slate-800 dark:text-white">{lines.length} Line</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total SKU</span>
+                    <span className="text-2xl font-bold text-slate-800 dark:text-white leading-none">{lines.length}</span>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Kuantitas</span>
-                    <span className="text-lg font-black text-blue-600">{lines.reduce((acc,l)=>acc+(l.qty * (l.ratio || 1)),0).toLocaleString()} <small className="text-[10px] uppercase font-bold text-slate-400">Pcs/Base</small></span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estimasi Qty</span>
+                    <span className="text-2xl font-bold text-blue-600 leading-none">{lines.reduce((acc,l)=>acc+(l.qty * (l.ratio || 1)),0).toLocaleString()} <small className="text-sm font-medium text-slate-400">Unit</small></span>
                 </div>
              </div>
-             <div className="flex gap-6 items-center">
-                <button onClick={onClose} className="text-xs font-black text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-[0.2em]">Batal</button>
+             <div className="flex gap-4">
+                <button onClick={onClose} className="px-8 py-3.5 text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 uppercase tracking-widest transition-colors">Batal</button>
                 <button 
                     onClick={handleSubmit} 
                     disabled={isSubmitting || !selectedWh}
-                    className="px-12 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-[20px] font-black text-xs shadow-2xl shadow-blue-500/30 flex items-center gap-4 transition-all active:scale-95"
+                    className="px-10 py-3.5 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl font-bold text-xs shadow-xl flex items-center gap-3 transition-all active:scale-95"
                 >
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                     {initialData ? 'PERBARUI TRANSAKSI' : 'POSTING TRANSAKSI'}
@@ -414,6 +399,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
              </div>
         </div>
       </div>
+      <style>{`
+        .accurate-input { 
+            @apply w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl px-5 py-3 text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm text-slate-800 dark:text-white placeholder:text-slate-400; 
+        }
+      `}</style>
     </div>
   );
 };
