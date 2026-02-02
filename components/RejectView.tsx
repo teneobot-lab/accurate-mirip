@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
-import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Upload, Download, Tag, Edit3, Equal, Info, Box } from 'lucide-react';
+import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Upload, Download, Tag, Edit3, Equal, Info, Box, ClipboardCopy, FileSpreadsheet, Share2 } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -35,9 +35,11 @@ export const RejectView: React.FC = () => {
     const [pendingQty, setPendingQty] = useState<number | ''>('');
     const [pendingReason, setPendingReason] = useState('');
 
-    // --- History State ---
+    // --- History & Export State ---
     const [batches, setBatches] = useState<RejectBatch[]>([]);
     const [viewingBatch, setViewingBatch] = useState<RejectBatch | null>(null);
+    const [exportStart, setExportStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
+    const [exportEnd, setExportEnd] = useState(new Date().toISOString().split('T')[0]);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -60,7 +62,63 @@ export const RejectView: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // --- New Entry Logic ---
+    // --- Actions ---
+    const handleCopyToClipboard = (batch: RejectBatch) => {
+        const d = new Date(batch.date);
+        const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
+        
+        let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
+        batch.items.forEach(it => {
+            text += `- ${it.name.toLowerCase()} ${it.qty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
+        });
+
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("Format teks berhasil disalin ke clipboard", "success");
+        }).catch(() => showToast("Gagal menyalin teks", "error"));
+    };
+
+    const handleExportFlattened = () => {
+        const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
+        if (filteredBatches.length === 0) return showToast("Tidak ada data di rentang tanggal tersebut", "warning");
+
+        // 1. Dapatkan list unik tanggal dan barang
+        const dateList = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
+        const itemMap = new Map<string, { code: string, name: string }>();
+        filteredBatches.forEach(b => b.items.forEach(it => {
+            itemMap.set(it.itemId, { code: it.sku, name: it.name });
+        }));
+
+        // 2. Buat Header (Hari dan Tanggal)
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const headerRow1 = ['Kode', 'Nama Barang', ...dateList.map(d => days[new Date(d).getDay()])];
+        const headerRow2 = ['', '', ...dateList.map(d => {
+            const [y, m, day] = d.split('-');
+            return `${day}/${m}/${y}`;
+        })];
+
+        // 3. Buat Data Matrix
+        const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
+            const rowData: any[] = [itemInfo.code, itemInfo.name];
+            dateList.forEach(d => {
+                const totalQty = filteredBatches
+                    .filter(b => b.date === d)
+                    .flatMap(b => b.items)
+                    .filter(it => it.itemId === itemId)
+                    .reduce((sum, it) => sum + Number(it.qty), 0);
+                
+                // Jika 0, biarkan kosong sesuai request
+                rowData.push(totalQty > 0 ? totalQty : "");
+            });
+            return rowData;
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan Flattened");
+        XLSX.writeFile(wb, `Laporan_Reject_Flattened_${exportStart}_${exportEnd}.xlsx`);
+        showToast("Laporan flattened berhasil dibuat", "success");
+    };
+
     const handleAddLine = () => {
         if (!pendingItem || !pendingQty) return showToast("Pilih item & isi Qty", "warning");
         
@@ -171,7 +229,6 @@ export const RejectView: React.FC = () => {
                         category: String(row.Kategori || 'General').trim(),
                         baseUnit: String(row.Satuan_Dasar || 'Pcs').trim(),
                         conversions,
-                        // FIX: Added minStock: 0 to satisfy Item interface required in bulkSaveRejectMasterItems
                         minStock: 0
                     };
                 }).filter(it => it.code && it.name);
@@ -205,7 +262,7 @@ export const RejectView: React.FC = () => {
                 <TabBtn active={activeTab === 'MASTER'} onClick={() => setActiveTab('MASTER')} label="Master Outlet" icon={<MapPin size={16}/>} />
             </div>
 
-            {isLoading && activeTab !== 'MASTER_ITEMS' ? (
+            {isLoading && activeTab !== 'MASTER_ITEMS' && activeTab !== 'HISTORY' ? (
                 <div className="flex-1 flex items-center justify-center text-slate-400 animate-pulse uppercase text-xs font-bold tracking-widest"><Loader2 className="animate-spin mr-2"/> Syncing Reject Data...</div>
             ) : activeTab === 'NEW' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
@@ -295,35 +352,57 @@ export const RejectView: React.FC = () => {
                     </div>
                 </div>
             ) : activeTab === 'HISTORY' ? (
-                <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 overflow-auto shadow-sm">
-                    <table className="w-full text-left text-[11px]">
-                        <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 uppercase font-black text-slate-400 border-b dark:border-slate-700 tracking-widest">
-                            <tr>
-                                <th className="p-4 w-32">ID Batch</th>
-                                <th className="p-4 w-32">Tanggal</th>
-                                <th className="p-4">Lokasi Outlet</th>
-                                <th className="p-4 w-24 text-right">Items</th>
-                                <th className="p-4 w-24 text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y dark:divide-slate-800">
-                            {batches.map(b => (
-                                <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="p-4 font-mono font-bold text-slate-400">{b.id}</td>
-                                    <td className="p-4 font-bold">{b.date}</td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-2"><MapPin size={12} className="text-red-500"/> <span className="font-black text-slate-700 dark:text-slate-200 uppercase">{b.outlet}</span></div>
-                                    </td>
-                                    <td className="p-4 text-right font-black text-red-600">{b.items.length}</td>
-                                    <td className="p-4 text-center flex justify-center gap-2">
-                                        <button onClick={() => setViewingBatch(b)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><Eye size={16}/></button>
-                                        <button onClick={() => { if(confirm('Hapus batch ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-2 text-red-400 hover:scale-110 transition-transform"><Trash2 size={16}/></button>
-                                    </td>
+                <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase">Export Range Start</label>
+                                <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="p-2 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-xs font-bold outline-none" />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase">Export Range End</label>
+                                <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="p-2 bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-xs font-bold outline-none" />
+                            </div>
+                            <button onClick={handleExportFlattened} className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                                <FileSpreadsheet size={16}/> Export Flattened Matrix
+                            </button>
+                        </div>
+                        <button onClick={loadData} className="p-3 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><History size={20}/></button>
+                    </div>
+
+                    <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border dark:border-slate-800 overflow-auto shadow-sm">
+                        <table className="w-full text-left text-[11px]">
+                            <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 uppercase font-black text-slate-400 border-b dark:border-slate-700 tracking-widest">
+                                <tr>
+                                    <th className="p-4 w-32">ID Batch</th>
+                                    <th className="p-4 w-32">Tanggal</th>
+                                    <th className="p-4">Lokasi Outlet</th>
+                                    <th className="p-4 w-24 text-right">Items</th>
+                                    <th className="p-4 w-40 text-center">Aksi</th>
                                 </tr>
-                            ))}
-                            {batches.length === 0 && <tr><td colSpan={10} className="p-20 text-center text-slate-400 italic font-bold">Riwayat Reject Kosong</td></tr>}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y dark:divide-slate-800">
+                                {batches.map(b => (
+                                    <tr key={b.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td className="p-4 font-mono font-bold text-slate-400">{b.id}</td>
+                                        <td className="p-4 font-bold">{b.date}</td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2"><MapPin size={12} className="text-red-500"/> <span className="font-black text-slate-700 dark:text-slate-200 uppercase">{b.outlet}</span></div>
+                                        </td>
+                                        <td className="p-4 text-right font-black text-red-600">{b.items.length}</td>
+                                        <td className="p-4 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button onClick={() => handleCopyToClipboard(b)} title="Salin format teks" className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"><Share2 size={16}/></button>
+                                                <button onClick={() => setViewingBatch(b)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all"><Eye size={16}/></button>
+                                                <button onClick={() => { if(confirm('Hapus batch ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-2 text-red-400 hover:scale-110 transition-transform"><Trash2 size={16}/></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {batches.length === 0 && <tr><td colSpan={10} className="p-20 text-center text-slate-400 italic font-bold">Riwayat Reject Kosong</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : activeTab === 'MASTER_ITEMS' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden animate-in fade-in slide-in-from-top-2">
@@ -512,7 +591,6 @@ export const RejectView: React.FC = () => {
                                                 <div className="text-[9px] text-blue-500 font-mono">{item.sku}</div>
                                             </td>
                                             <td className="p-3 text-right font-black text-red-600">{item.qty.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span></td>
-                                            {/* FIX: Changed base_qty to baseQty to match RejectItem type definition */}
                                             <td className="p-3 text-right font-black text-slate-500">{item.baseQty.toLocaleString()}</td>
                                             <td className="p-3 italic text-slate-400">{item.reason}</td>
                                         </tr>
