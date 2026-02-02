@@ -44,7 +44,7 @@ router.post('/items', async (req, res, next) => {
             }
         }
 
-        // 3. Optional: Initial Stock (Only for new items)
+        // 3. Initial Stock (Accurate Logic: Only for new items)
         if (!id && initialStock > 0) {
             const [whs] = await conn.query('SELECT id FROM warehouses LIMIT 1');
             if (whs.length > 0) {
@@ -90,17 +90,40 @@ router.post('/items/bulk-upsert', async (req, res, next) => {
     }
 });
 
+// FIXED: Bulk Delete with Transaction and Constraint Check
 router.post('/items/bulk-delete', async (req, res, next) => {
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
     try {
         const { ids } = req.body;
         if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: "No IDs provided" });
         
-        await db.query('DELETE FROM items WHERE id IN (?)', [ids]);
-        res.json({ status: 'success', count: ids.length });
-    } catch(e) { next(e); }
+        // 1. Check if any item has transactions
+        const [used] = await conn.query('SELECT item_id FROM transaction_items WHERE item_id IN (?) LIMIT 1', [ids]);
+        if (used.length > 0) {
+            const err = new Error("Sebagian item tidak bisa dihapus karena sudah memiliki riwayat transaksi.");
+            err.status = 409;
+            throw err;
+        }
+
+        // 2. Cascade manually if needed (though schema should handle)
+        await conn.query('DELETE FROM item_units WHERE item_id IN (?)', [ids]);
+        await conn.query('DELETE FROM stock WHERE item_id IN (?)', [ids]);
+        
+        // 3. Final Delete
+        const [result] = await conn.query('DELETE FROM items WHERE id IN (?)', [ids]);
+        
+        await conn.commit();
+        res.json({ status: 'success', count: result.affectedRows });
+    } catch(e) { 
+        await conn.rollback();
+        next(e); 
+    } finally {
+        conn.release();
+    }
 });
 
-// --- WAREHOUSES ---
+// --- WAREHOUSES, PARTNERS, USERS, STOCKS (Tetap sama) ---
 router.get('/warehouses', async (req, res, next) => {
     try {
         const [wh] = await db.query('SELECT * FROM warehouses');
@@ -127,7 +150,6 @@ router.delete('/warehouses/:id', async (req, res, next) => {
     } catch(e) { next(e); }
 });
 
-// --- PARTNERS (SUPPLIERS / CUSTOMERS) ---
 router.get('/partners', async (req, res, next) => {
     try {
         const [pt] = await db.query('SELECT * FROM partners');
@@ -154,7 +176,6 @@ router.delete('/partners/:id', async (req, res, next) => {
     } catch(e) { next(e); }
 });
 
-// --- USERS ---
 router.get('/users', async (req, res, next) => {
     try {
         const [users] = await db.query('SELECT id, username, full_name as name, role, status FROM users');
@@ -190,7 +211,6 @@ router.delete('/users/:id', async (req, res, next) => {
     } catch(e) { next(e); }
 });
 
-// --- STOCKS ---
 router.get('/stocks', async (req, res, next) => {
     try {
         const [stocks] = await db.query('SELECT item_id as itemId, warehouse_id as warehouseId, qty FROM stock');

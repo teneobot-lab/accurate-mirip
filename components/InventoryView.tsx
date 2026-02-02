@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -31,6 +31,7 @@ export const InventoryView: React.FC = () => {
         category: '',
         baseUnit: 'Pcs',
         minStock: 10,
+        initialStock: 0,
         conversions: []
     });
 
@@ -106,8 +107,6 @@ export const InventoryView: React.FC = () => {
                     conversions: []
                 })).filter(it => it.code && it.name);
 
-                if (payloadItems.length === 0) throw new Error("Data tidak valid (Kode/Nama kosong)");
-
                 await StorageService.bulkSaveItems(payloadItems);
                 showToast(`Berhasil mengimpor ${payloadItems.length} item`, "success");
                 loadData();
@@ -133,8 +132,8 @@ export const InventoryView: React.FC = () => {
             showToast(editingItem ? "Data barang diperbarui" : "Barang baru ditambahkan", "success");
             setShowItemModal(false);
             loadData();
-        } catch (e) {
-            showToast("Gagal menyimpan ke server.", "error");
+        } catch (e: any) {
+            showToast(e.message || "Gagal menyimpan ke server.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -142,7 +141,7 @@ export const InventoryView: React.FC = () => {
 
     const handleOpenEdit = (item: Item) => {
         setEditingItem(item);
-        setItemForm({ ...item });
+        setItemForm({ ...item, initialStock: 0 }); // Initial stock is 0 when editing
         setShowItemModal(true);
     };
 
@@ -160,110 +159,134 @@ export const InventoryView: React.FC = () => {
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
-        if (!confirm(`Hapus ${selectedIds.size} item terpilih secara permanen?`)) return;
+        if (!confirm(`Hapus ${selectedIds.size} item terpilih secara permanen? Data yang sudah ada riwayat transaksinya akan ditolak sistem.`)) return;
         setIsLoading(true);
         try {
-            await StorageService.deleteItems(Array.from(selectedIds));
-            showToast("Item terpilih berhasil dihapus", "success");
+            const result = await StorageService.deleteItems(Array.from(selectedIds));
+            showToast(`${result.count} item berhasil dihapus`, "success");
             setSelectedIds(new Set());
             loadData();
-        } catch (e) {
-            showToast("Gagal menghapus data.", "error");
+        } catch (e: any) {
+            showToast(e.message || "Gagal menghapus data.", "error");
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950 p-3 gap-3 transition-colors">
-            {/* Professional Toolbar */}
-            <div className="bg-white dark:bg-slate-900 p-2 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-2">
-                <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+        <div className="flex flex-col h-full bg-[#f8fafc] dark:bg-slate-950 p-4 gap-4 transition-colors font-sans">
+            {/* Accurate Inspired Toolbar */}
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] border border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3">
+                <div className="flex items-center gap-3">
+                    <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={15} />
                         <input 
                             type="text" 
-                            placeholder="Cari item (Kode/Nama)..." 
+                            placeholder="Cari Master Barang..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-8 pr-3 py-1.5 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500 w-64 dark:bg-slate-800 dark:border-slate-700"
+                            className="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-transparent focus:border-blue-500 focus:bg-white border rounded-xl text-sm outline-none w-72 transition-all shadow-inner"
                         />
                     </div>
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1"></div>
-                    <button onClick={() => setIsZebra(!isZebra)} title="Zebra View" className={`p-1.5 rounded-lg ${isZebra ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-100'}`}><Layers size={16}/></button>
-                    <button onClick={() => setShowColumnFilter(!showColumnFilter)} title="Columns" className={`p-1.5 rounded-lg ${showColumnFilter ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-100'}`}><Columns size={16}/></button>
+                    <div className="h-8 w-px bg-slate-200 dark:bg-slate-800"></div>
+                    <button onClick={() => setIsZebra(!isZebra)} title="Zebra View" className={`p-2 rounded-xl transition-all ${isZebra ? 'bg-blue-50 text-blue-600 shadow-sm' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Layers size={18}/></button>
+                    <div className="relative">
+                        <button onClick={() => setShowColumnFilter(!showColumnFilter)} title="Filter Kolom" className={`p-2 rounded-xl transition-all ${showColumnFilter ? 'bg-blue-50 text-blue-600' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Columns size={18}/></button>
+                        {showColumnFilter && (
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl shadow-2xl z-50 p-3 animate-in fade-in slide-in-from-top-2">
+                                <p className="text-[10px] font-black uppercase text-slate-400 mb-3 px-1 flex items-center gap-2"><Filter size={10}/> Visibilitas Kolom</p>
+                                <div className="space-y-1">
+                                    {['code', 'name', 'category', 'total', 'unit'].map(c => (
+                                        <label key={c} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl cursor-pointer text-xs transition-colors">
+                                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" checked={visibleColumns.has(c)} onChange={() => {
+                                                const next = new Set(visibleColumns);
+                                                if (next.has(c)) next.delete(c); else next.add(c);
+                                                setVisibleColumns(next);
+                                            }} /> 
+                                            <span className="capitalize font-medium text-slate-600 dark:text-slate-300">{c === 'code' ? 'Kode' : c === 'name' ? 'Nama' : c === 'total' ? 'Stok' : c}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                     {selectedIds.size > 0 && (
-                        <button onClick={handleBulkDelete} className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold border border-red-100 hover:bg-red-100">
-                            <Trash2 size={14}/> Hapus ({selectedIds.size})
+                        <button onClick={handleBulkDelete} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100 hover:bg-red-100 transition-all animate-in zoom-in">
+                            <Trash2 size={15}/> Hapus ({selectedIds.size})
                         </button>
                     )}
-                    <button onClick={downloadTemplate} className="flex items-center gap-2 px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg text-xs font-bold transition-all border border-slate-200 dark:border-slate-700">
-                        <Download size={14}/> Unduh Template
+                    <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700">
+                        <Download size={15}/> Template
                     </button>
                     <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleImportXLSX} />
                     <button 
                         onClick={() => fileInputRef.current?.click()} 
                         disabled={isImporting}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-100 hover:bg-emerald-100 disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold border border-emerald-100 hover:bg-emerald-100 disabled:opacity-50 transition-all"
                     >
-                        {isImporting ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14}/>} 
-                        {isImporting ? 'Mengimpor...' : 'Import XLSX'}
+                        {isImporting ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15}/>} 
+                        Import
                     </button>
-                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, conversions: [] }); setShowItemModal(true); }} className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-black shadow-lg hover:bg-blue-700 active:scale-95 transition-all">
-                        <Plus size={16}/> Item Baru
+                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0, conversions: [] }); setShowItemModal(true); }} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-500/30 hover:bg-blue-700 active:scale-95 transition-all">
+                        <Plus size={18}/> Item Baru
                     </button>
-                    <button onClick={loadData} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"><RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/></button>
+                    <button onClick={loadData} className="p-2.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
                 </div>
             </div>
 
-            {/* Robust Data Table */}
-            <div className="flex-1 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+            {/* Data Table */}
+            <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-collapse table-fixed">
-                        <thead className="bg-slate-50 dark:bg-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest sticky top-0 z-10 border-b dark:border-slate-700">
+                        <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-widest sticky top-0 z-10 border-b dark:border-slate-700">
                             <tr>
-                                <th className="p-3 w-10 text-center">
-                                    <button onClick={handleToggleSelectAll}>
-                                        {selectedIds.size === inventoryData.length && inventoryData.length > 0 ? <CheckSquare size={16} className="text-blue-600"/> : <Square size={16}/>}
+                                <th className="p-4 w-12 text-center">
+                                    <button onClick={handleToggleSelectAll} className="hover:scale-110 transition-transform">
+                                        {selectedIds.size === inventoryData.length && inventoryData.length > 0 ? <CheckSquare size={18} className="text-blue-600"/> : <Square size={18} className="text-slate-300"/>}
                                     </button>
                                 </th>
-                                {visibleColumns.has('code') && <th className="p-3 w-32">Kode</th>}
-                                {visibleColumns.has('name') && <th className="p-3 w-auto">Nama Barang</th>}
-                                {visibleColumns.has('category') && <th className="p-3 w-32">Kategori</th>}
+                                {visibleColumns.has('code') && <th className="p-4 w-36">Kode Ref</th>}
+                                {visibleColumns.has('name') && <th className="p-4 w-auto">Nama Deskriptif Barang</th>}
+                                {visibleColumns.has('category') && <th className="p-4 w-36">Kategori</th>}
                                 {warehouses.map(wh => (
-                                    <th key={wh.id} className="p-3 w-20 text-right text-blue-600 font-bold border-l dark:border-slate-700">{wh.name}</th>
+                                    <th key={wh.id} className="p-4 w-24 text-right text-blue-500 border-l dark:border-slate-700/50">{wh.name}</th>
                                 ))}
-                                {visibleColumns.has('total') && <th className="p-3 w-24 text-right bg-blue-50/50 dark:bg-blue-900/20 font-black">Total</th>}
-                                {visibleColumns.has('unit') && <th className="p-3 w-20 text-center">Unit</th>}
-                                {visibleColumns.has('actions') && <th className="p-3 w-16 text-center">Aksi</th>}
+                                {visibleColumns.has('total') && <th className="p-4 w-28 text-right bg-blue-50/30 dark:bg-blue-900/10 font-black">Total Stok</th>}
+                                {visibleColumns.has('unit') && <th className="p-4 w-20 text-center">Unit</th>}
+                                {visibleColumns.has('actions') && <th className="p-4 w-16 text-center">Aksi</th>}
                             </tr>
                         </thead>
-                        <tbody className="text-[11px]">
+                        <tbody className="text-[11px] divide-y dark:divide-slate-800">
                             {inventoryData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10} className="p-20 text-center text-slate-400 italic font-bold">Data Kosong</td>
+                                    <td colSpan={15} className="p-24 text-center">
+                                        <div className="flex flex-col items-center gap-3 opacity-30">
+                                            <Database size={48}/>
+                                            <p className="font-black uppercase tracking-widest">Database Kosong</p>
+                                        </div>
+                                    </td>
                                 </tr>
                             ) : inventoryData.map((item, idx) => (
-                                <tr key={item.id} className={`border-b dark:border-slate-800 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/30' : (isZebra && idx % 2 !== 0 ? 'bg-slate-50/30 dark:bg-slate-800/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40')}`}>
-                                    <td className="p-3 text-center">
-                                        <button onClick={() => handleToggleSelect(item.id)}>
-                                            {selectedIds.has(item.id) ? <CheckSquare size={16} className="text-blue-600"/> : <Square size={16} className="text-slate-300"/>}
+                                <tr key={item.id} className={`group transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/30' : (isZebra && idx % 2 !== 0 ? 'bg-[#fafbfc]/50 dark:bg-slate-800/20' : 'hover:bg-[#f1f5f9]/50 dark:hover:bg-slate-800/40')}`}>
+                                    <td className="p-4 text-center">
+                                        <button onClick={() => handleToggleSelect(item.id)} className="transition-transform active:scale-75">
+                                            {selectedIds.has(item.id) ? <CheckSquare size={18} className="text-blue-600"/> : <Square size={18} className="text-slate-200 group-hover:text-slate-400"/>}
                                         </button>
                                     </td>
-                                    {visibleColumns.has('code') && <td className="p-3 font-mono font-bold text-slate-500 uppercase">{item.code}</td>}
-                                    {visibleColumns.has('name') && <td className="p-3 font-black text-slate-700 dark:text-slate-200 truncate">{item.name}</td>}
-                                    {visibleColumns.has('category') && <td className="p-3 text-slate-400 font-bold">{item.category}</td>}
+                                    {visibleColumns.has('code') && <td className="p-4 font-mono font-bold text-slate-500">{item.code}</td>}
+                                    {visibleColumns.has('name') && <td className="p-4 font-black text-slate-700 dark:text-slate-200 truncate group-hover:text-blue-600 transition-colors">{item.name}</td>}
+                                    {visibleColumns.has('category') && <td className="p-4 text-slate-400 font-bold uppercase tracking-tight">{item.category}</td>}
                                     {item.whBreakdown.map(bd => (
-                                        <td key={bd.whId} className="p-3 text-right font-mono text-slate-600 border-l dark:border-slate-800/50">{bd.qty.toLocaleString()}</td>
+                                        <td key={bd.whId} className="p-4 text-right font-mono text-slate-600 border-l dark:border-slate-800/30">{bd.qty.toLocaleString()}</td>
                                     ))}
-                                    {visibleColumns.has('total') && <td className="p-3 text-right font-black font-mono text-blue-600 text-sm">{item.totalStock.toLocaleString()}</td>}
-                                    {visibleColumns.has('unit') && <td className="p-3 text-center"><span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase text-slate-500">{item.baseUnit}</span></td>}
+                                    {visibleColumns.has('total') && <td className="p-4 text-right font-black font-mono text-blue-600 text-[13px]">{item.totalStock.toLocaleString()}</td>}
+                                    {visibleColumns.has('unit') && <td className="p-4 text-center"><span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase text-slate-500 border border-slate-200 dark:border-slate-700">{item.baseUnit}</span></td>}
                                     {visibleColumns.has('actions') && (
-                                        <td className="p-3 text-center">
-                                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-blue-500 hover:bg-blue-100 rounded-lg"><Edit3 size={14}/></button>
+                                        <td className="p-4 text-center">
+                                            <button onClick={() => handleOpenEdit(item)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all"><Edit3 size={15}/></button>
                                         </td>
                                     )}
                                 </tr>
@@ -273,123 +296,143 @@ export const InventoryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Aesthetic Enhanced Item Modal */}
+            {/* Industrial Design Item Modal */}
             {showItemModal && (
-                <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 backdrop-blur-md">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] border dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in duration-300">
+                <div className="fixed inset-0 bg-slate-950/80 z-[60] flex items-center justify-center p-4 backdrop-blur-md">
+                    <div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-3xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
                         
-                        {/* Modal Header */}
-                        <div className="bg-slate-900 text-white px-8 py-6 flex justify-between items-center relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-12 bg-blue-600/10 rounded-full blur-3xl -mr-12 -mt-12"></div>
-                            <div className="relative z-10 flex items-center gap-4">
-                                <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-500/30">
-                                    <Box size={24} className="text-white"/>
+                        {/* Modal Top Branding */}
+                        <div className="bg-slate-900 text-white px-10 py-8 flex justify-between items-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+                            <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-600/10 rounded-full blur-[60px] -ml-16 -mb-16"></div>
+                            
+                            <div className="relative z-10 flex items-center gap-6">
+                                <div className="p-4 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl shadow-xl shadow-blue-500/20 ring-4 ring-white/10">
+                                    <Box size={28} className="text-white"/>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black tracking-tight leading-none mb-1">
-                                        {editingItem ? 'Edit Master Data' : 'Registrasi Barang Baru'}
-                                    </h3>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Sinkronisasi Database MySQL Active</p>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h3 className="text-xl font-black tracking-tight leading-none">
+                                            {editingItem ? 'Informasi Perubahan Item' : 'Registrasi Barang Baru'}
+                                        </h3>
+                                        {editingItem && <span className="bg-blue-500/20 text-blue-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest border border-blue-500/30">Edit Mode</span>}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+                                        <ShieldCheck size={12} className="text-emerald-500"/> Terkoneksi ke MySQL Instance: gp_waresix_db
+                                    </p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowItemModal(false)} className="relative z-10 p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20}/></button>
+                            <button onClick={() => setShowItemModal(false)} className="relative z-10 p-3 hover:bg-white/10 rounded-2xl transition-all group"><X size={24} className="group-hover:rotate-90 transition-transform"/></button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-8 space-y-8 overflow-y-auto max-h-[75vh] scrollbar-hide">
+                        {/* Modal Body - Industrial Layout */}
+                        <div className="p-10 space-y-10 overflow-y-auto max-h-[70vh] scrollbar-hide">
                             
-                            {/* Section 1: Identitas Utama */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-1 h-4 bg-blue-600 rounded-full"></div>
-                                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider">Identitas Master</h4>
+                            {/* Group 1: General Info */}
+                            <div className="grid grid-cols-12 gap-8">
+                                <div className="col-span-12 flex items-center gap-3 mb-2">
+                                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600"><Tag size={16}/></div>
+                                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Spesifikasi Identitas</h4>
                                 </div>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Kode Barang</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input font-mono font-bold" 
-                                            placeholder="KOD-001" 
-                                            value={itemForm.code} 
-                                            onChange={e => setItemForm({...itemForm, code: e.target.value.toUpperCase()})} 
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Kategori</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input" 
-                                            placeholder="Elektronik / Bahan Baku" 
-                                            value={itemForm.category} 
-                                            onChange={e => setItemForm({...itemForm, category: e.target.value})} 
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Nama Deskriptif Barang</label>
+                                
+                                <div className="col-span-4 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Katalog / Kode</label>
                                     <input 
                                         type="text" 
-                                        className="form-input text-sm font-black" 
-                                        placeholder="Contoh: Laptop Dell XPS 13 i7 16GB" 
+                                        className="accurate-input font-mono font-bold text-blue-600 uppercase" 
+                                        placeholder="EX: SKU-001" 
+                                        value={itemForm.code} 
+                                        onChange={e => setItemForm({...itemForm, code: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="col-span-8 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Nama Deskriptif (Wajib)</label>
+                                    <input 
+                                        type="text" 
+                                        className="accurate-input font-black text-slate-800 dark:text-white" 
+                                        placeholder="Contoh: SEMEN TIGA RODA 50KG" 
                                         value={itemForm.name} 
                                         onChange={e => setItemForm({...itemForm, name: e.target.value})} 
                                     />
                                 </div>
-                            </div>
-
-                            {/* Section 2: Logistik & Stok */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="w-1 h-4 bg-emerald-600 rounded-full"></div>
-                                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider">Parameter Logistik</h4>
-                                </div>
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Satuan Dasar</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input bg-emerald-50/30 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800/50 font-bold text-emerald-700 dark:text-emerald-400" 
-                                            placeholder="Pcs / Kg / Meter" 
-                                            value={itemForm.baseUnit} 
-                                            onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
-                                        />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Min. Stock Alert</label>
-                                        <input 
-                                            type="number" 
-                                            className="form-input font-mono font-bold" 
-                                            value={itemForm.minStock} 
-                                            onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
-                                        />
-                                    </div>
+                                <div className="col-span-12 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Kategori Inventaris</label>
+                                    <input 
+                                        type="text" 
+                                        className="accurate-input" 
+                                        placeholder="Contoh: MATERIAL / ELEKTRONIK / MAKANAN" 
+                                        value={itemForm.category} 
+                                        onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
+                                    />
                                 </div>
                             </div>
 
-                            {/* Section 3: Multi Unit (Conversion) */}
-                            <div className="pt-6 border-t dark:border-slate-800">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1 h-4 bg-amber-500 rounded-full"></div>
-                                        <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider">Multi Satuan Konversi</h4>
+                            {/* Group 2: Unit & Stock Control */}
+                            <div className="grid grid-cols-12 gap-8 pt-8 border-t dark:border-slate-800">
+                                <div className="col-span-12 flex items-center gap-3 mb-2">
+                                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Database size={16}/></div>
+                                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Manajemen Kontrol Stok</h4>
+                                </div>
+
+                                <div className="col-span-4 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Satuan Terkecil</label>
+                                    <input 
+                                        type="text" 
+                                        className="accurate-input border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-900/10 font-black text-emerald-700 dark:text-emerald-400" 
+                                        placeholder="Pcs / Box / Kg" 
+                                        value={itemForm.baseUnit} 
+                                        onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
+                                    />
+                                </div>
+                                <div className="col-span-4 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Minimal Stok Alert</label>
+                                    <input 
+                                        type="number" 
+                                        className="accurate-input text-right font-mono font-bold" 
+                                        value={itemForm.minStock} 
+                                        onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
+                                    />
+                                </div>
+                                {!editingItem && (
+                                    <div className="col-span-4 space-y-2 animate-in slide-in-from-right duration-300">
+                                        <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Stok Awal (Saldo)</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                className="accurate-input text-right font-mono font-black text-blue-600 bg-blue-50/30 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/50" 
+                                                value={itemForm.initialStock} 
+                                                onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
+                                            />
+                                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-blue-400 uppercase">Input</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Group 3: Conversion Grid */}
+                            <div className="pt-8 border-t dark:border-slate-800">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600"><LayoutGrid size={16}/></div>
+                                        <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Multi-Unit Conversion System</h4>
                                     </div>
                                     <button 
                                         onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1 }]})} 
-                                        className="px-3 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase rounded-lg border border-amber-100 dark:border-amber-800/50 flex items-center gap-1 hover:bg-amber-100 transition-colors"
+                                        className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black uppercase rounded-xl shadow-lg shadow-amber-500/30 flex items-center gap-2 transition-all active:scale-95"
                                     >
-                                        <Plus size={12}/> Tambah Level
+                                        <Plus size={14}/> Tambah Satuan
                                     </button>
                                 </div>
-                                <div className="space-y-3">
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {itemForm.conversions?.map((c, i) => (
-                                        <div key={i} className="flex gap-3 items-center bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border dark:border-slate-800 group animate-in slide-in-from-left duration-200" style={{ animationDelay: `${i*50}ms` }}>
-                                            <div className="flex-1 flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-slate-400">1</span>
+                                        <div key={i} className="flex gap-4 items-center bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border dark:border-slate-800 group hover:border-blue-300 transition-all">
+                                            <div className="flex-1 flex flex-col gap-1.5">
+                                                <label className="text-[9px] font-bold text-slate-400 uppercase">Satuan Level {i+1}</label>
                                                 <input 
                                                     type="text" 
-                                                    className="bg-transparent text-xs font-black border-b border-dashed border-slate-300 dark:border-slate-700 outline-none w-full pb-1 focus:border-blue-500" 
-                                                    placeholder="Contoh: BOX / DUS" 
+                                                    className="bg-transparent text-sm font-black border-b-2 border-slate-200 dark:border-slate-700 outline-none w-full pb-1 focus:border-blue-500 transition-colors uppercase" 
+                                                    placeholder="BOX / DUS" 
                                                     value={c.name} 
                                                     onChange={e => {
                                                         const next = [...(itemForm.conversions || [])];
@@ -399,33 +442,35 @@ export const InventoryView: React.FC = () => {
                                                 />
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <ArrowRight size={14} className="text-slate-300"/>
-                                                <div className="flex items-center gap-2">
-                                                    <input 
-                                                        type="number" 
-                                                        className="w-16 bg-slate-100 dark:bg-slate-900 text-xs font-black p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-right focus:ring-1 focus:ring-blue-500" 
-                                                        value={c.ratio} 
-                                                        onChange={e => {
-                                                            const next = [...(itemForm.conversions || [])];
-                                                            next[i].ratio = Number(e.target.value);
-                                                            setItemForm({...itemForm, conversions: next});
-                                                        }} 
-                                                    />
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase">{itemForm.baseUnit}</span>
+                                                <div className="flex flex-col gap-1.5 items-end">
+                                                    <label className="text-[9px] font-bold text-slate-400 uppercase">Isi / Rasio</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-20 bg-white dark:bg-slate-900 text-sm font-black p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-right focus:ring-2 focus:ring-blue-500 shadow-sm outline-none" 
+                                                            value={c.ratio} 
+                                                            onChange={e => {
+                                                                const next = [...(itemForm.conversions || [])];
+                                                                next[i].ratio = Number(e.target.value);
+                                                                setItemForm({...itemForm, conversions: next});
+                                                            }} 
+                                                        />
+                                                        <span className="text-[10px] font-black text-slate-500 uppercase">{itemForm.baseUnit}</span>
+                                                    </div>
                                                 </div>
                                                 <button 
                                                     onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
-                                                    className="p-1.5 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                    className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all"
                                                 >
-                                                    <Trash2 size={14}/>
+                                                    <Trash2 size={16}/>
                                                 </button>
                                             </div>
                                         </div>
                                     ))}
                                     {(!itemForm.conversions || itemForm.conversions.length === 0) && (
-                                        <div className="bg-slate-50 dark:bg-slate-800/30 border border-dashed dark:border-slate-800 rounded-2xl p-6 text-center">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic flex items-center justify-center gap-2">
-                                                <Info size={12}/> Hanya Satuan Tunggal ({itemForm.baseUnit})
+                                        <div className="col-span-2 bg-slate-50 dark:bg-slate-800/30 border-2 border-dashed dark:border-slate-800 rounded-2xl p-8 text-center">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-3">
+                                                <Info size={16}/> Tidak Ada Konversi Satuan Ditambahkan
                                             </p>
                                         </div>
                                     )}
@@ -434,20 +479,20 @@ export const InventoryView: React.FC = () => {
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="bg-slate-50 dark:bg-slate-950 p-6 border-t dark:border-slate-800 flex justify-between items-center">
-                            <div className="flex items-center gap-2 text-slate-400">
-                                <AlertCircle size={14}/>
-                                <span className="text-[9px] font-bold uppercase tracking-tighter italic">Pastikan data sesuai dengan standar operasional gudang</span>
+                        <div className="bg-[#fcfdfe] dark:bg-slate-950 p-8 border-t dark:border-slate-800 flex justify-between items-center shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+                            <div className="flex items-center gap-3 text-slate-400 max-w-xs">
+                                <AlertCircle size={18} className="flex-shrink-0 text-amber-500"/>
+                                <span className="text-[10px] font-bold uppercase leading-tight tracking-tight">Perubahan pada master barang akan mempengaruhi perhitungan valuasi stok di seluruh gudang.</span>
                             </div>
-                            <div className="flex gap-4">
-                                <button onClick={() => setShowItemModal(false)} className="px-6 py-2.5 text-xs font-black text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors uppercase tracking-widest">Batal</button>
+                            <div className="flex gap-6 items-center">
+                                <button onClick={() => setShowItemModal(false)} className="text-xs font-black text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors uppercase tracking-widest px-4">Batal</button>
                                 <button 
                                     onClick={handleSaveItem} 
                                     disabled={isLoading} 
-                                    className="px-10 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs shadow-xl shadow-blue-500/20 flex items-center gap-2 active:scale-95 transition-all"
+                                    className="px-12 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-[20px] font-black text-xs shadow-2xl shadow-blue-500/40 flex items-center gap-3 active:scale-95 transition-all disabled:opacity-50"
                                 >
-                                    {isLoading ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>}
-                                    {editingItem ? 'PERBARUI DATABASE' : 'SIMPAN KE MYSQL'}
+                                    {isLoading ? <Loader2 size={18} className="animate-spin"/> : <Save size={18}/>}
+                                    {editingItem ? 'KONFIRMASI PERUBAHAN' : 'REGISTRASI KE DATABASE'}
                                 </button>
                             </div>
                         </div>
@@ -456,8 +501,8 @@ export const InventoryView: React.FC = () => {
             )}
 
             <style>{`
-                .form-input { 
-                    @apply w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-2xl px-4 py-3 text-xs outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all shadow-sm; 
+                .accurate-input { 
+                    @apply w-full border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-2xl px-5 py-3.5 text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm; 
                 }
                 .scrollbar-hide::-webkit-scrollbar { display: none; }
                 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
