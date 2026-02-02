@@ -33,7 +33,6 @@ export const StorageService = {
         const errorData = await response.json();
         errorMessage = errorData.message || errorMessage;
       } catch (e) {
-        // Handle non-JSON errors (like 404 HTML pages)
         if (response.status === 404) errorMessage = `Route not found: ${endpoint}. Pastikan Backend Server sudah di-restart.`;
         else if (response.status === 500) errorMessage = 'Server Error: Periksa koneksi database MySQL.';
         else errorMessage = `HTTP ${response.status}: ${response.statusText}`;
@@ -52,7 +51,10 @@ export const StorageService = {
     return this.apiCall('/api/inventory/items', { method: 'POST', body: JSON.stringify(item) });
   },
   async deleteItems(ids: string[]) {
-    return this.apiCall('/api/inventory/items/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+    return this.apiCall('/api/inventory/items/bulk-delete', { 
+      method: 'POST', 
+      body: JSON.stringify({ ids }) 
+    });
   },
 
   async fetchWarehouses(): Promise<Warehouse[]> {
