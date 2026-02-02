@@ -71,8 +71,8 @@ function App() {
       onClick={() => setActiveTab(id)}
       className={`flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all ${
         activeTab === id 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+        ? 'bg-spectra text-white shadow-lg shadow-black/20 border border-cutty/30' 
+        : 'text-slate-400 hover:bg-spectra/50 hover:text-slate-100'
       }`}
     >
       <Icon size={18} className="mr-3 flex-shrink-0" />
@@ -82,7 +82,7 @@ function App() {
   );
 
   // Don't render until we check session
-  if (isLoadingSession) return <div className="min-h-screen bg-slate-900"></div>;
+  if (isLoadingSession) return <div className="min-h-screen bg-daintree"></div>;
 
   // --- RENDER LOGIN PAGE IF NOT LOGGED IN ---
   if (!isLoggedIn) {
@@ -91,14 +91,14 @@ function App() {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
+      <div className="flex h-screen bg-slate-50 dark:bg-daintree font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
         
         {/* Sidebar */}
-        <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} bg-slate-900 flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30 transition-all duration-300 ease-in-out overflow-hidden`}>
-          <div className="h-20 flex flex-col justify-center px-6 border-b border-slate-800 whitespace-nowrap bg-slate-950">
+        <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} bg-gable flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30 transition-all duration-300 ease-in-out overflow-hidden border-r border-spectra/30`}>
+          <div className="h-20 flex flex-col justify-center px-6 border-b border-spectra/30 whitespace-nowrap bg-daintree">
              <div className="flex items-center leading-none">
                 <span className="text-white font-black text-2xl tracking-tighter">ware</span>
-                <span className="text-red-600 font-black text-2xl tracking-tighter">SIX</span>
+                <span className="text-cutty font-black text-2xl tracking-tighter">SIX</span>
              </div>
              <div className="text-[10px] font-bold text-slate-500 tracking-[0.3em] mt-1">MANAGEMENT</div>
           </div>
@@ -112,15 +112,15 @@ function App() {
              
              <div className="mt-8 text-xs font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest">Quick Actions</div>
              <div className="space-y-2">
-                <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-slate-800 rounded-lg flex items-center transition-colors whitespace-nowrap">
+                <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors whitespace-nowrap">
                    <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3 flex-shrink-0"></div> Inbound
                 </button>
-                <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-slate-800 rounded-lg flex items-center transition-colors whitespace-nowrap">
+                <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors whitespace-nowrap">
                    <div className="w-2 h-2 rounded-full bg-red-500 mr-3 flex-shrink-0"></div> Outbound
                 </button>
              </div>
              
-             <div className="mt-8 border-t border-slate-800 pt-4">
+             <div className="mt-8 border-t border-spectra/30 pt-4">
                  <NavItem id="SETTINGS" label="Settings" icon={Settings} />
                  <button onClick={handleLogout} className="flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all text-red-400 hover:bg-red-900/20 hover:text-red-300 mt-2">
                      <LogOut size={18} className="mr-3 flex-shrink-0" />
@@ -129,32 +129,32 @@ function App() {
              </div>
           </div>
           
-          <div className="p-4 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center whitespace-nowrap">
+          <div className="p-4 border-t border-spectra/30 bg-daintree text-xs text-slate-500 flex justify-between items-center whitespace-nowrap">
              <span>v1.2.0 &copy; 2024</span>
-             <span className="font-bold text-blue-500">Premium</span>
+             <span className="font-bold text-cutty">Premium</span>
           </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col overflow-hidden relative">
-           <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 shadow-sm z-20 transition-colors">
+           <header className="h-16 bg-white dark:bg-gable border-b border-slate-200 dark:border-spectra/50 flex items-center justify-between px-6 shadow-sm z-20 transition-colors">
                <div className="flex items-center gap-4">
                   <button 
                       onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+                      className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-spectra/50 transition-colors focus:outline-none"
                       title="Toggle Sidebar"
                   >
                       <Menu size={20} />
                   </button>
                   <div className="flex-shrink-0 flex flex-col">
-                      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                      <h2 className="text-lg font-bold text-daintree dark:text-slate-100 leading-tight">
                           {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
                           {activeTab === 'INVENTORY' && 'Inventory Master Data'}
                           {activeTab === 'REPORTS' && 'Stock Mutation Reports'}
                           {activeTab === 'SETTINGS' && 'System Configuration'}
                           {activeTab === 'REJECT' && 'Reject / Afkir Management'}
                       </h2>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Warehouse Management System</div>
+                      <div className="text-[10px] text-cutty dark:text-slate-400 font-bold uppercase tracking-wider">Warehouse Management System</div>
                   </div>
                </div>
                
@@ -165,22 +165,22 @@ function App() {
 
                <div className="flex items-center gap-3 flex-shrink-0">
                   <MusicPlayer />
-                  <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+                  <div className="h-8 w-px bg-slate-200 dark:bg-spectra mx-1"></div>
                   <ThemeToggle />
                   
-                  <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-3 pl-3 border-l border-slate-200 dark:border-spectra">
                       <div className="text-right hidden sm:block">
-                          <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{currentUser?.name}</div>
-                          <div className="text-[10px] text-slate-400 uppercase font-bold">{currentUser?.role}</div>
+                          <div className="text-xs font-bold text-daintree dark:text-slate-200">{currentUser?.name}</div>
+                          <div className="text-[10px] text-cutty dark:text-slate-400 uppercase font-bold">{currentUser?.role}</div>
                       </div>
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white font-bold border border-blue-400 shadow-md">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-spectra to-daintree flex items-center justify-center text-white font-bold border border-cutty shadow-md">
                           {currentUser?.name.substring(0,2).toUpperCase() || 'AD'}
                       </div>
                   </div>
                </div>
            </header>
 
-           <div className="flex-1 overflow-hidden relative bg-slate-50 dark:bg-slate-950 transition-colors">
+           <div className="flex-1 overflow-hidden relative bg-slate-50 dark:bg-daintree transition-colors">
                {activeTab === 'DASHBOARD' && <DashboardView />}
                {activeTab === 'INVENTORY' && <InventoryView />}
                {activeTab === 'REPORTS' && <ReportsView onEditTransaction={handleEditTransaction} />}

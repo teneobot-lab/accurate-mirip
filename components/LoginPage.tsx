@@ -19,8 +19,6 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
         setIsLoading(true);
 
         try {
-            // Menggunakan path relatif /api/auth/login.
-            // API_URL sekarang adalah string kosong (didefinisikan di services/storage.ts)
             const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -43,10 +41,10 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
     };
 
     return (
-        <div className="min-h-screen w-full bg-[#021017] flex items-center justify-center relative overflow-hidden font-sans">
+        <div className="min-h-screen w-full bg-gradient-to-br from-daintree via-gable to-spectra flex items-center justify-center relative overflow-hidden font-sans">
             
             {/* Background Geometric Shape (Diagonal Overlay) */}
-            <div className="absolute top-0 bottom-0 right-0 w-[60%] bg-[#062029] -skew-x-12 translate-x-1/4 z-0 origin-bottom"></div>
+            <div className="absolute top-0 bottom-0 right-0 w-[60%] bg-gable/50 -skew-x-12 translate-x-1/4 z-0 origin-bottom border-l border-white/5"></div>
             
             <div className="relative z-10 w-full max-w-sm px-8 flex flex-col items-center">
                 
@@ -57,14 +55,14 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
                     {/* Username Input - White Circle LEFT */}
                     <div className="relative w-full group">
                         <div className="absolute left-0 top-0 bottom-0 w-12 h-12 bg-white rounded-full flex items-center justify-center z-10 shadow-[2px_0_10px_rgba(0,0,0,0.2)]">
-                            <User size={24} className="text-[#021017]" strokeWidth={2.5} />
+                            <User size={24} className="text-daintree" strokeWidth={2.5} />
                         </div>
                         <input 
                             type="text" 
                             placeholder="Username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="w-full h-12 bg-[#ffffff15] rounded-full pl-16 pr-6 text-white placeholder:text-white/40 outline-none focus:bg-[#ffffff25] transition-all border border-transparent focus:border-white/10 shadow-inner"
+                            className="w-full h-12 bg-[#ffffff15] rounded-full pl-16 pr-6 text-white placeholder:text-white/40 outline-none focus:bg-[#ffffff25] transition-all border border-transparent focus:border-cutty shadow-inner"
                             required
                         />
                     </div>
@@ -76,16 +74,16 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
                             placeholder="Password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full h-12 bg-[#ffffff15] rounded-full pl-6 pr-16 text-white placeholder:text-white/40 outline-none focus:bg-[#ffffff25] transition-all border border-transparent focus:border-white/10 shadow-inner"
+                            className="w-full h-12 bg-[#ffffff15] rounded-full pl-6 pr-16 text-white placeholder:text-white/40 outline-none focus:bg-[#ffffff25] transition-all border border-transparent focus:border-cutty shadow-inner"
                             required
                         />
                          <div className="absolute right-0 top-0 bottom-0 w-12 h-12 bg-white rounded-full flex items-center justify-center z-10 shadow-[-2px_0_10px_rgba(0,0,0,0.2)]">
-                            <Lock size={24} className="text-[#021017]" strokeWidth={2.5} />
+                            <Lock size={24} className="text-daintree" strokeWidth={2.5} />
                         </div>
                     </div>
 
                     {error && (
-                        <div className="text-red-400 text-xs text-center font-bold tracking-wide animate-pulse bg-red-900/20 py-1 rounded">
+                        <div className="text-red-300 text-xs text-center font-bold tracking-wide animate-pulse bg-red-900/40 py-2 rounded-lg border border-red-500/20">
                             {error}
                         </div>
                     )}
@@ -94,9 +92,9 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
                     <button 
                         type="submit" 
                         disabled={isLoading}
-                        className="mt-6 w-full h-14 bg-white rounded-full text-[#021017] text-xl font-bold uppercase tracking-wider hover:bg-slate-200 transition-all shadow-[0_4px_14px_rgba(0,0,0,0.4)] active:scale-[0.98] flex items-center justify-center"
+                        className="mt-6 w-full h-14 bg-cutty hover:bg-spectra text-white rounded-full text-xl font-bold uppercase tracking-wider transition-all shadow-[0_4px_14px_rgba(0,0,0,0.4)] active:scale-[0.98] flex items-center justify-center border border-white/10"
                     >
-                        {isLoading ? <Loader2 size={24} className="animate-spin text-[#021017]" /> : 'LOGIN'}
+                        {isLoading ? <Loader2 size={24} className="animate-spin text-white" /> : 'LOGIN'}
                     </button>
 
                 </form>
