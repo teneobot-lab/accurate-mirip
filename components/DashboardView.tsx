@@ -2,13 +2,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, Transaction } from '../types';
-import { Calendar, Filter, TrendingUp, Package, Activity, Loader2 } from 'lucide-react';
+import { Calendar, Filter, TrendingUp, Package, Activity, Loader2, AlertCircle } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
@@ -19,17 +20,20 @@ export const DashboardView: React.FC = () => {
 
     const loadData = async () => {
         setIsLoading(true);
+        setError(null);
         try {
             const [its, stk, txs] = await Promise.all([
-                StorageService.fetchItems(),
-                StorageService.fetchStocks(),
-                StorageService.fetchTransactions()
+                StorageService.fetchItems().catch(() => []),
+                StorageService.fetchStocks().catch(() => []),
+                StorageService.fetchTransactions().catch(() => [])
             ]);
-            setItems(its);
-            setStocks(stk);
-            setTransactions(txs);
-        } catch (e) {
+            
+            setItems(Array.isArray(its) ? its : []);
+            setStocks(Array.isArray(stk) ? stk : []);
+            setTransactions(Array.isArray(txs) ? txs : []);
+        } catch (e: any) {
             console.error("DB Error", e);
+            setError(e.message || "Gagal sinkronisasi dengan Database MySQL");
         } finally {
             setIsLoading(false);
         }
@@ -40,61 +44,85 @@ export const DashboardView: React.FC = () => {
     }, []);
 
     const stats = useMemo(() => {
-        const totalStockCount = stocks.reduce((acc, s) => acc + Number(s.qty), 0);
-        const filteredTx = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
+        // Safe check: pastikan semua state adalah array
+        const safeStocks = Array.isArray(stocks) ? stocks : [];
+        const safeTransactions = Array.isArray(transactions) ? transactions : [];
+        const safeItems = Array.isArray(items) ? items : [];
+
+        const totalStockCount = safeStocks.reduce((acc, s) => acc + Number(s.qty || 0), 0);
+        const filteredTx = safeTransactions.filter(tx => tx && tx.date >= startDate && tx.date <= endDate);
+        
         let totalIn = 0;
         let totalOut = 0;
 
         filteredTx.forEach(tx => {
+            if (!tx.items) return;
             let qty = 0;
-            tx.items.forEach(line => { qty += Number(line.qty * line.ratio); });
+            tx.items.forEach(line => { 
+                qty += Number((line.qty || 0) * (line.ratio || 1)); 
+            });
             if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') totalIn += qty;
             if (tx.type === 'OUT') totalOut += qty;
         });
 
         return { 
             totalStockCount, 
-            activeItems: items.length,
+            activeItems: safeItems.length,
             totalIn,
             totalOut,
             txCount: filteredTx.length
         };
     }, [items, stocks, transactions, startDate, endDate]);
 
-    if (isLoading) return <div className="h-full flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest"><Loader2 className="animate-spin mr-2"/> Sync MySQL...</div>;
+    if (isLoading) return (
+        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
+            <Loader2 className="animate-spin text-blue-500" size={40} />
+            <div className="text-xs font-bold uppercase tracking-[0.2em] animate-pulse">Sinkronisasi MySQL Central...</div>
+        </div>
+    );
+
+    if (error) return (
+        <div className="h-full flex flex-col items-center justify-center text-red-500 p-8 text-center">
+            <AlertCircle size={48} className="mb-4 opacity-20" />
+            <h3 className="font-bold text-lg mb-2">Koneksi Database Terputus</h3>
+            <p className="text-sm opacity-70 mb-6 max-w-xs">{error}</p>
+            <button onClick={loadData} className="px-6 py-2 bg-red-600 text-white rounded-full font-bold text-xs shadow-lg active:scale-95 transition-all">COBA LAGI</button>
+        </div>
+    );
 
     return (
         <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-8 transition-colors font-sans">
-            <div className="mb-8 flex justify-between items-end">
+            <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Executive Dashboard (DB Sync)</h2>
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Executive Dashboard</h2>
                     <div className="flex gap-3">
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border p-2 rounded text-xs dark:bg-slate-900" />
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border p-2 rounded text-xs dark:bg-slate-900" />
-                        <button onClick={loadData} className="p-2 bg-blue-600 text-white rounded"><Filter size={16}/></button>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="border p-2 rounded text-xs dark:bg-slate-900 dark:border-slate-800 outline-none focus:ring-1 focus:ring-blue-500" />
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="border p-2 rounded text-xs dark:bg-slate-900 dark:border-slate-800 outline-none focus:ring-1 focus:ring-blue-500" />
+                        <button onClick={loadData} className="p-2 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition-colors"><Filter size={16}/></button>
                     </div>
                 </div>
-                <div className="text-right text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Connected to MySQL
+                <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> 
+                    MySQL Instance: Active
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <StatCard title="Total Stok Keluar" value={stats.totalOut} icon={<TrendingUp/>} color="bg-red-500" />
-                <StatCard title="Total Stok Masuk" value={stats.totalIn} icon={<Activity/>} color="bg-emerald-500" />
-                <StatCard title="Total Stok Aktif" value={stats.totalStockCount} icon={<Package/>} color="bg-blue-500" />
-                <StatCard title="Total Item Unik" value={stats.activeItems} icon={<Package/>} color="bg-purple-500" />
+                <StatCard title="Total Stok Keluar" value={stats.totalOut} icon={<TrendingUp/>} color="from-red-500 to-red-700" />
+                <StatCard title="Total Stok Masuk" value={stats.totalIn} icon={<Activity/>} color="from-emerald-500 to-emerald-700" />
+                <StatCard title="Total Stok Aktif" value={stats.totalStockCount} icon={<Package/>} color="from-blue-500 to-blue-700" />
+                <StatCard title="Total Item Unik" value={stats.activeItems} icon={<Package/>} color="from-indigo-500 to-indigo-700" />
             </div>
         </div>
     );
 };
 
 const StatCard = ({ title, value, icon, color }: any) => (
-    <div className={`${color} rounded-2xl p-6 text-white shadow-lg flex justify-between items-center overflow-hidden relative`}>
+    <div className={`bg-gradient-to-br ${color} rounded-2xl p-6 text-white shadow-xl flex justify-between items-center overflow-hidden relative group hover:scale-[1.02] transition-transform`}>
         <div className="relative z-10">
-            <p className="text-[10px] font-bold uppercase opacity-80 mb-1">{title}</p>
-            <h3 className="text-2xl font-bold">{value.toLocaleString()}</h3>
+            <p className="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-wider">{title}</p>
+            <h3 className="text-3xl font-black">{value.toLocaleString()}</h3>
         </div>
-        <div className="opacity-20 transform scale-150">{icon}</div>
+        <div className="opacity-10 transform scale-[2.5] group-hover:rotate-12 transition-transform duration-500">{icon}</div>
     </div>
 );
