@@ -87,30 +87,34 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     
     setIsSubmitting(true);
     try {
-        const txData: any = {
+        const txData = {
             date,
             referenceNo: refNo,
             type,
             sourceWarehouseId: selectedWh,
             partnerId: selectedPartnerId,
             items: lines.map(line => ({
-                ...line,
-                conversionRatio: line.ratio || 1
+                item_id: line.itemId, // Mengirim item_id sesuai snippet backend
+                itemId: line.itemId,   // Tetap kirim itemId untuk kompatibilitas
+                qty: line.qty,
+                unit: line.unit,
+                conversionRatio: line.ratio || 1,
+                note: line.note
             })),
-            notes,
-            createdAt: Date.now()
+            notes
         };
         
         if (initialData?.id) {
-            await StorageService.updateTransaction(initialData.id, txData);
+            await StorageService.updateTransaction(initialData.id, txData as any);
             showToast("Transaksi Berhasil Diperbarui", "success");
         } else {
-            await StorageService.commitTransaction({ ...txData, id: crypto.randomUUID() });
+            await StorageService.commitTransaction({ ...txData, id: crypto.randomUUID() } as any);
             showToast("Transaksi Berhasil Disimpan", "success");
         }
         onSuccess();
     } catch (e: any) {
-        showToast(`Gagal: ${e.message}`, "error");
+        const msg = e.message?.includes('409') ? "Gagal: Stok tidak mencukupi untuk salah satu item!" : `Gagal: ${e.message}`;
+        showToast(msg, "error");
     } finally {
         setIsSubmitting(false);
     }
