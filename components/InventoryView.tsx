@@ -3,8 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
 import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight } from 'lucide-react';
+import { useToast } from './Toast';
 
 export const InventoryView: React.FC = () => {
+    const { showToast } = useToast();
     const [items, setItems] = useState<Item[]>([]);
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -78,6 +80,7 @@ export const InventoryView: React.FC = () => {
         if (window.confirm(`Are you sure you want to delete ${selectedIds.size} items?`)) {
             StorageService.deleteItems(Array.from(selectedIds));
             loadData();
+            showToast(`Deleted ${selectedIds.size} items`, 'success');
         }
     };
 
@@ -91,12 +94,12 @@ export const InventoryView: React.FC = () => {
                 setShowImportModal(false);
                 setImportText('');
                 loadData();
-                alert(`Successfully imported ${parsed.length} items.`);
+                showToast(`Successfully imported ${parsed.length} items.`, 'success');
             } else {
-                alert("Invalid format. Expected JSON Array.");
+                showToast("Invalid format. Expected JSON Array.", 'error');
             }
         } catch (e) {
-            alert("JSON Parse Error.");
+            showToast("JSON Parse Error.", 'error');
         }
     };
 
@@ -120,6 +123,7 @@ export const InventoryView: React.FC = () => {
             }
             StorageService.saveItem(newItem);
             loadData();
+            showToast("Item updated", 'success');
         }
         setEditingCell(null);
         setEditValue('');
@@ -134,6 +138,7 @@ export const InventoryView: React.FC = () => {
             const newItem = { ...item, conversions: validConversions };
             StorageService.saveItem(newItem);
             loadData();
+            showToast("Conversions saved", 'success');
         }
         setEditingConversions(null);
     };
@@ -150,14 +155,14 @@ export const InventoryView: React.FC = () => {
     const handleCreateItem = () => {
         // Validation
         if (!newItemForm.code || !newItemForm.name || !newItemForm.baseUnit) {
-            alert("Please fill in Code, Name, and Base Unit.");
+            showToast("Please fill in Code, Name, and Base Unit.", 'warning');
             return;
         }
 
         // Check for duplicate code
         const existing = items.find(i => i.code === newItemForm.code);
         if (existing) {
-             alert("Item code already exists!");
+             showToast("Item code already exists!", 'error');
              return;
         }
 
@@ -175,6 +180,7 @@ export const InventoryView: React.FC = () => {
         loadData();
         setShowNewItemModal(false);
         setNewItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10 });
+        showToast("Item created successfully", 'success');
     };
 
     return (

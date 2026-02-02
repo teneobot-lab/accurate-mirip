@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { Playlist } from '../types';
+import { useToast } from './Toast';
 
 const MusicPlayer: React.FC = () => {
+  const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>(StorageService.getPlaylists());
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
@@ -44,18 +46,20 @@ const MusicPlayer: React.FC = () => {
     };
     setPlaylists([...playlists, newList]);
     setNewPlaylistName('');
+    showToast("Playlist created", "success");
   };
 
   const handleDeletePlaylist = (id: string) => {
     if (!confirm('Delete this playlist?')) return;
     setPlaylists(playlists.filter(p => p.id !== id));
     if (activePlaylistId === id) setActivePlaylistId(null);
+    showToast("Playlist deleted", "info");
   };
 
   const handleAddSong = (playlistId: string) => {
     if (!newSongTitle.trim() || !newSongUrl.trim()) return;
     const ytId = getYoutubeId(newSongUrl);
-    if (!ytId) return alert('Invalid YouTube URL');
+    if (!ytId) return showToast('Invalid YouTube URL', 'error');
 
     const updated = playlists.map(p => {
       if (p.id === playlistId) {
@@ -70,6 +74,7 @@ const MusicPlayer: React.FC = () => {
     setEditingPlaylist(updated.find(p => p.id === playlistId) || null);
     setNewSongTitle('');
     setNewSongUrl('');
+    showToast("Song added to playlist", "success");
   };
 
   const handleDeleteSong = (pId: string, sId: string) => {
@@ -240,7 +245,7 @@ const MusicPlayer: React.FC = () => {
                         setActivePlaylistId(p.id);
                         setCurrentSongIndex(0);
                       } else {
-                        alert('Playlist is empty');
+                        showToast('Playlist is empty', 'info');
                       }
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center group ${

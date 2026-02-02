@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, Edit3, Search, CornerDownLeft, Truck, FileText, User, Upload, Download, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Save, X, Edit3, Search, CornerDownLeft, Truck, FileText, User, Upload, Download, AlertTriangle, CheckCircle, Lock } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useToast } from './Toast';
 
 interface Props {
   type: TransactionType;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, onSuccess }) => {
+  const { showToast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   
@@ -119,9 +121,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       }
 
       const requestedBase = qty * ratio;
+      // CRITICAL: Get FRESH stock data to avoid race conditions in UI state
       const currentStock = StorageService.getStockQty(itemId, sourceWh);
       
-      // Sum up existing lines for this item
+      // Sum up existing lines for this item (including current edit if any)
       const existingBase = currentLines
         .filter(l => l.itemId === itemId)
         .reduce((acc, l) => acc + (l.qty * l.ratio), 0);
@@ -179,13 +182,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       }
       const qty = typeof pendingQty === 'number' ? pendingQty : 1;
       if (qty <= 0) {
-          alert("Quantity must be greater than 0");
+          showToast("Quantity must be greater than 0", "warning");
           return;
       }
 
       // Check Stock
       if (!validateStock(pendingItem.id, qty, pendingUnit, lines)) {
-          alert(`Insufficient stock in ${warehouses.find(w => w.id === sourceWh)?.name}`);
+          showToast(`Insufficient stock in ${warehouses.find(w => w.id === sourceWh)?.name}`, "error");
           qtyInputRef.current?.select();
           return;
       }
@@ -333,7 +336,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       } else {
           // No warnings, add directly
           setLines([...lines, ...newLines]);
-          alert(`Successfully imported ${newLines.length} lines.`);
+          showToast(`Successfully imported ${newLines.length} lines`, "success");
       }
   };
 
@@ -346,11 +349,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   const handleSubmit = () => {
     if (lines.length === 0) {
-        alert("Please add at least one item.");
+        showToast("Please add at least one item", "error");
         return;
     }
     if (type === 'TRANSFER' && sourceWh === targetWh) {
-        alert("Source and Target warehouse cannot be the same.");
+        showToast("Source and Target warehouse cannot be the same", "error");
         return;
     }
 
@@ -370,9 +373,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
     if (initialData) {
         StorageService.updateTransaction(transaction);
-        alert("Transaction updated successfully.");
+        showToast("Transaction updated successfully", "success");
     } else {
         StorageService.commitTransaction(transaction);
+        showToast("Transaction saved successfully", "success");
     }
     onSuccess();
   };
@@ -385,6 +389,18 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     ];
   };
 
+  // Helper Labels based on Type
+  const getSourceWhLabel = () => {
+      if (type === 'IN' || type === 'ADJUSTMENT') return 'Receiving Warehouse (Masuk Ke)';
+      return 'Source Warehouse (Keluar Dari)';
+  };
+
+  const getSupplierLabel = () => {
+      if (type === 'IN') return 'Supplier Name';
+      if (type === 'OUT') return 'Customer Name';
+      return 'Partner / Entity';
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-6xl h-[95vh] flex flex-col relative border border-slate-200 dark:border-slate-800">
@@ -393,12 +409,18 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             <div>
                 <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                     {initialData ? <Edit3 size={20} /> : <Plus size={20} />}
-                    {initialData ? 'Edit Transaction' : 'New Transaction'}
+                    {initialData ? 'Edit Transaction Data' : 'New Transaction'}
                     <span className="mx-2 text-slate-300 dark:text-slate-600">|</span>
                     {type === 'IN' && <span className="text-emerald-600 dark:text-emerald-400">Inbound</span>}
                     {type === 'OUT' && <span className="text-red-600 dark:text-red-400">Outbound</span>}
                     {type === 'TRANSFER' && <span className="text-blue-600 dark:text-blue-400">Transfer</span>}
+                    {type === 'ADJUSTMENT' && <span className="text-amber-600 dark:text-amber-400">Adjustment</span>}
                 </h2>
+                {initialData && (
+                    <div className="text-[10px] text-red-500 font-bold flex items-center gap-1 mt-1">
+                        <Lock size={10} /> Items are locked to preserve stock integrity. Only header info is editable.
+                    </div>
+                )}
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={24} /></button>
         </div>
@@ -422,7 +444,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </div>
                  <div className="flex flex-col gap-1">
                      <label className="font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase flex items-center gap-1">
-                        <User size={12}/> Supplier / Customer
+                        <User size={12}/> {getSupplierLabel()}
                      </label>
                     <input type="text" value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="PT. Vendor Name" className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white" />
                 </div>
@@ -430,15 +452,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                 <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase">Source Warehouse</label>
-                    <select value={sourceWh} onChange={e => setSourceWh(e.target.value)} className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+                    <label className="font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase">{getSourceWhLabel()}</label>
+                    <select 
+                        value={sourceWh} 
+                        onChange={e => setSourceWh(e.target.value)} 
+                        disabled={!!initialData} // Lock Warehouse on Edit
+                        className={`border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white ${initialData ? 'bg-slate-200 opacity-70 cursor-not-allowed' : ''}`}
+                    >
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                 </div>
                 {type === 'TRANSFER' && (
                      <div className="flex flex-col gap-1">
-                        <label className="font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase">Target Warehouse</label>
-                        <select value={targetWh} onChange={e => setTargetWh(e.target.value)} className="border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+                        <label className="font-semibold text-slate-600 dark:text-slate-400 text-xs uppercase">Target Warehouse (Masuk Ke)</label>
+                        <select 
+                            value={targetWh} 
+                            onChange={e => setTargetWh(e.target.value)} 
+                            disabled={!!initialData} // Lock Warehouse on Edit
+                            className={`border p-2 rounded focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white ${initialData ? 'bg-slate-200 opacity-70 cursor-not-allowed' : ''}`}
+                        >
                             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </select>
                     </div>
@@ -496,116 +528,121 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     {itemDef?.baseUnit}
                                 </td>
                                 <td className="p-2 text-center">
-                                    <button onClick={() => handleRemoveLine(idx)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {!initialData && (
+                                        <button onClick={() => handleRemoveLine(idx)} className="text-slate-400 hover:text-red-500 transition-colors">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
+                                    {initialData && <Lock size={12} className="mx-auto text-slate-300" />}
                                 </td>
                             </tr>
                         );
                     })}
                     
-                    {/* INPUT ROW */}
-                    <tr className="bg-emerald-50/30 dark:bg-emerald-900/10 border-t-2 border-emerald-100 dark:border-emerald-900/30 shadow-inner">
-                        <td className="p-2 text-center text-emerald-500 dark:text-emerald-400"><Plus size={16} className="mx-auto"/></td>
-                        <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30 relative">
-                            <div className="relative">
-                                <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input 
-                                    ref={queryInputRef}
-                                    type="text" 
-                                    className="w-full pl-8 pr-2 py-1.5 border border-emerald-200 dark:border-emerald-800 rounded text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-800 dark:text-slate-200 shadow-sm"
-                                    placeholder="Type code or name..."
-                                    value={query}
-                                    onChange={e => setQuery(e.target.value)}
-                                    onKeyDown={handleQueryKeyDown}
-                                    onFocus={() => { if(query) setShowSuggestions(true); }}
-                                />
-                                {/* Autocomplete Dropdown - Centered */}
-                                {showSuggestions && (
-                                    <>
-                                        {/* Invisible backdrop to close on click outside */}
-                                        <div className="fixed inset-0 z-[60] cursor-default" onClick={() => setShowSuggestions(false)}></div>
-                                        
-                                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] max-w-[90vw] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-[70] max-h-[50vh] flex flex-col overflow-hidden ring-1 ring-slate-900/5">
-                                            <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Select Item ({suggestions.length})</span>
-                                                <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded">Use Arrow Keys & Enter</span>
-                                            </div>
-                                            <div className="overflow-y-auto p-0">
-                                                {suggestions.map((item, idx) => (
-                                                    <div 
-                                                        key={item.id}
-                                                        className={`px-4 py-3 cursor-pointer flex justify-between items-center border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors ${idx === highlightedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
-                                                        onClick={() => selectItem(item)}
-                                                        onMouseEnter={() => setHighlightedIndex(idx)}
-                                                    >
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <span className={`font-semibold text-sm ${idx === highlightedIndex ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>{item.name}</span>
-                                                            <span className={`text-xs ${idx === highlightedIndex ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>{item.code} • {item.category}</span>
+                    {/* INPUT ROW - Only show if not editing existing transaction */}
+                    {!initialData && (
+                        <tr className="bg-emerald-50/30 dark:bg-emerald-900/10 border-t-2 border-emerald-100 dark:border-emerald-900/30 shadow-inner">
+                            <td className="p-2 text-center text-emerald-500 dark:text-emerald-400"><Plus size={16} className="mx-auto"/></td>
+                            <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30 relative">
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input 
+                                        ref={queryInputRef}
+                                        type="text" 
+                                        className="w-full pl-8 pr-2 py-1.5 border border-emerald-200 dark:border-emerald-800 rounded text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-800 dark:text-slate-200 shadow-sm"
+                                        placeholder="Type code or name..."
+                                        value={query}
+                                        onChange={e => setQuery(e.target.value)}
+                                        onKeyDown={handleQueryKeyDown}
+                                        onFocus={() => { if(query) setShowSuggestions(true); }}
+                                    />
+                                    {/* Autocomplete Dropdown - Centered */}
+                                    {showSuggestions && (
+                                        <>
+                                            {/* Invisible backdrop to close on click outside */}
+                                            <div className="fixed inset-0 z-[60] cursor-default" onClick={() => setShowSuggestions(false)}></div>
+                                            
+                                            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] max-w-[90vw] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-[70] max-h-[50vh] flex flex-col overflow-hidden ring-1 ring-slate-900/5">
+                                                <div className="bg-slate-50 dark:bg-slate-900 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Select Item ({suggestions.length})</span>
+                                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 rounded">Use Arrow Keys & Enter</span>
+                                                </div>
+                                                <div className="overflow-y-auto p-0">
+                                                    {suggestions.map((item, idx) => (
+                                                        <div 
+                                                            key={item.id}
+                                                            className={`px-4 py-3 cursor-pointer flex justify-between items-center border-b border-slate-50 dark:border-slate-700 last:border-0 transition-colors ${idx === highlightedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'}`}
+                                                            onClick={() => selectItem(item)}
+                                                            onMouseEnter={() => setHighlightedIndex(idx)}
+                                                        >
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className={`font-semibold text-sm ${idx === highlightedIndex ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>{item.name}</span>
+                                                                <span className={`text-xs ${idx === highlightedIndex ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>{item.code} • {item.category}</span>
+                                                            </div>
+                                                            <span className={`text-xs font-mono px-2 py-1 rounded font-bold ${idx === highlightedIndex ? 'bg-blue-500 text-white border border-blue-400' : 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}>{item.baseUnit}</span>
                                                         </div>
-                                                        <span className={`text-xs font-mono px-2 py-1 rounded font-bold ${idx === highlightedIndex ? 'bg-blue-500 text-white border border-blue-400' : 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'}`}>{item.baseUnit}</span>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </td>
-                        <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30">
-                            <input 
-                                ref={qtyInputRef}
-                                type="number" 
-                                min="0.01"
-                                step="any"
-                                className="w-full text-right py-1.5 px-2 border border-emerald-200 dark:border-emerald-800 rounded text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono bg-white dark:bg-slate-800 dark:text-white"
-                                placeholder="Qty"
-                                value={pendingQty}
-                                onChange={e => setPendingQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                onKeyDown={handleQtyKeyDown}
-                            />
-                        </td>
-                        <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30">
-                            <select 
-                                ref={unitInputRef}
-                                className="w-full py-1.5 px-2 border border-emerald-200 dark:border-emerald-800 rounded text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
-                                value={pendingUnit}
-                                onChange={e => setPendingUnit(e.target.value)}
-                                onKeyDown={handleUnitKeyDown}
-                                disabled={!pendingItem}
-                            >
-                                {getUnitsForItem(pendingItem).map(u => (
-                                    <option key={u.name} value={u.name}>{u.name}</option>
-                                ))}
-                            </select>
-                        </td>
-                        
-                        {/* Calculated Previews (Read Only) */}
-                        <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30 text-right font-mono text-slate-400 dark:text-slate-500 italic bg-slate-50/30 dark:bg-slate-800/30">
-                            {pendingItem && typeof pendingQty === 'number' ? (() => {
-                                let ratio = 1;
-                                if (pendingUnit !== pendingItem.baseUnit) {
-                                    const c = pendingItem.conversions.find(x => x.name === pendingUnit);
-                                    if (c) ratio = c.ratio;
-                                }
-                                return pendingQty * ratio;
-                            })() : '-'}
-                        </td>
-                        <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30 text-slate-400 dark:text-slate-500 italic bg-slate-50/30 dark:bg-slate-800/30">
-                            {pendingItem ? pendingItem.baseUnit : '-'}
-                        </td>
+                                        </>
+                                    )}
+                                </div>
+                            </td>
+                            <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30">
+                                <input 
+                                    ref={qtyInputRef}
+                                    type="number" 
+                                    min="0.01"
+                                    step="any"
+                                    className="w-full text-right py-1.5 px-2 border border-emerald-200 dark:border-emerald-800 rounded text-sm focus:ring-2 focus:ring-emerald-500 outline-none font-mono bg-white dark:bg-slate-800 dark:text-white"
+                                    placeholder="Qty"
+                                    value={pendingQty}
+                                    onChange={e => setPendingQty(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                    onKeyDown={handleQtyKeyDown}
+                                />
+                            </td>
+                            <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30">
+                                <select 
+                                    ref={unitInputRef}
+                                    className="w-full py-1.5 px-2 border border-emerald-200 dark:border-emerald-800 rounded text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
+                                    value={pendingUnit}
+                                    onChange={e => setPendingUnit(e.target.value)}
+                                    onKeyDown={handleUnitKeyDown}
+                                    disabled={!pendingItem}
+                                >
+                                    {getUnitsForItem(pendingItem).map(u => (
+                                        <option key={u.name} value={u.name}>{u.name}</option>
+                                    ))}
+                                </select>
+                            </td>
+                            
+                            {/* Calculated Previews (Read Only) */}
+                            <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30 text-right font-mono text-slate-400 dark:text-slate-500 italic bg-slate-50/30 dark:bg-slate-800/30">
+                                {pendingItem && typeof pendingQty === 'number' ? (() => {
+                                    let ratio = 1;
+                                    if (pendingUnit !== pendingItem.baseUnit) {
+                                        const c = pendingItem.conversions.find(x => x.name === pendingUnit);
+                                        if (c) ratio = c.ratio;
+                                    }
+                                    return pendingQty * ratio;
+                                })() : '-'}
+                            </td>
+                            <td className="p-2 border-r border-emerald-100 dark:border-emerald-900/30 text-slate-400 dark:text-slate-500 italic bg-slate-50/30 dark:bg-slate-800/30">
+                                {pendingItem ? pendingItem.baseUnit : '-'}
+                            </td>
 
-                        <td className="p-2 text-center">
-                            <button 
-                                onClick={commitPendingLine}
-                                disabled={!pendingItem}
-                                className="p-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                                title="Add Line (Enter)"
-                            >
-                                <CornerDownLeft size={16} />
-                            </button>
-                        </td>
-                    </tr>
+                            <td className="p-2 text-center">
+                                <button 
+                                    onClick={commitPendingLine}
+                                    disabled={!pendingItem}
+                                    className="p-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                    title="Add Line (Enter)"
+                                >
+                                    <CornerDownLeft size={16} />
+                                </button>
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
         </div>
@@ -613,21 +650,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 flex justify-between items-center rounded-b-lg">
              <div className="flex items-center gap-2">
-                 <button onClick={handleDownloadTemplate} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <Download size={14} /> Template
-                 </button>
-                 <div className="relative">
-                     <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded text-sm hover:bg-slate-900 dark:hover:bg-slate-600 shadow-sm">
-                        <Upload size={14} /> Import XLSX
-                     </button>
-                     <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImportFile} 
-                        accept=".xlsx, .xls" 
-                        className="hidden" 
-                     />
-                 </div>
+                 {!initialData && (
+                    <>
+                        <button onClick={handleDownloadTemplate} className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded text-sm hover:bg-slate-100 dark:hover:bg-slate-800">
+                            <Download size={14} /> Template
+                        </button>
+                        <div className="relative">
+                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded text-sm hover:bg-slate-900 dark:hover:bg-slate-600 shadow-sm">
+                                <Upload size={14} /> Import XLSX
+                            </button>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleImportFile} 
+                                accept=".xlsx, .xls" 
+                                className="hidden" 
+                            />
+                        </div>
+                    </>
+                 )}
              </div>
 
              <div className="flex gap-3">

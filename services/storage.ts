@@ -11,7 +11,8 @@ const STORAGE_KEYS = {
   REJECTS: 'gp_rejects',
   REJECT_OUTLETS: 'gp_reject_outlets',
   THEME: 'gp_theme',
-  PLAYLISTS: 'gp_playlists'
+  PLAYLISTS: 'gp_playlists',
+  SESSION: 'gp_session'
 };
 
 const isBrowser = typeof window !== 'undefined';
@@ -25,11 +26,29 @@ export const StorageService = {
       localStorage.setItem(STORAGE_KEYS.STOCKS, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify([]));
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([]));
+      // Default Admin
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([
+          { id: 'u1', name: 'Super Admin', username: 'admin', password: '22', role: 'ADMIN', status: 'ACTIVE' }
+      ]));
       localStorage.setItem(STORAGE_KEYS.REJECTS, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.REJECT_OUTLETS, JSON.stringify(['Outlet Pusat']));
       localStorage.setItem(STORAGE_KEYS.PLAYLISTS, JSON.stringify([]));
     }
+  },
+
+  // --- SESSION MANAGEMENT ---
+  getSession: () => {
+    if (!isBrowser) return null;
+    const session = localStorage.getItem(STORAGE_KEYS.SESSION);
+    return session ? JSON.parse(session) : null;
+  },
+  saveSession: (user: any) => {
+    if (!isBrowser) return;
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
+  },
+  clearSession: () => {
+    if (!isBrowser) return;
+    localStorage.removeItem(STORAGE_KEYS.SESSION);
   },
 
   // Theme
@@ -66,12 +85,32 @@ export const StorageService = {
   importItems: (newItems: Item[]) => {
     if (!isBrowser) return;
     const items = StorageService.getItems();
-    localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify([...items, ...newItems]));
+    // Avoid duplicates by code
+    const existingCodes = new Set(items.map(i => i.code));
+    const filteredNew = newItems.filter(i => !existingCodes.has(i.code));
+    localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify([...items, ...filteredNew]));
   },
   deleteItems: (ids: string[]) => {
     if (!isBrowser) return;
-    const items = StorageService.getItems().filter(i => !ids.includes(i.id));
-    localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
+    // INTEGRITY CHECK: Don't delete items that have transactions
+    const txs = StorageService.getTransactions();
+    const usedItemIds = new Set<string>();
+    txs.forEach(t => t.items.forEach(ti => usedItemIds.add(ti.itemId)));
+    
+    const safeToDelete = ids.filter(id => !usedItemIds.has(id));
+    const rejected = ids.length - safeToDelete.length;
+
+    if (rejected > 0) {
+        alert(`${rejected} items could not be deleted because they are used in transactions.`);
+    }
+
+    if (safeToDelete.length > 0) {
+        const items = StorageService.getItems().filter(i => !safeToDelete.includes(i.id));
+        localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
+        // Also clean up stocks for these items
+        const stocks = StorageService.getStocks().filter(s => !safeToDelete.includes(s.itemId));
+        localStorage.setItem(STORAGE_KEYS.STOCKS, JSON.stringify(stocks));
+    }
   },
 
   // Warehouses
@@ -88,17 +127,88 @@ export const StorageService = {
   },
   deleteWarehouse: (id: string) => {
       if (!isBrowser) return;
+      // INTEGRITY CHECK
+      const txs = StorageService.getTransactions();
+      const isUsed = txs.some(t => t.sourceWarehouseId === id || t.targetWarehouseId === id);
+      if (isUsed) {
+          alert("Cannot delete warehouse. It contains transaction history.");
+          return;
+      }
+      
       const list = StorageService.getWarehouses().filter(w => w.id !== id);
       localStorage.setItem(STORAGE_KEYS.WAREHOUSES, JSON.stringify(list));
   },
 
+  // Stocks
   getStocks: (): Stock[] => {
     if (!isBrowser) return [];
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.STOCKS) || '[]');
   },
+  
+  // --- CORE STOCK ENGINE ---
+  updateStock: (itemId: string, warehouseId: string, deltaQty: number) => {
+      if (!isBrowser) return;
+      const stocks = StorageService.getStocks();
+      const index = stocks.findIndex(s => s.itemId === itemId && s.warehouseId === warehouseId);
+      
+      if (index >= 0) {
+          stocks[index].qty += deltaQty;
+          // Prevent precision errors
+          stocks[index].qty = Math.round(stocks[index].qty * 10000) / 10000;
+      } else {
+          stocks.push({
+              itemId,
+              warehouseId,
+              qty: deltaQty
+          });
+      }
+      localStorage.setItem(STORAGE_KEYS.STOCKS, JSON.stringify(stocks));
+  },
+
   getTransactions: (): Transaction[] => {
     if (!isBrowser) return [];
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) || '[]');
+  },
+
+  commitTransaction: (tx: Transaction) => {
+    if (!isBrowser) return;
+    
+    // 1. Save Transaction Log
+    const transactions = StorageService.getTransactions();
+    transactions.unshift(tx);
+    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+
+    // 2. Update Stock Levels (Engine)
+    tx.items.forEach(item => {
+        const baseQty = item.qty * item.ratio;
+
+        if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') {
+            // IN: Add to Source (Receiving) Warehouse
+            StorageService.updateStock(item.itemId, tx.sourceWarehouseId, baseQty);
+        } else if (tx.type === 'OUT') {
+            // OUT: Deduct from Source Warehouse
+            StorageService.updateStock(item.itemId, tx.sourceWarehouseId, -baseQty);
+        } else if (tx.type === 'TRANSFER') {
+            // TRANSFER: Deduct Source, Add Target
+            StorageService.updateStock(item.itemId, tx.sourceWarehouseId, -baseQty);
+            if (tx.targetWarehouseId) {
+                StorageService.updateStock(item.itemId, tx.targetWarehouseId, baseQty);
+            }
+        }
+    });
+  },
+
+  updateTransaction: (tx: Transaction) => {
+    if (!isBrowser) return;
+    const transactions = StorageService.getTransactions();
+    const idx = transactions.findIndex(t => t.id === tx.id);
+    if (idx >= 0) {
+        // NOTE: In this MVP, we do NOT rollback and re-apply stock for edits.
+        // We assume edits are for Meta-data (Notes, RefNo) only.
+        // TransactionForm is responsible for blocking Item/Qty edits on existing records.
+        transactions[idx] = tx;
+        localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+    }
   },
 
   // Partners
@@ -133,24 +243,18 @@ export const StorageService = {
   },
   deleteUser: (id: string) => {
       if (!isBrowser) return;
-      const list = StorageService.getUsers().filter(x => x.id !== id);
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(list));
-  },
+      // Prevent deleting last admin
+      const list = StorageService.getUsers();
+      const user = list.find(u => u.id === id);
+      const admins = list.filter(u => u.role === 'ADMIN');
+      
+      if (user?.role === 'ADMIN' && admins.length <= 1) {
+          alert("Cannot delete the last Administrator.");
+          return;
+      }
 
-  commitTransaction: (tx: Transaction) => {
-    if (!isBrowser) return;
-    const transactions = StorageService.getTransactions();
-    transactions.unshift(tx);
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-    // Stock impact logic would go here in a full app
-  },
-
-  updateTransaction: (tx: Transaction) => {
-    if (!isBrowser) return;
-    const transactions = StorageService.getTransactions();
-    const idx = transactions.findIndex(t => t.id === tx.id);
-    if (idx >= 0) transactions[idx] = tx;
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
+      const newList = list.filter(x => x.id !== id);
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(newList));
   },
 
   getStockQty: (itemId: string, warehouseId: string): number => {
@@ -170,6 +274,7 @@ export const StorageService = {
       const batches = StorageService.getRejectBatches();
       batches.unshift(batch);
       localStorage.setItem(STORAGE_KEYS.REJECTS, JSON.stringify(batches));
+      // NOTE: Rejects do NOT affect main stock per requirements.
   },
   getRejectOutlets: (): string[] => {
     if (!isBrowser) return [];

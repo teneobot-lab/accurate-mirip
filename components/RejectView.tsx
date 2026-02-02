@@ -4,8 +4,10 @@ import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
 import { Trash2, Plus, Save, Upload, Download, Copy, Search, Calendar, MapPin, FileSpreadsheet, History, Eye, X, CornerDownLeft, Database, Edit3, ArrowRight, CheckSquare, Square, FlaskConical } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useToast } from './Toast';
 
 export const RejectView: React.FC = () => {
+    const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'DATABASE'>('NEW');
     const [items, setItems] = useState<Item[]>([]);
     const [outlets, setOutlets] = useState<string[]>([]);
@@ -127,8 +129,8 @@ export const RejectView: React.FC = () => {
     const handleAddLine = () => {
         if (!pendingItem) return;
         const qty = Number(pendingQty);
-        if (qty <= 0) return alert("Invalid Qty");
-        if (!pendingReason.trim()) return alert("Reason is required");
+        if (qty <= 0) return showToast("Invalid Qty", 'warning');
+        if (!pendingReason.trim()) return showToast("Reason is required", 'warning');
 
         const baseQty = calculateBase(qty, pendingUnit, pendingItem);
 
@@ -161,8 +163,8 @@ export const RejectView: React.FC = () => {
     };
 
     const handleSaveBatch = () => {
-        if (rejectLines.length === 0) return alert("No items to save");
-        if (!selectedOutlet) return alert("Please select an outlet");
+        if (rejectLines.length === 0) return showToast("No items to save", 'warning');
+        if (!selectedOutlet) return showToast("Please select an outlet", 'warning');
 
         const batch: RejectBatch = {
             id: `REJ-${Date.now().toString().slice(-6)}`,
@@ -175,7 +177,7 @@ export const RejectView: React.FC = () => {
         StorageService.saveRejectBatch(batch);
         setRejectLines([]);
         setBatches(StorageService.getRejectBatches());
-        alert("Reject Batch Saved!");
+        showToast("Reject Batch Saved!", 'success');
     };
 
     const filteredBatches = useMemo(() => {
@@ -189,11 +191,11 @@ export const RejectView: React.FC = () => {
         batch.items.forEach(line => {
             text += `- ${line.name} ${line.qty} ${line.unit} ${line.reason}\n`;
         });
-        navigator.clipboard.writeText(text).then(() => alert("Copied to Clipboard!"));
+        navigator.clipboard.writeText(text).then(() => showToast("Copied to Clipboard!", 'success'));
     };
 
     const handleMatrixExport = () => {
-        if (filteredBatches.length === 0) return alert("No data in selected date range.");
+        if (filteredBatches.length === 0) return showToast("No data in selected date range.", 'warning');
         const uniqueDates: string[] = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
         const matrix: Record<string, any> = {};
 
@@ -234,7 +236,7 @@ export const RejectView: React.FC = () => {
         rejectLines.forEach(line => {
             text += `- ${line.name} ${line.qty} ${line.unit} ${line.reason}\n`;
         });
-        navigator.clipboard.writeText(text).then(() => alert("Copied to Clipboard!"));
+        navigator.clipboard.writeText(text).then(() => showToast("Copied to Clipboard!", 'success'));
     };
 
     const handleTransactionImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,6 +266,7 @@ export const RejectView: React.FC = () => {
             });
             setRejectLines(prev => [...prev, ...imported]);
             e.target.value = '';
+            showToast(`Imported ${imported.length} lines from transaction`, 'success');
         };
         reader.readAsBinaryString(file);
     };
@@ -302,7 +305,7 @@ export const RejectView: React.FC = () => {
             });
             StorageService.importItems(newItems);
             loadData();
-            alert(`Imported ${newItems.length} Master Items`);
+            showToast(`Imported ${newItems.length} Master Items`, 'success');
             e.target.value = '';
         };
         reader.readAsBinaryString(file);
@@ -314,6 +317,7 @@ export const RejectView: React.FC = () => {
              StorageService.saveItem(updated);
              loadData();
              setEditingItem(null);
+             showToast("Conversions updated", 'success');
         }
     };
 
@@ -340,6 +344,7 @@ export const RejectView: React.FC = () => {
         if (confirm(`Delete ${selectedDbIds.size} items?`)) {
             StorageService.deleteItems(Array.from(selectedDbIds));
             loadData();
+            showToast(`Deleted ${selectedDbIds.size} items`, 'success');
         }
     };
 
@@ -384,7 +389,7 @@ export const RejectView: React.FC = () => {
             }
         }
         loadData();
-        alert("Sample data generated.");
+        showToast("Sample data generated.", 'success');
     };
 
     const getUnits = (item: Item) => [{ name: item.baseUnit }, ...item.conversions];
@@ -636,6 +641,7 @@ export const RejectView: React.FC = () => {
                                                     if(confirm('Delete batch?')) {
                                                         StorageService.deleteRejectBatch(batch.id);
                                                         setBatches(StorageService.getRejectBatches());
+                                                        showToast("Batch deleted", 'success');
                                                     }
                                                 }} 
                                                 className="p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
@@ -738,6 +744,7 @@ export const RejectView: React.FC = () => {
                                         setSelectedOutlet(newOutletName);
                                         setShowAddOutlet(false);
                                         setNewOutletName('');
+                                        showToast("Outlet added", 'success');
                                     }
                                 }} 
                                 className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
