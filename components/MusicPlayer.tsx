@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3 } from 'lucide-react';
+import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { Playlist } from '../types';
 import { useToast } from './Toast';
@@ -8,7 +8,8 @@ import { useToast } from './Toast';
 const MusicPlayer: React.FC = () => {
   const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [playlists, setPlaylists] = useState<Playlist[]>(StorageService.getPlaylists());
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [isManaging, setIsManaging] = useState(false);
@@ -18,9 +19,21 @@ const MusicPlayer: React.FC = () => {
   const [newSongTitle, setNewSongTitle] = useState('');
   const [newSongUrl, setNewSongUrl] = useState('');
 
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const data = await StorageService.fetchPlaylists();
+      setPlaylists(data);
+    } catch (e) {
+      console.error("Music DB Sync Error", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    StorageService.savePlaylists(playlists);
-  }, [playlists]);
+    loadData();
+  }, []);
 
   const activePlaylist = playlists.find(p => p.id === activePlaylistId);
   const currentSong = activePlaylist?.songs[currentSongIndex];
@@ -28,7 +41,6 @@ const MusicPlayer: React.FC = () => {
   const getYoutubeId = (url: string) => {
     try {
         if (!url) return null;
-        // Robust regex for YouTube ID
         const regExp = new RegExp(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
@@ -37,55 +49,58 @@ const MusicPlayer: React.FC = () => {
     }
   };
 
-  const handleCreatePlaylist = () => {
+  const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) return;
-    const newList: Playlist = {
-      id: crypto.randomUUID(),
-      name: newPlaylistName,
-      songs: []
-    };
-    setPlaylists([...playlists, newList]);
-    setNewPlaylistName('');
-    showToast("Playlist created", "success");
+    try {
+      await StorageService.createPlaylist(newPlaylistName);
+      setNewPlaylistName('');
+      showToast("Playlist tersimpan di MySQL", "success");
+      loadData();
+    } catch (e) {
+      showToast("Gagal simpan playlist", "error");
+    }
   };
 
-  const handleDeletePlaylist = (id: string) => {
-    if (!confirm('Delete this playlist?')) return;
-    setPlaylists(playlists.filter(p => p.id !== id));
-    if (activePlaylistId === id) setActivePlaylistId(null);
-    showToast("Playlist deleted", "info");
+  const handleDeletePlaylist = async (id: string) => {
+    if (!confirm('Hapus playlist ini secara permanen dari Database?')) return;
+    try {
+      await StorageService.deletePlaylist(id);
+      if (activePlaylistId === id) setActivePlaylistId(null);
+      showToast("Playlist dihapus", "info");
+      loadData();
+    } catch (e) {
+      showToast("Gagal hapus", "error");
+    }
   };
 
-  const handleAddSong = (playlistId: string) => {
+  const handleAddSong = async (playlistId: string) => {
     if (!newSongTitle.trim() || !newSongUrl.trim()) return;
     const ytId = getYoutubeId(newSongUrl);
-    if (!ytId) return showToast('Invalid YouTube URL', 'error');
+    if (!ytId) return showToast('URL YouTube tidak valid', 'error');
 
-    const updated = playlists.map(p => {
-      if (p.id === playlistId) {
-        return {
-          ...p,
-          songs: [...p.songs, { id: crypto.randomUUID(), title: newSongTitle, youtubeUrl: newSongUrl }]
-        };
-      }
-      return p;
-    });
-    setPlaylists(updated);
-    setEditingPlaylist(updated.find(p => p.id === playlistId) || null);
-    setNewSongTitle('');
-    setNewSongUrl('');
-    showToast("Song added to playlist", "success");
+    try {
+      await StorageService.addSongToPlaylist(playlistId, newSongTitle, newSongUrl);
+      setNewSongTitle('');
+      setNewSongUrl('');
+      showToast("Lagu ditambahkan ke MySQL", "success");
+      loadData();
+      // Update editing view if active
+      const updated = await StorageService.fetchPlaylists();
+      setEditingPlaylist(updated.find(p => p.id === playlistId) || null);
+    } catch (e) {
+      showToast("Gagal tambah lagu", "error");
+    }
   };
 
-  const handleDeleteSong = (pId: string, sId: string) => {
-    const updated = playlists.map(p => {
-      if (p.id === pId) {
-        return { ...p, songs: p.songs.filter(s => s.id !== sId) };
-      }
-      return p;
-    });
-    setPlaylists(updated);
-    setEditingPlaylist(updated.find(p => p.id === pId) || null);
+  const handleDeleteSong = async (pId: string, sId: string) => {
+    try {
+      await StorageService.deleteSong(sId);
+      loadData();
+      const updated = await StorageService.fetchPlaylists();
+      setEditingPlaylist(updated.find(p => p.id === pId) || null);
+    } catch (e) {
+      showToast("Gagal hapus lagu", "error");
+    }
   };
 
   return (
@@ -97,7 +112,6 @@ const MusicPlayer: React.FC = () => {
         }`}
       >
         <Music size={18} />
-        {/* Indikator Animasi saat bermain tapi ditutup */}
         {!isOpen && currentSong && activePlaylistId && (
             <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -107,12 +121,6 @@ const MusicPlayer: React.FC = () => {
         <span className="text-xs font-bold hidden sm:inline">Music Player</span>
       </button>
 
-      {/* 
-        LOGIC CHANGE: 
-        Removed the conditional rendering `{isOpen && (...)}` 
-        Replaced with CSS classes to handle visibility.
-        This keeps the iframe in the DOM so music continues playing.
-      */}
       <div 
         className={`absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 transition-all duration-200 ease-in-out origin-top-right ${
           isOpen 
@@ -169,8 +177,13 @@ const MusicPlayer: React.FC = () => {
             </button>
           </div>
 
-          <div className="p-4 max-h-96 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
-            {isManaging ? (
+          <div className="p-4 max-h-96 overflow-y-auto bg-slate-50 dark:bg-slate-900/50 min-h-[200px]">
+            {isLoading ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
+                    <Loader2 size={24} className="animate-spin mb-2" />
+                    <span className="text-[10px] font-bold">MYSQL SYNC...</span>
+                </div>
+            ) : isManaging ? (
               <div className="space-y-4">
                 {editingPlaylist ? (
                   <div className="space-y-3">
@@ -234,7 +247,7 @@ const MusicPlayer: React.FC = () => {
               <div className="space-y-2">
                 {playlists.length === 0 && (
                    <div className="text-center py-8 text-slate-400 text-xs italic">
-                      No playlists found.<br/>Go to 'Manage' to create one.
+                      Tidak ada playlist ditemukan.<br/>Gunakan 'Manage' untuk membuat.
                    </div>
                 )}
                 {playlists.map(p => (
@@ -245,7 +258,7 @@ const MusicPlayer: React.FC = () => {
                         setActivePlaylistId(p.id);
                         setCurrentSongIndex(0);
                       } else {
-                        showToast('Playlist is empty', 'info');
+                        showToast('Playlist kosong', 'info');
                       }
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center group ${
@@ -270,7 +283,7 @@ const MusicPlayer: React.FC = () => {
             )}
           </div>
           <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 text-[10px] text-center text-slate-400">
-             GudangPro Audio v1.0 • Supports YouTube Embeds
+             GudangPro Audio v1.1 • MySQL Centralized
           </div>
         </div>
     </div>
