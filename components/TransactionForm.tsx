@@ -35,7 +35,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingUnit, setPendingUnit] = useState('');
-  const [pendingQty, setPendingQty] = useState<number | string>(1);
+  const [pendingQty, setPendingQty] = useState<number | string>(''); // Reset to empty
   const [pendingNote, setPendingNote] = useState('');
 
   // Refs for Navigation
@@ -84,7 +84,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setPendingUnit(item.baseUnit);
     setQuery(item.name);
     setIsDropdownOpen(false);
-    // Fokus otomatis ke Qty setelah barang dipilih
     setTimeout(() => qtyInputRef.current?.focus(), 10);
   };
 
@@ -127,15 +126,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     };
     
     setLines([...lines, newLine]);
-    
-    // Reset form entry
     setQuery('');
     setPendingItem(null);
     setPendingUnit('');
-    setPendingQty(1);
+    setPendingQty(''); // Reset to empty
     setPendingNote('');
-    
-    // Kembalikan fokus ke input barang untuk inputan berikutnya
     setTimeout(() => itemInputRef.current?.focus(), 10);
   };
 
@@ -181,7 +176,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
       <div className="bg-[#f3f4f6] dark:bg-slate-900 rounded-3xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden border border-white/20 animate-in zoom-in duration-300">
         
-        {/* Title Bar */}
         <div className="bg-slate-900 text-white px-8 py-5 flex justify-between items-center shadow-lg relative">
             <div className="relative z-10 flex items-center gap-4">
                 <div className={`p-3 rounded-2xl ${type === 'IN' ? 'bg-emerald-600' : 'bg-red-600'} shadow-lg`}>
@@ -189,7 +183,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </div>
                 <div>
                    <h2 className="font-black text-lg tracking-tight uppercase">
-                      {initialData ? 'Update' : 'Entry'} {type === 'IN' ? 'Barang Masuk' : 'Barang Keluar'}
+                      {initialData ? 'Update' : 'Entry'} {type === 'IN' ? 'Masuk' : 'Keluar'}
                    </h2>
                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Waresix Transaction Control System</p>
                 </div>
@@ -197,7 +191,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             <button onClick={onClose} className="hover:bg-white/10 rounded-full p-2 transition-all"><X size={24}/></button>
         </div>
 
-        {/* Header Block */}
         <div className="p-8 grid grid-cols-2 gap-10 bg-white dark:bg-slate-900/50 border-b dark:border-slate-800 shadow-inner">
             <div className="space-y-6">
                 <div className="flex flex-col gap-1.5">
@@ -209,7 +202,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             value={selectedPartnerId}
                             onChange={e => setSelectedPartnerId(e.target.value)}
                         >
-                            <option value="">-- Pilih {type === 'IN' ? 'Supplier' : 'Customer'} --</option>
+                            <option value="">-- Pilih --</option>
                             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
@@ -218,7 +211,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Memo</label>
                     <textarea 
                         className="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 p-4 text-xs rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 h-24 font-medium transition-all"
-                        placeholder="Catatan tambahan transaksi..."
+                        placeholder=""
                         value={notes}
                         onChange={e => setNotes(e.target.value)}
                     ></textarea>
@@ -243,7 +236,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gudang Penyimpanan</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gudang</label>
                     <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border dark:border-slate-700">
                         <div className="p-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm text-amber-500"><Building2 size={16}/></div>
                         <select 
@@ -258,14 +251,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </div>
         </div>
 
-        {/* Transaction Grid */}
         <div className="flex-1 overflow-auto bg-white dark:bg-slate-950 px-8 py-6">
             <table className="w-full text-[11px] border-separate border-spacing-y-2">
                 <thead className="bg-[#fcfdfe] dark:bg-slate-800/50 text-slate-400 font-black uppercase tracking-[0.2em] sticky top-0 z-20">
                     <tr>
                         <th className="p-3 w-12 text-center">#</th>
                         <th className="p-3">Master Item</th>
-                        <th className="p-3 w-28 text-right">Kuantitas</th>
+                        <th className="p-3 w-28 text-right">Qty</th>
                         <th className="p-3 w-36 text-center">Satuan</th>
                         <th className="p-3 w-64">Memo Line</th>
                         <th className="p-3 w-16 text-center">Aksi</th>
@@ -293,7 +285,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         </tr>
                     ))}
                     
-                    {/* Add Line Entry with Custom Autocomplete */}
                     <tr className="bg-slate-100 dark:bg-slate-900 border border-dashed dark:border-slate-800 rounded-2xl">
                         <td className="p-3 text-center"><Plus size={16} className="text-blue-500 mx-auto"/></td>
                         <td className="p-2 relative">
@@ -302,7 +293,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     ref={itemInputRef}
                                     type="text"
                                     className="w-full bg-transparent p-2 outline-none text-xs font-black placeholder:text-slate-400" 
-                                    placeholder="Cari Kode atau Nama Barang..."
+                                    placeholder=""
                                     value={query}
                                     onChange={e => {
                                         setQuery(e.target.value);
@@ -315,12 +306,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 {pendingItem && <button onClick={() => {setPendingItem(null); setQuery(''); itemInputRef.current?.focus();}} className="text-slate-400 hover:text-red-500"><X size={14}/></button>}
                             </div>
 
-                            {/* Autocomplete Dropdown */}
                             {isDropdownOpen && (
                                 <div ref={dropdownRef} className="absolute left-0 top-full mt-1 w-[400px] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border dark:border-slate-700 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-1">
                                     <div className="bg-slate-50 dark:bg-slate-900/50 p-2 border-b dark:border-slate-700 text-[9px] font-black uppercase text-slate-400 flex justify-between">
-                                        <span>Hasil Pencarian</span>
-                                        <span className="flex items-center gap-1"><CornerDownLeft size={8}/> Enter untuk pilih</span>
+                                        <span>Hasil</span>
+                                        <span className="flex items-center gap-1"><CornerDownLeft size={8}/> Pilih</span>
                                     </div>
                                     <div className="max-h-60 overflow-y-auto">
                                         {filteredItems.map((it, idx) => (
@@ -379,7 +369,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </select>
                         </td>
                         <td className="p-2">
-                            <input type="text" placeholder="Catatan baris..." className="w-full bg-transparent p-2 outline-none text-xs italic" value={pendingNote} onChange={e => setPendingNote(e.target.value)} disabled={!pendingItem} />
+                            <input type="text" placeholder="" className="w-full bg-transparent p-2 outline-none text-xs italic" value={pendingNote} onChange={e => setPendingNote(e.target.value)} disabled={!pendingItem} />
                         </td>
                         <td className="p-2 text-center">
                             <button onClick={handleAddLine} className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 shadow-lg transition-all active:scale-90"><Plus size={16}/></button>
@@ -389,16 +379,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </table>
         </div>
 
-        {/* Footer Area */}
         <div className="p-8 bg-white dark:bg-slate-900 border-t dark:border-slate-800 flex justify-between items-center shadow-lg">
              <div className="flex gap-8">
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total SKU</span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Line</span>
                     <span className="text-lg font-black text-slate-800 dark:text-white">{lines.length} Line</span>
                 </div>
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Kuantitas</span>
-                    <span className="text-lg font-black text-blue-600">{lines.reduce((acc,l)=>acc+(l.qty * (l.ratio || 1)),0).toLocaleString()} <small className="text-[10px] uppercase font-bold text-slate-400">Pcs/Base</small></span>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Qty</span>
+                    <span className="text-lg font-black text-blue-600">{lines.reduce((acc,l)=>acc+(l.qty * (l.ratio || 1)),0).toLocaleString()} <small className="text-[10px] uppercase font-bold text-slate-400">Base</small></span>
                 </div>
              </div>
              <div className="flex gap-6 items-center">
@@ -409,7 +398,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     className="px-12 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white rounded-[20px] font-black text-xs shadow-2xl shadow-blue-500/30 flex items-center gap-4 transition-all active:scale-95"
                 >
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                    {initialData ? 'PERBARUI TRANSAKSI' : 'POSTING TRANSAKSI'}
+                    {initialData ? 'SIMPAN' : 'POSTING'}
                 </button>
              </div>
         </div>
