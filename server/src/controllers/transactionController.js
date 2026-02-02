@@ -13,10 +13,10 @@ exports.createTransaction = async (req, res, next) => {
         } else if (type === 'OUT') {
             result = await inventoryService.processOutboundTransaction(req.body, user);
         } else {
-            return res.status(400).json({ status: 'error', message: 'Tipe transaksi tidak didukung' });
+            return res.status(400).json({ success: false, message: 'Tipe transaksi tidak didukung' });
         }
 
-        return res.status(201).json({ status: 'success', data: result });
+        return res.status(201).json({ success: true, data: result });
     } catch (error) {
         console.error('CREATE TX ERROR:', error);
         return res.status(error.code === 'INSUFFICIENT_STOCK' ? 409 : 500).json({
@@ -31,22 +31,20 @@ exports.updateTransaction = async (req, res, next) => {
         const { id } = req.params;
         const user = req.user || { id: 'admin-uuid', name: 'System Admin' };
         
-        console.log(`[CONTROLLER] Processing UPDATE /transactions/${id}`);
-        const result = await inventoryService.updateTransaction(id, req.body, user);
+        // Berikan flag syncItems jika ini adalah update dari form yang mengirim full array items
+        const result = await inventoryService.updateTransaction(id, { ...req.body, syncItems: true }, user);
         
         return res.json({ success: true, ...result });
     } catch (error) {
         console.error('[CONTROLLER-ERROR] Failed to update TX:', error.message);
         
-        // Penentuan Status Code sesuai pola instruksi (404, 409, 500)
         let statusCode = 500;
-        
-        if (error.message.includes('tidak ditemukan')) {
+        if (error.status === 404 || error.message.includes('tidak ditemukan')) {
             statusCode = 404;
         } else if (error.code === 'INSUFFICIENT_STOCK' || error.message.includes('mencukupi')) {
             statusCode = 409;
-        } else if (error.message.includes('timeout')) {
-            statusCode = 504; // Gateway Timeout for Locks
+        } else if (error.status === 400) {
+            statusCode = 400;
         }
         
         return res.status(statusCode).json({ 
@@ -111,6 +109,6 @@ exports.getTransactions = async (req, res, next) => {
 
         return res.json(txs);
     } catch (error) {
-        return res.status(500).json({ status: 'error', message: error.message });
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
