@@ -7,8 +7,16 @@ const db = require('../config/database');
  */
 exports.createTransaction = async (req, res, next) => {
     try {
-        const { type } = req.body;
-        const user = req.user || { id: 'admin-uuid', name: 'System Admin' };
+        const { type, items } = req.body;
+        // Gunakan UUID valid untuk default admin jika tidak ada session
+        const user = req.user || { id: '00000000-0000-0000-0000-000000000000', name: 'System Admin' };
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Baris item wajib diisi'
+            });
+        }
 
         let result;
         if (type === 'IN') {
@@ -28,23 +36,22 @@ exports.createTransaction = async (req, res, next) => {
         });
 
     } catch (error) {
-        console.error('CREATE TX ERROR:', error);
+        console.error('[CONTROLLER] Create TX Error:', error);
         return res.status(error.code === 'INSUFFICIENT_STOCK' ? 409 : 500).json({
             success: false,
-            message: error.message || 'Gagal membuat transaksi'
+            message: error.message || 'Gagal membuat transaksi. Periksa koneksi database.'
         });
     }
 };
 
 /**
- * UPDATE TRANSACTION (HARDENED)
+ * UPDATE TRANSACTION
  */
 exports.updateTransaction = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const user = req.user || { id: 'admin-uuid', name: 'System Admin' };
+        const user = req.user || { id: '00000000-0000-0000-0000-000000000000', name: 'System Admin' };
 
-        // 🔒 VALIDASI INPUT UTAMA
         if (!req.body || !Array.isArray(req.body.items) || req.body.items.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -52,7 +59,6 @@ exports.updateTransaction = async (req, res, next) => {
             });
         }
 
-        // 🚀 PROSES KE SERVICE (FULL UPDATE)
         const result = await inventoryService.updateTransaction(id, req.body, user);
 
         return res.json({
@@ -61,16 +67,11 @@ exports.updateTransaction = async (req, res, next) => {
         });
 
     } catch (error) {
-        console.error('[CONTROLLER-ERROR] Failed to update TX:', error.message);
+        console.error('[CONTROLLER] Update TX Error:', error);
 
         let statusCode = 500;
-        if (error.status === 404 || error.message?.includes('tidak ditemukan')) {
-            statusCode = 404;
-        } else if (error.code === 'INSUFFICIENT_STOCK' || error.message?.includes('mencukupi')) {
-            statusCode = 409;
-        } else if (error.status === 400) {
-            statusCode = 400;
-        }
+        if (error.status === 404) statusCode = 404;
+        else if (error.code === 'INSUFFICIENT_STOCK') statusCode = 409;
 
         return res.status(statusCode).json({
             success: false,
@@ -88,26 +89,26 @@ exports.deleteTransaction = async (req, res, next) => {
         await inventoryService.deleteTransaction(id);
         return res.json({
             success: true,
-            message: 'Transaksi berhasil dihapus dan stok dikembalikan'
+            message: 'Transaksi berhasil dihapus'
         });
     } catch (error) {
-        console.error('DELETE TX ERROR:', error);
+        console.error('[CONTROLLER] Delete TX Error:', error);
         return res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Gagal menghapus transaksi'
         });
     }
 };
 
 /**
- * GET TRANSACTIONS (LIST)
+ * GET TRANSACTIONS
  */
 exports.getTransactions = async (req, res, next) => {
     try {
         const { start, end, warehouse, type } = req.query;
 
         let query = `
-            SELECT t.*, w.name AS warehouse_name, p.name AS partner_name, t.partner_id
+            SELECT t.*, w.name AS warehouse_name, p.name AS partner_name
             FROM transactions t
             JOIN warehouses w ON t.source_warehouse_id = w.id
             LEFT JOIN partners p ON t.partner_id = p.id
@@ -151,6 +152,7 @@ exports.getTransactions = async (req, res, next) => {
 
         return res.json(txs);
     } catch (error) {
+        console.error('[CONTROLLER] Get TX Error:', error);
         return res.status(500).json({ success: false, message: error.message });
     }
 };

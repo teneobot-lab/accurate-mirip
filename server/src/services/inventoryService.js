@@ -51,11 +51,11 @@ exports.updateTransaction = async (id, data, user) => {
         // 2. DELETE OLD ITEMS
         await conn.query('DELETE FROM transaction_items WHERE transaction_id = ?', [id]);
 
-        // 3. UPDATE HEADER DENGAN FALLBACK
-        const finalReferenceNo = data.referenceNo ?? data.reference_no ?? oldTrx.reference_no;
-        const finalDate = data.date ?? oldTrx.date;
-        const finalWhId = data.sourceWarehouseId ?? oldTrx.source_warehouse_id;
-        const finalPartnerId = data.partnerId ?? oldTrx.partner_id;
+        // 3. UPDATE HEADER DENGAN FALLBACK & NORMALISASI
+        const finalReferenceNo = data.referenceNo || data.reference_no || oldTrx.reference_no;
+        const finalDate = data.date || oldTrx.date;
+        const finalWhId = data.sourceWarehouseId || oldTrx.source_warehouse_id;
+        const finalPartnerId = (data.partnerId || data.partner_id) ? (data.partnerId || data.partner_id) : null;
 
         await conn.query(
             `UPDATE transactions 
@@ -67,51 +67,44 @@ exports.updateTransaction = async (id, data, user) => {
                 finalDate, 
                 finalWhId, 
                 finalPartnerId, 
-                data.deliveryOrderNo ?? oldTrx.delivery_order_no, 
-                data.notes ?? oldTrx.notes, 
+                data.deliveryOrderNo || null, 
+                data.notes || null, 
                 id
             ]
         );
 
         // 4. INSERT NEW ITEMS & APPLY STOCK
         for (const item of data.items) {
-            // Normalisasi key (mendukung item_id atau itemId)
             const itemId = item.item_id || item.itemId;
             const qty = Number(item.qty);
             const ratio = Number(item.conversionRatio || item.ratio || 1);
             const baseQty = qty * ratio;
 
-            // Pastikan baris stok ada
             await conn.query(`INSERT INTO stock (warehouse_id, item_id, qty) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE qty = qty`, [finalWhId, itemId]);
-            
-            // Cek Stok Baru (Hanya jika OUT)
             const [[stok]] = await conn.query('SELECT qty FROM stock WHERE warehouse_id = ? AND item_id = ? FOR UPDATE', [finalWhId, itemId]);
             
             if (oldTrx.type === 'OUT' && (!stok || Number(stok.qty) < baseQty)) {
                 await conn.rollback();
-                const err = new Error(`Stok tidak mencukupi untuk item ID: ${itemId}`);
+                const err = new Error(`Stok tidak mencukupi untuk item: ${item.name || itemId}`);
                 err.code = 'INSUFFICIENT_STOCK';
                 throw err;
             }
 
-            // Simpan baris baru
             await conn.query(
                 `INSERT INTO transaction_items (transaction_id, item_id, qty, unit, conversion_ratio, base_qty, note)
                  VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [id, itemId, qty, item.unit || 'Pcs', ratio, baseQty, item.note || '']
+                [id, itemId, qty, item.unit || 'Pcs', ratio, baseQty, item.note || null]
             );
 
-            // Terapkan stok
             const op = (oldTrx.type === 'IN' || oldTrx.type === 'ADJUSTMENT') ? '+' : '-';
             await conn.query(`UPDATE stock SET qty = qty ${op} ? WHERE warehouse_id = ? AND item_id = ?`, [baseQty, finalWhId, itemId]);
         }
 
         await conn.commit();
-        return { success: true, message: 'Transaksi berhasil diperbarui sepenuhnya' };
+        return { success: true };
 
     } catch (error) {
         if (conn) await conn.rollback();
-        console.error('SERVICE UPDATE ERROR:', error.message);
         throw error;
     } finally {
         if (conn) conn.release();
@@ -119,7 +112,7 @@ exports.updateTransaction = async (id, data, user) => {
 };
 
 /**
- * LOGIC LAIN (CREATE & DELETE)
+ * APPLY LOGIC
  */
 const applyTransactionLogic = async (conn, transactionId, data) => {
     const type = data.type;
@@ -134,7 +127,7 @@ const applyTransactionLogic = async (conn, transactionId, data) => {
         const [[stok]] = await conn.query(`SELECT qty FROM stock WHERE warehouse_id = ? AND item_id = ? FOR UPDATE`, [whId, itemId]);
 
         if (type === 'OUT' && (!stok || Number(stok.qty) < baseQty)) {
-            const err = new Error(`Stok tidak mencukupi untuk item ${itemId}`);
+            const err = new Error(`Stok tidak mencukupi untuk item: ${itemId}`);
             err.code = 'INSUFFICIENT_STOCK';
             throw err;
         }
@@ -145,7 +138,7 @@ const applyTransactionLogic = async (conn, transactionId, data) => {
         await conn.query(
             `INSERT INTO transaction_items (transaction_id, item_id, qty, unit, conversion_ratio, base_qty, note)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [transactionId, itemId, item.qty, item.unit, ratio, baseQty, item.note]
+            [transactionId, itemId, item.qty, item.unit, ratio, baseQty, item.note || null]
         );
     }
 };
@@ -157,10 +150,21 @@ exports.processInboundTransaction = async (data, user) => {
         await conn.beginTransaction();
         const trxId = data.id || uuidv4();
         
+        // FIX: Gunakan ? untuk type, dan handle null untuk partner_id
         await conn.query(
             `INSERT INTO transactions (id, reference_no, type, date, source_warehouse_id, partner_id, delivery_order_no, notes, created_by)
-             VALUES (?, ?, 'IN', ?, ?, ?, ?, ?, ?)`,
-            [trxId, data.referenceNo, data.date, data.sourceWarehouseId, data.partnerId, data.deliveryOrderNo, data.notes, user.id]
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                trxId, 
+                data.referenceNo, 
+                'IN', 
+                data.date, 
+                data.sourceWarehouseId, 
+                data.partnerId || null, 
+                data.deliveryOrderNo || null, 
+                data.notes || null, 
+                user.id
+            ]
         );
 
         await applyTransactionLogic(conn, trxId, { ...data, type: 'IN' });
@@ -181,10 +185,21 @@ exports.processOutboundTransaction = async (data, user) => {
         await conn.beginTransaction();
         const trxId = data.id || uuidv4();
         
+        // FIX: Gunakan ? untuk type, dan handle null untuk partner_id
         await conn.query(
             `INSERT INTO transactions (id, reference_no, type, date, source_warehouse_id, partner_id, delivery_order_no, notes, created_by)
-             VALUES (?, ?, 'OUT', ?, ?, ?, ?, ?, ?)`,
-            [trxId, data.referenceNo, data.date, data.sourceWarehouseId, data.partnerId, data.deliveryOrderNo, data.notes, user.id]
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                trxId, 
+                data.referenceNo, 
+                'OUT', 
+                data.date, 
+                data.sourceWarehouseId, 
+                data.partnerId || null, 
+                data.deliveryOrderNo || null, 
+                data.notes || null, 
+                user.id
+            ]
         );
 
         await applyTransactionLogic(conn, trxId, { ...data, type: 'OUT' });
