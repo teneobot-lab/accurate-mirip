@@ -17,7 +17,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- 2. Master Data
+-- 2. Master Data (Main Inventory)
 CREATE TABLE warehouses (
     id CHAR(36) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -83,7 +83,6 @@ CREATE TABLE transactions (
     notes TEXT,
     created_by CHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    -- FOREIGN KEY (created_by) REFERENCES users(id) -- Optional enforcement
 ) ENGINE=InnoDB;
 
 CREATE TABLE transaction_items (
@@ -99,7 +98,31 @@ CREATE TABLE transaction_items (
     FOREIGN KEY (item_id) REFERENCES items(id)
 ) ENGINE=InnoDB;
 
--- 5. Reject Isolation (Separate from Stock)
+-- 5. Isolated Reject Module (Master & Transactions)
+CREATE TABLE reject_outlets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+) ENGINE=InnoDB;
+
+CREATE TABLE reject_master_items (
+    id CHAR(36) PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(50),
+    base_unit VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE reject_master_units (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    item_id CHAR(36) NOT NULL,
+    unit_name VARCHAR(20) NOT NULL,
+    conversion_ratio DECIMAL(10, 4) NOT NULL,
+    operator ENUM('*', '/') DEFAULT '*',
+    FOREIGN KEY (item_id) REFERENCES reject_master_items(id) ON DELETE CASCADE,
+    UNIQUE(item_id, unit_name)
+) ENGINE=InnoDB;
+
 CREATE TABLE reject_batches (
     id CHAR(36) PRIMARY KEY,
     date DATE NOT NULL,
@@ -117,7 +140,8 @@ CREATE TABLE reject_items (
     unit VARCHAR(20) NOT NULL,
     base_qty DECIMAL(15, 4) NOT NULL,
     reason VARCHAR(255),
-    FOREIGN KEY (batch_id) REFERENCES reject_batches(id) ON DELETE CASCADE
+    FOREIGN KEY (batch_id) REFERENCES reject_batches(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES reject_master_items(id)
 ) ENGINE=InnoDB;
 
 -- 6. Music Player
@@ -140,3 +164,4 @@ CREATE TABLE playlist_songs (
 CREATE INDEX idx_trx_date ON transactions(date);
 CREATE INDEX idx_trx_type ON transactions(type);
 CREATE INDEX idx_trx_source ON transactions(source_warehouse_id);
+CREATE INDEX idx_rej_date ON reject_batches(date);

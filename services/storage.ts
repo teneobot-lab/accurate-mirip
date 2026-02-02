@@ -126,6 +126,18 @@ export const StorageService = {
   async saveRejectOutlet(name: string) {
     return this.apiCall('/api/reject/outlets', { method: 'POST', body: JSON.stringify({ name }) });
   },
+  async fetchRejectMasterItems(): Promise<Item[]> {
+    return this.apiCall('/api/reject/master-items');
+  },
+  async saveRejectMasterItem(item: Item) {
+    return this.apiCall('/api/reject/master-items', { method: 'POST', body: JSON.stringify(item) });
+  },
+  async bulkSaveRejectMasterItems(items: Item[]) {
+    return this.apiCall('/api/reject/master-items/bulk-upsert', { method: 'POST', body: JSON.stringify({ items }) });
+  },
+  async deleteRejectMasterItem(id: string) {
+    return this.apiCall(`/api/reject/master-items/${id}`, { method: 'DELETE' });
+  },
   async fetchRejectBatches(): Promise<RejectBatch[]> {
     return this.apiCall('/api/reject/batches');
   },

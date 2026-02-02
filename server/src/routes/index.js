@@ -3,6 +3,7 @@ const router = require('express').Router();
 const authRoutes = require('./authRoutes');
 const inventoryRoutes = require('./inventoryRoutes');
 const transactionRoutes = require('./transactionRoutes');
+const rejectRoutes = require('./rejectRoutes');
 const musicRoutes = require('./musicRoutes');
 
 // Health Check Endpoint (Akses via /api/health)
@@ -19,6 +20,7 @@ router.get('/health', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/transactions', transactionRoutes);
+router.use('/reject', rejectRoutes);
 router.use('/music', musicRoutes);
 
 module.exports = router;

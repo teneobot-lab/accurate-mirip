@@ -7,15 +7,23 @@ const db = require('../config/database');
  */
 exports.createTransaction = async (req, res, next) => {
     try {
-        const { type, items } = req.body;
-        // Gunakan UUID valid untuk default admin jika tidak ada session
-        const user = req.user || { id: '00000000-0000-0000-0000-000000000000', name: 'System Admin' };
+        const { type, items, referenceNo, sourceWarehouseId } = req.body;
+        
+        // Normalisasi User
+        const user = req.user || { 
+            id: '00000000-0000-0000-0000-000000000000', 
+            name: 'System Admin' 
+        };
 
+        // Validasi Dasar
+        if (!referenceNo || referenceNo.trim() === "") {
+            return res.status(400).json({ success: false, message: 'Nomor referensi wajib diisi' });
+        }
+        if (!sourceWarehouseId) {
+            return res.status(400).json({ success: false, message: 'Gudang asal wajib dipilih' });
+        }
         if (!items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Baris item wajib diisi'
-            });
+            return res.status(400).json({ success: false, message: 'Baris item transaksi tidak boleh kosong' });
         }
 
         let result;
@@ -24,22 +32,33 @@ exports.createTransaction = async (req, res, next) => {
         } else if (type === 'OUT') {
             result = await inventoryService.processOutboundTransaction(req.body, user);
         } else {
-            return res.status(400).json({
+            return res.status(400).json({ success: false, message: 'Tipe transaksi tidak valid' });
+        }
+
+        return res.status(201).json({ success: true, data: result });
+
+    } catch (error) {
+        console.error('[TX_CONTROLLER] Error:', error);
+
+        // Handle MySQL Duplicate Entry (Error 1062)
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
                 success: false,
-                message: 'Tipe transaksi tidak didukung'
+                message: 'Gagal: Nomor referensi sudah terdaftar di sistem.'
             });
         }
 
-        return res.status(201).json({
-            success: true,
-            data: result
-        });
+        // Handle Insufficient Stock
+        if (error.code === 'INSUFFICIENT_STOCK') {
+            return res.status(409).json({
+                success: false,
+                message: error.message
+            });
+        }
 
-    } catch (error) {
-        console.error('[CONTROLLER] Create TX Error:', error);
-        return res.status(error.code === 'INSUFFICIENT_STOCK' ? 409 : 500).json({
+        return res.status(500).json({
             success: false,
-            message: error.message || 'Gagal membuat transaksi. Periksa koneksi database.'
+            message: error.message || 'Terjadi kesalahan sistem saat menyimpan transaksi.'
         });
     }
 };
@@ -52,28 +71,21 @@ exports.updateTransaction = async (req, res, next) => {
         const { id } = req.params;
         const user = req.user || { id: '00000000-0000-0000-0000-000000000000', name: 'System Admin' };
 
-        if (!req.body || !Array.isArray(req.body.items) || req.body.items.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Baris item wajib diisi'
-            });
+        if (!req.body.items || !Array.isArray(req.body.items) || req.body.items.length === 0) {
+            return res.status(400).json({ success: false, message: 'Item transaksi tidak boleh kosong' });
         }
 
         const result = await inventoryService.updateTransaction(id, req.body, user);
-
-        return res.json({
-            success: true,
-            ...result
-        });
+        return res.json({ success: true, ...result });
 
     } catch (error) {
-        console.error('[CONTROLLER] Update TX Error:', error);
+        console.error('[TX_CONTROLLER] Update Error:', error);
+        
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, message: 'Nomor referensi sudah digunakan' });
+        }
 
-        let statusCode = 500;
-        if (error.status === 404) statusCode = 404;
-        else if (error.code === 'INSUFFICIENT_STOCK') statusCode = 409;
-
-        return res.status(statusCode).json({
+        return res.status(500).json({
             success: false,
             message: error.message || 'Gagal memperbarui transaksi'
         });
@@ -87,16 +99,10 @@ exports.deleteTransaction = async (req, res, next) => {
     try {
         const { id } = req.params;
         await inventoryService.deleteTransaction(id);
-        return res.json({
-            success: true,
-            message: 'Transaksi berhasil dihapus'
-        });
+        return res.json({ success: true, message: 'Transaksi berhasil dihapus' });
     } catch (error) {
-        console.error('[CONTROLLER] Delete TX Error:', error);
-        return res.status(500).json({
-            success: false,
-            message: error.message || 'Gagal menghapus transaksi'
-        });
+        console.error('[TX_CONTROLLER] Delete Error:', error);
+        return res.status(500).json({ success: false, message: 'Gagal menghapus transaksi' });
     }
 };
 
@@ -144,6 +150,7 @@ exports.getTransactions = async (req, res, next) => {
                 code: it.code
             }));
 
+            // Normalize for frontend
             tx.sourceWarehouseId = tx.source_warehouse_id;
             tx.referenceNo = tx.reference_no;
             tx.partnerName = tx.partner_name;
@@ -152,7 +159,7 @@ exports.getTransactions = async (req, res, next) => {
 
         return res.json(txs);
     } catch (error) {
-        console.error('[CONTROLLER] Get TX Error:', error);
-        return res.status(500).json({ success: false, message: error.message });
+        console.error('[TX_CONTROLLER] Get Error:', error);
+        return res.status(500).json({ success: false, message: 'Gagal mengambil data transaksi' });
     }
 };
