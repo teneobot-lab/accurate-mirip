@@ -5,11 +5,13 @@ const inventoryRoutes = require('./inventoryRoutes');
 const transactionRoutes = require('./transactionRoutes');
 const musicRoutes = require('./musicRoutes');
 
-// Health Check Endpoint
+// Health Check Endpoint (Akses via /api/health)
 router.get('/health', (req, res) => {
+    console.log('Health check requested');
     res.json({ 
         status: 'UP', 
-        message: 'Backend Waresix is running',
+        service: 'waresix-acc-api',
+        message: 'Backend API is responding correctly',
         timestamp: new Date().toISOString()
     });
 });
