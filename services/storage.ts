@@ -33,14 +33,14 @@ export const StorageService = {
     return response.json();
   },
 
-  // --- AUTH (Browser Local Only) ---
+  // --- AUTH ---
   getSession: () => isBrowser ? JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || 'null') : null,
   saveSession: (user: any) => isBrowser && localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user)),
   clearSession: () => isBrowser && localStorage.removeItem(STORAGE_KEYS.SESSION),
   getTheme: (): 'light' | 'dark' => isBrowser ? (localStorage.getItem(STORAGE_KEYS.THEME) as any || 'light') : 'light',
   saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
 
-  // --- MASTER DATA (API - CENTRALIZED MYSQL) ---
+  // --- MASTER DATA ---
   async fetchItems(): Promise<Item[]> {
     return this.apiCall('/api/inventory/items');
   },
@@ -81,7 +81,7 @@ export const StorageService = {
     return this.apiCall(`/api/inventory/users/${id}`, { method: 'DELETE' });
   },
 
-  // --- TRANSACTIONS & STOCKS ---
+  // --- TRANSACTIONS ---
   async fetchStocks(): Promise<Stock[]> {
     return this.apiCall('/api/inventory/stocks');
   },
@@ -92,7 +92,7 @@ export const StorageService = {
     return this.apiCall('/api/transactions', { method: 'POST', body: JSON.stringify(tx) });
   },
 
-  // --- REJECT MODULE (CENTRALIZED) ---
+  // --- REJECT ---
   async fetchRejectOutlets(): Promise<string[]> {
     return this.apiCall('/api/reject/outlets');
   },
@@ -109,7 +109,7 @@ export const StorageService = {
     return this.apiCall(`/api/reject/batches/${id}`, { method: 'DELETE' });
   },
 
-  // --- MUSIC PLAYER (MIGRATED TO MYSQL) ---
+  // --- MUSIC ---
   async fetchPlaylists(): Promise<Playlist[]> {
     return this.apiCall('/api/music/playlists');
   },
@@ -127,5 +127,39 @@ export const StorageService = {
   },
   async deleteSong(songId: string) {
     return this.apiCall(`/api/music/songs/${songId}`, { method: 'DELETE' });
+  },
+
+  // --- EXTERNAL SYNC (GOOGLE SHEETS) ---
+  async syncToGoogleSheets(scriptUrl: string, startDate: string, endDate: string) {
+    const transactions: Transaction[] = await this.fetchTransactions();
+    const items: Item[] = await this.fetchItems();
+    
+    // Filter & Mapping ke format per baris (tabular)
+    const filtered = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
+    
+    // Siapkan data per baris untuk appendRow di Apps Script
+    const rows = filtered.flatMap(tx => tx.items.map(line => ([
+        tx.date,
+        tx.referenceNo,
+        tx.type,
+        items.find(i => i.id === line.itemId)?.code || '?',
+        items.find(i => i.id === line.itemId)?.name || '?',
+        line.qty,
+        line.unit,
+        line.note || tx.notes || '-'
+    ])));
+
+    // Kirim data sebagai payload JSON
+    // Catatan: Apps Script POST biasanya butuh Content-Type text/plain atau no-cors jika redirect
+    const response = await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({ 
+        action: 'APPEND_ROWS',
+        rows: rows
+      })
+    });
+    
+    return { status: 'success' };
   }
 };
