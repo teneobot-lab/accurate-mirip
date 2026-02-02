@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Command, ArrowRight, Package, Tag } from 'lucide-react';
 import { Item } from '../types';
@@ -16,9 +17,17 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load items on mount
+  // Load items on mount using fetchItems
   useEffect(() => {
-    setItems(StorageService.getItems());
+    const loadItems = async () => {
+        try {
+            const fetchedItems = await StorageService.fetchItems();
+            setItems(fetchedItems);
+        } catch (error) {
+            console.error("GlobalSearch: failed to load items", error);
+        }
+    };
+    loadItems();
   }, []);
 
   // Filter Logic (Fuzzy-ish)

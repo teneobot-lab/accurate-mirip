@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
 import { X, Package, TrendingUp, History, MapPin } from 'lucide-react';
@@ -10,17 +10,36 @@ interface Props {
 }
 
 export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
-  const stocks = StorageService.getStocks();
-  const warehouses = StorageService.getWarehouses();
-  const transactions = StorageService.getTransactions();
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  // Fetch necessary data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [fetchedStocks, fetchedWh, fetchedTx] = await Promise.all([
+          StorageService.fetchStocks(),
+          StorageService.fetchWarehouses(),
+          StorageService.fetchTransactions()
+        ]);
+        setStocks(fetchedStocks);
+        setWarehouses(fetchedWh);
+        setTransactions(fetchedTx);
+      } catch (error) {
+        console.error("Failed to load stock data", error);
+      }
+    };
+    loadData();
+  }, []);
 
   // Calculate current stock breakdown
   const stockData = useMemo(() => {
     const itemStocks = stocks.filter(s => s.itemId === item.id);
-    const total = itemStocks.reduce((acc, s) => acc + s.qty, 0);
+    const total = itemStocks.reduce((acc, s) => acc + Number(s.qty), 0);
     const breakdown = warehouses.map(wh => {
         const s = itemStocks.find(stk => stk.warehouseId === wh.id);
-        return { name: wh.name, qty: s ? s.qty : 0 };
+        return { name: wh.name, qty: s ? Number(s.qty) : 0 };
     });
     return { total, breakdown };
   }, [item, stocks, warehouses]);

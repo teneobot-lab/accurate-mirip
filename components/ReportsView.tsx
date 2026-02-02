@@ -39,10 +39,20 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     });
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
-    const refreshData = () => {
-        setTransactions(StorageService.getTransactions());
-        setItems(StorageService.getItems());
-        setWarehouses(StorageService.getWarehouses());
+    // Update refreshData to be asynchronous and use fetch methods
+    const refreshData = async () => {
+        try {
+            const [txs, its, whs] = await Promise.all([
+                StorageService.fetchTransactions(),
+                StorageService.fetchItems(),
+                StorageService.fetchWarehouses()
+            ]);
+            setTransactions(txs);
+            setItems(its);
+            setWarehouses(whs);
+        } catch (error) {
+            console.error("Failed to load reports data", error);
+        }
     };
 
     useEffect(() => {
