@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info, Bell } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -18,7 +18,9 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const useToast = () => {
   const context = useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within a ToastProvider');
+  if (!context) {
+    throw new Error('useToast must be used within a ToastProvider');
+  }
   return context;
 };
 
@@ -27,50 +29,56 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     const id = crypto.randomUUID();
+    // Anti-spam: Limit to 3 visible toasts, remove oldest
     setToasts((prev) => {
-        const next = [...prev, { id, message, type }];
-        return next.length > 4 ? next.slice(next.length - 4) : next;
+        const newToasts = [...prev, { id, message, type }];
+        if (newToasts.length > 3) return newToasts.slice(newToasts.length - 3);
+        return newToasts;
     });
+
+    // Auto dismiss after 3 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 3000);
   }, []);
 
-  const removeToast = (id: string) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const getIcon = (type: ToastType) => {
     switch (type) {
-      case 'success': return <CheckCircle size={20} className="text-emerald-500" />;
-      case 'error': return <AlertCircle size={20} className="text-red-500" />;
-      case 'warning': return <AlertTriangle size={20} className="text-amber-500" />;
-      case 'info': return <Bell size={20} className="text-blue-500" />;
+      case 'success': return <CheckCircle size={18} className="text-emerald-500" />;
+      case 'error': return <AlertCircle size={18} className="text-red-500" />;
+      case 'warning': return <AlertTriangle size={18} className="text-amber-500" />;
+      case 'info': return <Info size={18} className="text-blue-500" />;
     }
   };
 
   const getStyles = (type: ToastType) => {
     switch (type) {
-      case 'success': return 'border-emerald-100 bg-emerald-50/90 text-emerald-900';
-      case 'error': return 'border-red-100 bg-red-50/90 text-red-900';
-      case 'warning': return 'border-amber-100 bg-amber-50/90 text-amber-900';
-      case 'info': return 'border-blue-100 bg-blue-50/90 text-blue-900';
+      case 'success': return 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20';
+      case 'error': return 'border-red-500 bg-red-50 dark:bg-red-900/20';
+      case 'warning': return 'border-amber-500 bg-amber-50 dark:bg-amber-900/20';
+      case 'info': return 'border-blue-500 bg-blue-50 dark:bg-blue-900/20';
     }
   };
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-8 right-8 z-[9999] flex flex-col gap-3 pointer-events-none">
+      <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center gap-4 min-w-[320px] max-w-md px-6 py-4 rounded-[20px] shadow-2xl backdrop-blur-xl border border-white transform transition-all duration-500 animate-in slide-in-from-right fade-in ${getStyles(toast.type)}`}
+            className={`pointer-events-auto flex items-center gap-3 min-w-[300px] max-w-sm p-4 rounded-lg shadow-lg border-l-4 transform transition-all duration-300 animate-in slide-in-from-right fade-in ${getStyles(toast.type)} bg-white dark:bg-slate-900`}
           >
-            <div className="flex-shrink-0 p-2 bg-white/50 rounded-xl shadow-sm">{getIcon(toast.type)}</div>
-            <div className="flex-1">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-0.5">{toast.type}</p>
-                <p className="text-[13px] font-bold leading-snug">{toast.message}</p>
-            </div>
-            <button onClick={() => removeToast(toast.id)} className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-white rounded-lg">
+            <div className="flex-shrink-0">{getIcon(toast.type)}</div>
+            <p className="flex-1 text-sm font-medium text-slate-700 dark:text-slate-200">{toast.message}</p>
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
               <X size={16} />
             </button>
           </div>
