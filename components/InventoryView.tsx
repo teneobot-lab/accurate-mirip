@@ -18,7 +18,7 @@ export const InventoryView: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Editing State
-    const [editingCell, setEditingCell] = useState<{ itemId: string, field: 'minStock' | 'baseUnit' } | null>(null);
+    const [editingCell, setEditingCell] = useState<{ itemId: string, field: 'minStock' | 'baseUnit' | 'initialStock' } | null>(null);
     const [editValue, setEditValue] = useState<string | number>('');
 
     // Conversion Editing State
@@ -31,7 +31,8 @@ export const InventoryView: React.FC = () => {
         name: '',
         category: '',
         baseUnit: 'Pcs',
-        minStock: 10
+        minStock: 10,
+        initialStock: 0
     });
 
     const loadData = () => {
@@ -89,16 +90,18 @@ export const InventoryView: React.FC = () => {
     // --- XLSX Import / Export Logic ---
 
     const handleDownloadTemplate = () => {
-        const headers = [['Code', 'Name', 'Category', 'BaseUnit', 'MinStock']];
-        // Sample data
+        const headers = [['Code', 'Name', 'Category', 'BaseUnit', 'MinStock', 'InitialStock', 'WarehouseName']];
+        // Get first warehouse name as example
+        const exampleWh = warehouses.length > 0 ? warehouses[0].name : 'Gudang Utama';
+        
         const data = [
-            ['BRG001', 'Contoh Barang A', 'Elektronik', 'Pcs', 10],
-            ['BRG002', 'Contoh Barang B', 'Alat Tulis', 'Pack', 5]
+            ['BRG001', 'Contoh Barang A', 'Elektronik', 'Pcs', 10, 100, exampleWh],
+            ['BRG002', 'Contoh Barang B', 'Alat Tulis', 'Pack', 5, 50, exampleWh]
         ];
         const ws = XLSX.utils.aoa_to_sheet([...headers, ...data]);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Inventory");
-        XLSX.writeFile(wb, "Template_Import_Barang.xlsx");
+        XLSX.writeFile(wb, "Template_Import_Inventory.xlsx");
     };
 
     const handleImportXlsx = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,20 +122,53 @@ export const InventoryView: React.FC = () => {
                     return;
                 }
 
-                const importedItems: Item[] = data.map((row: any) => ({
-                    id: crypto.randomUUID(),
-                    code: String(row.Code || row.Kode || '').trim(),
-                    name: String(row.Name || row.Nama || '').trim(),
-                    category: String(row.Category || row.Kategori || 'General').trim(),
-                    baseUnit: String(row.BaseUnit || row.Satuan || 'Pcs').trim(),
-                    minStock: Number(row.MinStock || row.StokMinimal || 0),
-                    conversions: []
-                })).filter(i => i.code && i.name);
+                const importedItems: Item[] = [];
+                let stockUpdates = 0;
+
+                data.forEach((row: any) => {
+                    const code = String(row.Code || row.Kode || '').trim();
+                    const name = String(row.Name || row.Nama || '').trim();
+                    
+                    if (code && name) {
+                        const itemId = crypto.randomUUID();
+                        const initialStock = Number(row.InitialStock || row.StokAwal || 0);
+                        const whName = String(row.WarehouseName || row.NamaGudang || '').trim();
+
+                        const item: Item = {
+                            id: itemId,
+                            code,
+                            name,
+                            category: String(row.Category || row.Kategori || 'General').trim(),
+                            baseUnit: String(row.BaseUnit || row.Satuan || 'Pcs').trim(),
+                            minStock: Number(row.MinStock || row.StokMinimal || 0),
+                            initialStock: initialStock,
+                            conversions: []
+                        };
+                        importedItems.push(item);
+
+                        // If initial stock > 0, find warehouse and update
+                        if (initialStock > 0 && whName) {
+                            const warehouse = warehouses.find(w => w.name.toLowerCase() === whName.toLowerCase());
+                            if (warehouse) {
+                                StorageService.updateStock(itemId, warehouse.id, initialStock);
+                                stockUpdates++;
+                            } else if (warehouses.length > 0) {
+                                // Default to first warehouse if name not found but initial stock provided
+                                StorageService.updateStock(itemId, warehouses[0].id, initialStock);
+                                stockUpdates++;
+                            }
+                        } else if (initialStock > 0 && warehouses.length > 0) {
+                             // Default to first warehouse
+                             StorageService.updateStock(itemId, warehouses[0].id, initialStock);
+                             stockUpdates++;
+                        }
+                    }
+                });
 
                 if (importedItems.length > 0) {
                     StorageService.importItems(importedItems);
                     loadData();
-                    showToast(`Berhasil mengimpor ${importedItems.length} barang.`, 'success');
+                    showToast(`Berhasil mengimpor ${importedItems.length} barang dan ${stockUpdates} saldo awal.`, 'success');
                 } else {
                     showToast("Tidak ada data valid untuk diimpor (Cek kolom Code dan Name).", 'error');
                 }
@@ -163,7 +199,7 @@ export const InventoryView: React.FC = () => {
     };
 
     // Inline Editing Handlers
-    const handleStartEdit = (itemId: string, field: 'minStock' | 'baseUnit', value: string | number) => {
+    const handleStartEdit = (itemId: string, field: 'minStock' | 'baseUnit' | 'initialStock', value: string | number) => {
         setEditingCell({ itemId, field });
         setEditValue(value);
     };
@@ -179,6 +215,8 @@ export const InventoryView: React.FC = () => {
                 newItem.minStock = Number(editValue);
             } else if (field === 'baseUnit') {
                 newItem.baseUnit = String(editValue);
+            } else if (field === 'initialStock') {
+                newItem.initialStock = Number(editValue);
             }
             StorageService.saveItem(newItem);
             loadData();
@@ -229,13 +267,20 @@ export const InventoryView: React.FC = () => {
             category: newItemForm.category,
             baseUnit: newItemForm.baseUnit,
             minStock: Number(newItemForm.minStock),
+            initialStock: Number(newItemForm.initialStock),
             conversions: []
         };
         
         StorageService.saveItem(newItem);
+        
+        // If initial stock set, put in first warehouse
+        if (newItem.initialStock && newItem.initialStock > 0 && warehouses.length > 0) {
+            StorageService.updateStock(newItem.id, warehouses[0].id, newItem.initialStock);
+        }
+
         loadData();
         setShowNewItemModal(false);
-        setNewItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10 });
+        setNewItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0 });
         showToast("Item created successfully", 'success');
     };
 
@@ -303,12 +348,13 @@ export const InventoryView: React.FC = () => {
                                 <th className="p-3 border-b border-slate-200 dark:border-slate-700">Code</th>
                                 <th className="p-3 border-b border-slate-200 dark:border-slate-700">Item Name</th>
                                 <th className="p-3 border-b border-slate-200 dark:border-slate-700">Category</th>
+                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right text-slate-500 bg-slate-50 dark:bg-slate-800/40">Stok Awal</th>
                                 {warehouses.map(wh => (
                                     <th key={wh.id} className="p-3 border-b border-slate-200 dark:border-slate-700 text-right text-blue-600 dark:text-blue-400">{wh.name}</th>
                                 ))}
                                 <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right bg-slate-200 dark:bg-slate-800/50">Total</th>
                                 <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-right text-orange-600 dark:text-orange-400">Min Stock</th>
-                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-center">Base Unit</th>
+                                <th className="p-3 border-b border-slate-200 dark:border-slate-700 text-center">Unit</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm">
@@ -340,6 +386,9 @@ export const InventoryView: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="p-2 text-slate-500 dark:text-slate-400">{item.category}</td>
+                                    <td className="p-2 text-right font-mono text-slate-400 dark:text-slate-500 italic bg-slate-50/20 dark:bg-slate-800/10">
+                                        {item.initialStock || 0}
+                                    </td>
                                     {item.whBreakdown.map(bd => (
                                         <td key={bd.whId} className="p-2 text-right font-mono text-slate-600 dark:text-slate-300">{bd.qty}</td>
                                     ))}
@@ -391,28 +440,9 @@ export const InventoryView: React.FC = () => {
                 </div>
                 <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex justify-between">
                      <span>Showing {inventoryData.length} items</span>
-                     <span>Double-click Min Stock, Unit or Conversions to edit. Low Stock items highlighted in red.</span>
+                     <span>Double-click cells to edit. Template XLSX mendukung Stok Awal & Nama Gudang.</span>
                 </div>
             </div>
-
-            {/* JSON Import Modal (Fallback/Legacy) */}
-            {showImportModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white dark:bg-slate-900 rounded-lg p-6 w-1/2 shadow-xl border border-slate-200 dark:border-slate-700">
-                        <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-100">Bulk Import Items (JSON)</h3>
-                        <textarea 
-                            className="w-full h-64 border p-2 font-mono text-xs rounded mb-4 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
-                            value={importText}
-                            onChange={e => setImportText(e.target.value)}
-                            placeholder='[{"id": "new-1", "code": "X1", "name": "Item", "baseUnit": "Pcs", "conversions": [], "minStock": 10}]'
-                        />
-                        <div className="flex justify-end gap-3">
-                            <button onClick={() => setShowImportModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 rounded">Cancel</button>
-                            <button onClick={handleImportJson} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Import Data</button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Conversion Editor Modal */}
             {editingConversions && (
@@ -510,9 +540,9 @@ export const InventoryView: React.FC = () => {
             {/* New Item Modal */}
             {showNewItemModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-white dark:bg-slate-900 rounded-lg w-full max-w-md shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-slate-900 rounded-lg w-full max-w-md shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
                         <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-700 dark:text-slate-200">Create New Item</h3>
+                            <h3 className="font-bold text-slate-700 dark:text-slate-200 uppercase text-sm">Create New Item</h3>
                             <button onClick={() => setShowNewItemModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={18} /></button>
                         </div>
                         <div className="p-6 space-y-4">
@@ -521,7 +551,7 @@ export const InventoryView: React.FC = () => {
                                 <input 
                                     type="text" 
                                     autoFocus
-                                    className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                    className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                                     placeholder="e.g. A-001"
                                     value={newItemForm.code}
                                     onChange={e => setNewItemForm({...newItemForm, code: e.target.value})}
@@ -531,7 +561,7 @@ export const InventoryView: React.FC = () => {
                                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Item Name</label>
                                 <input 
                                     type="text" 
-                                    className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                    className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                                     placeholder="e.g. Coffee Beans"
                                     value={newItemForm.name}
                                     onChange={e => setNewItemForm({...newItemForm, name: e.target.value})}
@@ -542,7 +572,7 @@ export const InventoryView: React.FC = () => {
                                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Category</label>
                                     <input 
                                         type="text" 
-                                        className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                                         placeholder="e.g. Beverage"
                                         value={newItemForm.category}
                                         onChange={e => setNewItemForm({...newItemForm, category: e.target.value})}
@@ -552,25 +582,37 @@ export const InventoryView: React.FC = () => {
                                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Base Unit</label>
                                     <input 
                                         type="text" 
-                                        className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
                                         placeholder="e.g. Pcs"
                                         value={newItemForm.baseUnit}
                                         onChange={e => setNewItemForm({...newItemForm, baseUnit: e.target.value})}
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Minimum Stock Alert</label>
-                                <input 
-                                    type="number" 
-                                    className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
-                                    placeholder="10"
-                                    value={newItemForm.minStock}
-                                    onChange={e => setNewItemForm({...newItemForm, minStock: parseFloat(e.target.value)})}
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Min Stock Alert</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                        placeholder="10"
+                                        value={newItemForm.minStock}
+                                        onChange={e => setNewItemForm({...newItemForm, minStock: parseFloat(e.target.value) || 0})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Initial Stock</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border rounded p-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                        placeholder="0"
+                                        value={newItemForm.initialStock}
+                                        onChange={e => setNewItemForm({...newItemForm, initialStock: parseFloat(e.target.value) || 0})}
+                                    />
+                                </div>
                             </div>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                        <div className="bg-slate-50 dark:bg-slate-800 p-4 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3">
                             <button onClick={() => setShowNewItemModal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded font-medium text-sm">Cancel</button>
                             <button onClick={handleCreateItem} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-medium text-sm shadow-sm">Create Item</button>
                         </div>

@@ -13,6 +13,7 @@ export interface Item {
   baseUnit: string;
   conversions: UnitConversion[];
   minStock: number;
+  initialStock?: number; // Ditambahkan sebagai dasar perhitungan
 }
 
 export interface Stock {

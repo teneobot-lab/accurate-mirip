@@ -354,7 +354,8 @@ export const RejectView: React.FC = () => {
         const outletsList = outlets.length > 0 ? outlets : ['Outlet Pusat', 'Outlet Cabang'];
         if(outlets.length === 0) {
             outletsList.forEach(o => StorageService.saveRejectOutlet(o));
-            setOutlets(StorageService.getRejectOutlets());
+            // Fix: Explicitly cast to string[] to resolve potential 'unknown[]' mismatch on line 200
+            setOutlets(StorageService.getRejectOutlets() as string[]);
         }
         for (let i = 0; i < 30; i++) {
             const d = new Date();
@@ -531,7 +532,12 @@ export const RejectView: React.FC = () => {
                                                 className="w-full py-1.5 px-2 border border-red-200 dark:border-red-900/50 rounded text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white dark:bg-slate-800 dark:text-white"
                                                 value={pendingUnit}
                                                 onChange={e => setPendingUnit(e.target.value)}
-                                                onKeyDown={e => e.key === 'Enter' && reasonRef.current?.focus()}
+                                                onKeyDown={e => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        reasonRef.current?.focus();
+                                                    }
+                                                }}
                                                 disabled={!pendingItem}
                                             >
                                                 {pendingItem && getUnits(pendingItem).map(u => (
