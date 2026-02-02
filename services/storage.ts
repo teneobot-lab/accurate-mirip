@@ -26,19 +26,23 @@ export const StorageService = {
         ...options.headers,
       },
     });
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'API Call Failed');
+      let errorMessage = 'API Call Failed';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (e) {
+        // Handle non-JSON errors (like 404 HTML pages)
+        if (response.status === 404) errorMessage = `Route not found: ${endpoint}. Pastikan Backend Server sudah di-restart.`;
+        else if (response.status === 500) errorMessage = 'Server Error: Periksa koneksi database MySQL.';
+        else errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
+    
     return response.json();
   },
-
-  // --- AUTH ---
-  getSession: () => isBrowser ? JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || 'null') : null,
-  saveSession: (user: any) => isBrowser && localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user)),
-  clearSession: () => isBrowser && localStorage.removeItem(STORAGE_KEYS.SESSION),
-  getTheme: (): 'light' | 'dark' => isBrowser ? (localStorage.getItem(STORAGE_KEYS.THEME) as any || 'light') : 'light',
-  saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
 
   // --- MASTER DATA ---
   async fetchItems(): Promise<Item[]> {
@@ -92,7 +96,7 @@ export const StorageService = {
     return this.apiCall('/api/transactions', { method: 'POST', body: JSON.stringify(tx) });
   },
 
-  // --- REJECT ---
+  // ... rest of the service methods
   async fetchRejectOutlets(): Promise<string[]> {
     return this.apiCall('/api/reject/outlets');
   },
@@ -109,7 +113,6 @@ export const StorageService = {
     return this.apiCall(`/api/reject/batches/${id}`, { method: 'DELETE' });
   },
 
-  // --- MUSIC ---
   async fetchPlaylists(): Promise<Playlist[]> {
     return this.apiCall('/api/music/playlists');
   },
@@ -129,37 +132,27 @@ export const StorageService = {
     return this.apiCall(`/api/music/songs/${songId}`, { method: 'DELETE' });
   },
 
-  // --- EXTERNAL SYNC (GOOGLE SHEETS) ---
+  getSession: () => isBrowser ? JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || 'null') : null,
+  saveSession: (user: any) => isBrowser && localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user)),
+  clearSession: () => isBrowser && localStorage.removeItem(STORAGE_KEYS.SESSION),
+  getTheme: (): 'light' | 'dark' => isBrowser ? (localStorage.getItem(STORAGE_KEYS.THEME) as any || 'light') : 'light',
+  saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
+
   async syncToGoogleSheets(scriptUrl: string, startDate: string, endDate: string) {
     const transactions: Transaction[] = await this.fetchTransactions();
     const items: Item[] = await this.fetchItems();
-    
-    // Filter & Mapping ke format per baris (tabular)
     const filtered = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
-    
-    // Siapkan data per baris untuk appendRow di Apps Script
     const rows = filtered.flatMap(tx => tx.items.map(line => ([
-        tx.date,
-        tx.referenceNo,
-        tx.type,
+        tx.date, tx.referenceNo, tx.type,
         items.find(i => i.id === line.itemId)?.code || '?',
         items.find(i => i.id === line.itemId)?.name || '?',
-        line.qty,
-        line.unit,
-        line.note || tx.notes || '-'
+        line.qty, line.unit, line.note || tx.notes || '-'
     ])));
-
-    // Kirim data sebagai payload JSON
-    // Catatan: Apps Script POST biasanya butuh Content-Type text/plain atau no-cors jika redirect
-    const response = await fetch(scriptUrl, {
+    await fetch(scriptUrl, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({ 
-        action: 'APPEND_ROWS',
-        rows: rows
-      })
+      body: JSON.stringify({ action: 'APPEND_ROWS', rows: rows })
     });
-    
     return { status: 'success' };
   }
 };

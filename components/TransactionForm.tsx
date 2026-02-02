@@ -22,7 +22,7 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
   // Form States
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [refNo, setRefNo] = useState(`${type === 'IN' ? 'RI' : 'DO'}.${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}.${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`);
-  const [selectedPartner, setSelectedPartner] = useState('');
+  const [selectedPartnerId, setSelectedPartnerId] = useState('');
   const [selectedWh, setSelectedWh] = useState('');
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<TransactionItem[]>([]);
@@ -41,10 +41,10 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
                 StorageService.fetchWarehouses().catch(() => []),
                 StorageService.fetchPartners().catch(() => [])
             ]);
-            setItems(its);
-            setWarehouses(whs);
-            setPartners(pts.filter(p => type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER'));
-            if (whs.length > 0) setSelectedWh(whs[0].id);
+            setItems(its || []);
+            setWarehouses(whs || []);
+            setPartners(pts.filter(p => type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER') || []);
+            if (whs && whs.length > 0) setSelectedWh(whs[0].id);
         } catch (e) {
             console.error("Load failed", e);
         }
@@ -70,24 +70,31 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
 
   const handleSubmit = async () => {
     if (lines.length === 0) return showToast("Tambahkan baris barang terlebih dahulu", "warning");
+    if (!selectedWh) return showToast("Pilih gudang terlebih dahulu", "warning");
+    
     setIsSubmitting(true);
     try {
-        const tx: Transaction = {
+        // PERBAIKAN: Kirim partnerId sebagai UUID sesuai ekspektasi inventoryService.js
+        const txData: any = {
             id: crypto.randomUUID(),
             date,
             referenceNo: refNo,
             type,
             sourceWarehouseId: selectedWh,
-            supplier: partners.find(p => p.id === selectedPartner)?.name || '',
-            items: lines,
+            partnerId: selectedPartnerId, // Mengirim ID Partner (UUID)
+            items: lines.map(line => ({
+                ...line,
+                conversionRatio: 1 // Default untuk barang tanpa konversi
+            })),
             notes,
             createdAt: Date.now()
         };
-        await StorageService.commitTransaction(tx);
+        
+        await StorageService.commitTransaction(txData);
         showToast("Transaksi Berhasil Disimpan", "success");
         onSuccess();
-    } catch (e) {
-        showToast("Gagal menyimpan transaksi.", "error");
+    } catch (e: any) {
+        showToast(`Gagal: ${e.message}`, "error");
     } finally {
         setIsSubmitting(false);
     }
@@ -107,15 +114,14 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
 
         {/* Accurate Style Header Block */}
         <div className="p-6 grid grid-cols-2 gap-8 bg-white dark:bg-slate-900/50 border-b dark:border-slate-800 shadow-inner">
-            {/* Left Column: Vendor/Customer */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3">
                     <label className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-tighter">{type === 'IN' ? 'Pemasok' : 'Pelanggan'}</label>
                     <div className="flex-1 relative">
                         <select 
                             className="w-full border dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-xs rounded-md outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                            value={selectedPartner}
-                            onChange={e => setSelectedPartner(e.target.value)}
+                            value={selectedPartnerId}
+                            onChange={e => setSelectedPartnerId(e.target.value)}
                         >
                             <option value="">-- Pilih {type === 'IN' ? 'Supplier' : 'Customer'} --</option>
                             {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -133,7 +139,6 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
                 </div>
             </div>
 
-            {/* Right Column: Date & No */}
             <div className="space-y-4">
                 <div className="flex items-center gap-3">
                     <label className="w-24 text-[11px] font-bold text-slate-500 uppercase tracking-tighter text-right">No. Bukti</label>
@@ -158,6 +163,7 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
                             value={selectedWh}
                             onChange={e => setSelectedWh(e.target.value)}
                         >
+                            <option value="">-- Pilih Gudang --</option>
                             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </select>
                     </div>
@@ -165,7 +171,7 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
             </div>
         </div>
 
-        {/* Transaction Grid (Accurate Dense Style) */}
+        {/* Transaction Grid */}
         <div className="flex-1 overflow-auto bg-white dark:bg-slate-950">
             <table className="w-full text-[11px] border-collapse">
                 <thead className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase border-b border-slate-300 dark:border-slate-700 sticky top-0 z-10">
@@ -195,7 +201,6 @@ export const TransactionForm: React.FC<Props> = ({ type, onClose, onSuccess }) =
                         </tr>
                     ))}
                     
-                    {/* Add Row Logic */}
                     <tr className="bg-blue-50/50 dark:bg-blue-900/10 h-12">
                         <td className="p-2 border-r dark:border-slate-800 text-center"><Plus size={14} className="text-blue-500 mx-auto"/></td>
                         <td className="p-1 border-r dark:border-slate-800">
