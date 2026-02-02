@@ -215,17 +215,21 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                     <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider mb-2 border-b dark:border-slate-800 pb-2">
                                                         <div className="col-span-1">#</div>
                                                         <div className="col-span-2">Kode SKU</div>
-                                                        <div className="col-span-5">Deskripsi Barang</div>
+                                                        <div className="col-span-3">Deskripsi Barang</div>
                                                         <div className="col-span-2 text-right">Kuantitas</div>
-                                                        <div className="col-span-2">Satuan</div>
+                                                        <div className="col-span-2 text-center">Satuan</div>
+                                                        <div className="col-span-2 text-right">Total Base</div>
                                                     </div>
                                                     {tx.items.map((it, idx) => (
                                                         <div key={idx} className="grid grid-cols-12 gap-4 text-[10px] items-center py-1.5 hover:bg-white dark:hover:bg-slate-800/40 rounded-lg px-2 -mx-2 transition-colors">
                                                             <div className="col-span-1 text-slate-300 dark:text-slate-600 font-mono">{idx + 1}</div>
                                                             <div className="col-span-2 font-mono text-blue-600 dark:text-blue-400 font-bold">{it.code}</div>
-                                                            <div className="col-span-5 font-bold text-slate-600 dark:text-slate-300 uppercase truncate">{it.name}</div>
+                                                            <div className="col-span-3 font-bold text-slate-600 dark:text-slate-300 uppercase truncate">{it.name}</div>
                                                             <div className="col-span-2 text-right font-black text-slate-800 dark:text-white">{it.qty.toLocaleString()}</div>
-                                                            <div className="col-span-2 font-bold text-slate-400 dark:text-slate-500">{it.unit}</div>
+                                                            <div className="col-span-2 text-center font-bold text-slate-400 dark:text-slate-500">{it.unit}</div>
+                                                            <div className="col-span-2 text-right font-black text-blue-600 dark:text-blue-400">
+                                                                {(it.qty * (it.ratio || 1)).toLocaleString()}
+                                                            </div>
                                                         </div>
                                                     ))}
                                                     {tx.notes && (
