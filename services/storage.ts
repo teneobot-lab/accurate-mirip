@@ -50,6 +50,12 @@ export const StorageService = {
   async saveItem(item: Item) {
     return this.apiCall('/api/inventory/items', { method: 'POST', body: JSON.stringify(item) });
   },
+  async bulkSaveItems(items: Item[]) {
+    return this.apiCall('/api/inventory/items/bulk-upsert', { 
+      method: 'POST', 
+      body: JSON.stringify({ items }) 
+    });
+  },
   async deleteItems(ids: string[]) {
     return this.apiCall('/api/inventory/items/bulk-delete', { 
       method: 'POST', 

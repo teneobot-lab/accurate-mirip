@@ -65,6 +65,31 @@ router.post('/items', async (req, res, next) => {
     }
 });
 
+router.post('/items/bulk-upsert', async (req, res, next) => {
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
+    try {
+        const { items } = req.body;
+        if (!Array.isArray(items)) throw new Error("Invalid payload format");
+
+        for (const item of items) {
+            const itemId = item.id || uuidv4();
+            await conn.query(
+                'INSERT INTO items (id, code, name, category, base_unit, min_stock) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), category=VALUES(category), base_unit=VALUES(base_unit), min_stock=VALUES(min_stock)',
+                [itemId, item.code, item.name, item.category, item.baseUnit, item.minStock || 0]
+            );
+        }
+
+        await conn.commit();
+        res.json({ status: 'success', count: items.length });
+    } catch (e) {
+        await conn.rollback();
+        next(e);
+    } finally {
+        conn.release();
+    }
+});
+
 router.post('/items/bulk-delete', async (req, res, next) => {
     try {
         const { ids } = req.body;
