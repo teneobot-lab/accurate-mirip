@@ -97,6 +97,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         <div className="flex flex-col h-full bg-daintree p-4 gap-4 overflow-hidden font-sans">
             {/* Header & Filter Bar */}
             <div className="bg-gable p-4 rounded-xl shadow-lg border border-spectra flex flex-wrap gap-4 items-end">
+                {/* Date Filter (GOLD STANDARD) */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Rentang Tanggal</label>
                     <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra">
@@ -105,28 +106,42 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none px-2 py-1 w-32" />
                     </div>
                 </div>
+
+                {/* Warehouse Filter (Identical Style) */}
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Gudang</label>
-                    <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="report-input w-40">
-                        <option value="ALL">Semua Gudang</option>
-                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                    </select>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Jenis Transaksi</label>
-                    <select value={filterType} onChange={e => setFilterType(e.target.value)} className="report-input w-40">
-                        <option value="ALL">Semua Jenis</option>
-                        <option value="IN">Masuk (Inbound)</option>
-                        <option value="OUT">Keluar (Outbound)</option>
-                    </select>
-                </div>
-                <div className="flex-1 flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Cari No. Bukti / Barang</label>
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty group-focus-within:text-spectra transition-colors" size={14} />
-                        <input type="text" placeholder="Ketik keyword..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="report-input w-full pl-10 focus:ring-1 focus:ring-spectra" />
+                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra relative">
+                        <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none pl-3 pr-8 py-1 w-40 appearance-none cursor-pointer z-10">
+                            <option value="ALL">Semua Gudang</option>
+                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select>
+                        <ChevronDown size={14} className="text-cutty absolute right-2 pointer-events-none"/>
                     </div>
                 </div>
+
+                {/* Type Filter (Identical Style) */}
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Jenis Transaksi</label>
+                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra relative">
+                        <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none pl-3 pr-8 py-1 w-40 appearance-none cursor-pointer z-10">
+                            <option value="ALL">Semua Jenis</option>
+                            <option value="IN">Masuk (Inbound)</option>
+                            <option value="OUT">Keluar (Outbound)</option>
+                        </select>
+                         <ChevronDown size={14} className="text-cutty absolute right-2 pointer-events-none"/>
+                    </div>
+                </div>
+
+                {/* Search Bar (Identical Style) */}
+                <div className="flex-1 flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Cari No. Bukti / Barang</label>
+                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra relative group w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty group-focus-within:text-spectra transition-colors" size={14} />
+                        <input type="text" placeholder="Ketik keyword..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none pl-9 pr-2 py-1 w-full placeholder:text-cutty" />
+                    </div>
+                </div>
+
+                {/* Actions */}
                 <div className="flex gap-2">
                     <button onClick={refreshData} className="p-2.5 bg-daintree rounded-xl hover:bg-spectra/20 hover:text-white transition-colors shadow-sm text-cutty border border-spectra"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
                     <button onClick={handleExport} className="px-5 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-black flex items-center gap-2 shadow-lg shadow-black/20 active:scale-95 transition-all border border-spectra/50"><FileSpreadsheet size={16}/> EXPORT XLSX</button>
@@ -243,11 +258,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </table>
                 </div>
             </div>
-            <style>{`
-                .report-input { 
-                    @apply border border-spectra bg-daintree text-white rounded-xl px-3 py-2 text-[11px] font-bold outline-none focus:border-spectra focus:bg-gable transition-all shadow-inner placeholder:text-cutty appearance-none; 
-                }
-            `}</style>
+            {/* Styles removed as no longer needed */}
         </div>
     );
 };
