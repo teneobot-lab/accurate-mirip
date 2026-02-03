@@ -176,45 +176,41 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   return (
     <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-      <div className="bg-gable rounded-lg shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra">
+      <div className="bg-gable rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
         
-        {/* Title Bar - Dense & Functional */}
-        <div className="bg-daintree px-6 py-3 flex justify-between items-center border-b border-spectra shadow-sm z-20">
+        {/* Title Bar */}
+        <div className="bg-daintree px-6 py-4 flex justify-between items-center border-b border-spectra">
             <div className="flex items-center gap-4">
-                <div className={`p-2 rounded-lg border shadow-sm ${type === 'IN' ? 'bg-emerald-900/30 border-emerald-900 text-emerald-400' : 'bg-red-900/30 border-red-900 text-red-400'}`}>
+                <div className={`p-2.5 rounded-xl border shadow-inner ${type === 'IN' ? 'bg-emerald-900/20 border-emerald-900/50 text-emerald-400' : 'bg-red-900/20 border-red-900/50 text-red-400'}`}>
                    <FileText size={20} />
                 </div>
                 <div>
-                   <h2 className="text-lg font-bold text-white leading-none uppercase tracking-tight">
-                      {initialData ? 'Edit Transaksi' : 'Form Transaksi'} <span className={type === 'IN' ? 'text-emerald-500' : 'text-red-500'}>{type === 'IN' ? 'Penerimaan Barang' : 'Pengeluaran Barang'}</span>
+                   <h2 className="text-xl font-black text-white leading-none uppercase tracking-tight">
+                      {initialData ? 'Edit Transaksi' : 'Form Transaksi'} <span className={type === 'IN' ? 'text-emerald-500' : 'text-red-500'}>{type === 'IN' ? 'Penerimaan' : 'Pengeluaran'}</span>
                    </h2>
-                   <p className="text-[10px] text-cutty font-bold uppercase tracking-widest mt-0.5">No. Ref: {refNo}</p>
+                   <p className="text-[10px] text-cutty font-bold uppercase tracking-widest mt-1">Ref: {refNo}</p>
                 </div>
             </div>
             <div className="flex items-center gap-3">
-                 <div className="px-3 py-1 bg-spectra/10 border border-spectra/30 rounded text-[10px] font-bold text-cutty uppercase tracking-widest">
+                 <div className="px-3 py-1 bg-gable border border-spectra rounded text-[10px] font-bold text-cutty uppercase tracking-widest">
                     {lines.length} Items Loaded
                  </div>
-                 <button onClick={onClose} className="p-2 hover:bg-spectra/20 rounded-lg transition-colors text-slate-400">
+                 <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
                     <X size={20}/>
                  </button>
             </div>
         </div>
 
-        {/* Header Form - Dense Grid */}
-        <div className="p-5 bg-gable border-b border-spectra shadow-inner overflow-y-auto max-h-48">
-            <div className="grid grid-cols-12 gap-x-6 gap-y-4">
+        {/* Header Form */}
+        <div className="p-6 bg-gable border-b border-spectra shadow-sm">
+            <div className="grid grid-cols-12 gap-6">
                 {/* Left Column */}
                 <div className="col-span-4 space-y-4">
                      <div>
                         <label className="form-label">{type === 'IN' ? 'Supplier / Vendor' : 'Customer / Tujuan'}</label>
                         <div className="relative">
                             <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                            <select 
-                                className="form-input pl-10"
-                                value={selectedPartnerId}
-                                onChange={e => setSelectedPartnerId(e.target.value)}
-                            >
+                            <select className="form-input pl-10" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
                                 <option value="">-- Pilih Partner --</option>
                                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
@@ -224,11 +220,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         <label className="form-label">Gudang {type === 'IN' ? 'Penerima' : 'Asal'}</label>
                         <div className="relative">
                             <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                            <select 
-                                className="form-input pl-10"
-                                value={selectedWh}
-                                onChange={e => setSelectedWh(e.target.value)}
-                            >
+                            <select className="form-input pl-10" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
                                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                             </select>
                         </div>
@@ -240,11 +232,17 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="form-label">Tanggal Transaksi</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="form-input" />
+                            <div className="relative">
+                                <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="form-input pl-10" />
+                            </div>
                         </div>
                         <div>
                             <label className="form-label">No. Referensi</label>
-                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="form-input font-mono uppercase" />
+                            <div className="relative">
+                                <Hash size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="form-input pl-10 font-mono uppercase" />
+                            </div>
                         </div>
                     </div>
                     <div>
@@ -254,16 +252,16 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </div>
                 
                  {/* Right Column (Summary Box) */}
-                <div className="col-span-4 pl-4 border-l border-spectra">
-                    <div className="h-full bg-daintree rounded-lg border border-spectra/50 p-4 flex flex-col justify-center gap-2">
+                <div className="col-span-4 pl-6 border-l border-spectra/50">
+                    <div className="h-full bg-daintree rounded-xl border border-spectra p-5 flex flex-col justify-center gap-3 shadow-inner">
                         <div className="flex justify-between items-center text-xs font-bold text-cutty uppercase">
                             <span>Total Qty</span>
                             <span>{lines.reduce((a,b) => a + Number(b.qty), 0).toLocaleString()} Unit</span>
                         </div>
-                        <div className="w-full h-px bg-spectra my-1"></div>
+                        <div className="w-full h-px bg-spectra/50"></div>
                         <div className="flex justify-between items-center text-sm font-black text-white uppercase">
                             <span>Total Item</span>
-                            <span className="text-cutty">{lines.length} SKU</span>
+                            <span className="text-emerald-500">{lines.length} SKU</span>
                         </div>
                     </div>
                 </div>
@@ -273,28 +271,27 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         {/* Transaction Grid Table */}
         <div className="flex-1 bg-gable overflow-hidden flex flex-col relative z-0">
             <div className="flex-1 overflow-auto scrollbar-thin">
-                <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 z-10 bg-daintree text-cutty text-[11px] font-bold uppercase tracking-wider shadow-sm">
+                <table className="w-full text-left border-separate border-spacing-0">
+                    <thead className="sticky top-0 z-10 bg-daintree text-cutty text-[10px] font-black uppercase tracking-widest shadow-md">
                         <tr>
-                            <th className="px-3 py-2 border-r border-spectra w-10 text-center">#</th>
-                            <th className="px-3 py-2 border-r border-spectra">Kode Barang</th>
-                            <th className="px-3 py-2 border-r border-spectra w-1/3">Nama Barang</th>
-                            <th className="px-3 py-2 border-r border-spectra w-32 text-right">Kuantitas</th>
-                            <th className="px-3 py-2 border-r border-spectra w-24 text-center">Satuan</th>
-                            <th className="px-3 py-2 border-r border-spectra w-48">Memo Line</th>
-                            <th className="px-3 py-2 w-16 text-center">Aksi</th>
+                            <th className="px-4 py-3 border-b border-spectra w-12 text-center">#</th>
+                            <th className="px-4 py-3 border-b border-spectra">Kode & Nama Barang</th>
+                            <th className="px-4 py-3 border-b border-spectra w-32 text-right">Kuantitas</th>
+                            <th className="px-4 py-3 border-b border-spectra w-24 text-center">Satuan</th>
+                            <th className="px-4 py-3 border-b border-spectra w-1/3">Memo Line</th>
+                            <th className="px-4 py-3 border-b border-spectra w-16 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody className="text-xs text-slate-200">
                         {/* Entry Row */}
-                        <tr className="bg-yellow-900/10 border-b border-spectra">
-                            <td className="p-2 border-r border-spectra text-center"><Plus size={16} className="text-cutty mx-auto"/></td>
-                            <td className="p-2 border-r border-spectra relative" colSpan={2}>
+                        <tr className="bg-daintree/30 border-b border-spectra">
+                            <td className="p-3 border-b border-spectra text-center"><Plus size={16} className="text-spectra mx-auto"/></td>
+                            <td className="p-3 border-b border-spectra relative">
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-daintree border border-cutty rounded-none px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra font-bold placeholder:text-slate-500 placeholder:font-normal uppercase text-white"
-                                    placeholder="CARI BARANG (Ketik Kode/Nama)..."
+                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm"
+                                    placeholder="Cari Barang (Kode/Nama)..."
                                     value={query}
                                     onChange={e => {
                                         setQuery(e.target.value);
@@ -306,35 +303,38 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                                 {/* Autocomplete Dropdown */}
                                 {isDropdownOpen && (
-                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-daintree rounded-md shadow-xl border border-spectra z-[100] max-h-60 overflow-y-auto">
+                                    <div ref={dropdownRef} className="absolute left-3 top-full mt-1 w-[400px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
                                         {filteredItems.map((it, idx) => (
                                             <div 
                                                 key={it.id}
-                                                className={`px-3 py-2 cursor-pointer border-b border-spectra text-xs ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-gable'}`}
+                                                className={`px-3 py-2 cursor-pointer border-b border-spectra/30 text-xs flex justify-between items-center ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'}`}
                                                 onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
                                                 onMouseEnter={() => setSelectedIndex(idx)}
                                             >
-                                                <div className="font-bold">{it.code}</div>
-                                                <div className={idx === selectedIndex ? 'text-cutty' : 'text-slate-500'}>{it.name}</div>
+                                                <div>
+                                                    <div className="font-bold">{it.code}</div>
+                                                    <div className={`text-[10px] ${idx === selectedIndex ? 'text-white/80' : 'text-slate-400'}`}>{it.name}</div>
+                                                </div>
+                                                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </td>
-                            <td className="p-2 border-r border-spectra">
+                            <td className="p-3 border-b border-spectra">
                                 <input 
                                     ref={qtyInputRef}
                                     type="number" 
-                                    className="w-full bg-daintree border border-cutty rounded-none px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra text-right font-mono font-bold text-white"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm"
                                     value={pendingQty} 
                                     onChange={e => setPendingQty(e.target.value)} 
                                     disabled={!pendingItem}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
                                 />
                             </td>
-                            <td className="p-2 border-r border-spectra">
+                            <td className="p-3 border-b border-spectra">
                                  <select 
-                                    className="w-full bg-daintree border border-cutty rounded-none px-1 py-1.5 outline-none font-bold text-center text-white"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-2 outline-none font-bold text-center text-white text-xs shadow-sm"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
@@ -347,10 +347,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     )}
                                 </select>
                             </td>
-                            <td className="p-2 border-r border-spectra">
+                            <td className="p-3 border-b border-spectra">
                                 <input 
                                     type="text" 
-                                    className="w-full bg-daintree border border-cutty rounded-none px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra text-white"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra text-white shadow-sm"
                                     placeholder="Catatan baris..." 
                                     value={pendingNote} 
                                     onChange={e => setPendingNote(e.target.value)} 
@@ -358,23 +358,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     disabled={!pendingItem} 
                                 />
                             </td>
-                            <td className="p-2 text-center">
-                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-daintree text-white rounded hover:bg-spectra disabled:opacity-50 transition-colors"><CornerDownLeft size={16}/></button>
+                            <td className="p-3 border-b border-spectra text-center">
+                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-2 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={16}/></button>
                             </td>
                         </tr>
 
                         {/* Existing Lines */}
                         {lines.map((l, i) => (
-                            <tr key={i} className="hover:bg-spectra/20 border-b border-spectra group">
-                                <td className="px-3 py-2 border-r border-spectra text-center text-slate-400 font-mono">{i + 1}</td>
-                                <td className="px-3 py-2 border-r border-spectra font-mono text-cutty font-bold">{l.code}</td>
-                                <td className="px-3 py-2 border-r border-spectra font-medium">{l.name}</td>
-                                <td className="px-3 py-2 border-r border-spectra text-right font-bold">{l.qty.toLocaleString()}</td>
-                                <td className="px-3 py-2 border-r border-spectra text-center">{l.unit}</td>
-                                <td className="px-3 py-2 border-r border-spectra italic text-slate-500">{l.note}</td>
-                                <td className="px-3 py-2 text-center">
-                                    <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100">
-                                        <Trash2 size={16}/>
+                            <tr key={i} className="hover:bg-spectra/10 transition-colors group">
+                                <td className="px-4 py-3 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
+                                <td className="px-4 py-3 border-b border-spectra/10">
+                                    <div className="font-bold text-slate-200">{l.name}</div>
+                                    <div className="text-[10px] text-cutty font-mono">{l.code}</div>
+                                </td>
+                                <td className="px-4 py-3 border-b border-spectra/10 text-right font-black text-white">{l.qty.toLocaleString()}</td>
+                                <td className="px-4 py-3 border-b border-spectra/10 text-center text-slate-400 font-bold text-[10px]">{l.unit}</td>
+                                <td className="px-4 py-3 border-b border-spectra/10 italic text-slate-500">{l.note || '-'}</td>
+                                <td className="px-4 py-3 border-b border-spectra/10 text-center">
+                                    <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                        <Trash2 size={14}/>
                                     </button>
                                 </td>
                             </tr>
@@ -383,26 +385,26 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </table>
             </div>
             
-            {/* Empty State Overlay if no items */}
+            {/* Empty State Overlay */}
             {lines.length === 0 && (
-                <div className="absolute inset-x-0 top-20 bottom-0 flex flex-col items-center justify-center pointer-events-none opacity-10">
-                    <Package size={80} className="text-white"/>
-                    <div className="text-4xl font-black uppercase text-white mt-4">No Items</div>
+                <div className="absolute inset-x-0 top-20 bottom-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
+                    <Package size={64} className="text-spectra"/>
+                    <div className="text-xl font-black uppercase text-spectra mt-4 tracking-widest">Belum ada item</div>
                 </div>
             )}
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-daintree p-4 border-t border-spectra flex justify-between items-center z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+        <div className="bg-daintree p-5 border-t border-spectra flex justify-between items-center z-20">
              <div className="text-[10px] text-cutty font-bold uppercase tracking-widest flex gap-4">
-                <span className="flex items-center gap-1"><Info size={14}/> Pastikan data sudah benar sebelum simpan</span>
+                <span className="flex items-center gap-2"><Info size={14} className="text-spectra"/> Pastikan data sudah valid</span>
              </div>
              <div className="flex gap-3">
-                <button onClick={onClose} className="px-6 py-2.5 rounded-lg border border-cutty bg-gable hover:bg-spectra text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
+                <button onClick={onClose} className="px-6 py-2.5 rounded-xl border border-spectra bg-gable hover:bg-spectra/20 text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
                 <button 
                     onClick={handleSubmit} 
                     disabled={isSubmitting || !selectedWh}
-                    className="px-8 py-2.5 rounded-lg bg-spectra hover:bg-gable text-white text-xs font-bold uppercase tracking-wide shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                    className="px-8 py-2.5 rounded-xl bg-spectra hover:bg-white hover:text-daintree text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
                 >
                     {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                     {initialData ? 'Simpan Perubahan' : 'Simpan Transaksi'}
@@ -412,15 +414,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
       <style>{`
         .form-input { 
-            @apply w-full bg-daintree border border-cutty rounded-none px-3 py-2 text-xs font-bold text-white focus:ring-2 focus:ring-spectra focus:border-spectra outline-none transition-all shadow-sm; 
+            @apply w-full bg-daintree border border-spectra rounded-xl px-3 py-2.5 text-xs font-bold text-white focus:ring-1 focus:ring-spectra outline-none transition-all shadow-inner placeholder:text-cutty appearance-none; 
         }
         .form-label {
-            @apply block text-[10px] font-bold uppercase text-cutty mb-1.5 tracking-wide ml-0.5;
+            @apply block text-[10px] font-bold uppercase text-cutty mb-1.5 tracking-wide ml-1;
         }
-        .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: #02272c; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background: #496569; border: 2px solid #02272c; border-radius: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #335157; }
       `}</style>
     </div>
   );
