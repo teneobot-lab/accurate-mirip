@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown, Barcode, Package } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown, Barcode, Package, Ruler, AlertTriangle } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -347,10 +347,10 @@ export const InventoryView: React.FC = () => {
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
                                 </div>
                                 <div className="grid grid-cols-12 gap-5">
-                                    <div className="col-span-3 space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kode SKU</label>
+                                    <div className="col-span-3 space-y-2 group">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide group-focus-within:text-spectra transition-colors">Kode SKU</label>
                                         <div className="relative">
-                                            <Barcode size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <Barcode size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
                                                 className="modal-input font-mono font-bold text-emerald-400 uppercase tracking-widest pl-11" 
@@ -360,27 +360,27 @@ export const InventoryView: React.FC = () => {
                                             />
                                         </div>
                                     </div>
-                                    <div className="col-span-5 space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nama Barang</label>
+                                    <div className="col-span-5 space-y-2 group">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide group-focus-within:text-spectra transition-colors">Nama Barang</label>
                                         <div className="relative">
-                                            <Package size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <Package size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
-                                                className="modal-input font-bold text-white pl-11" 
+                                                className="modal-input font-bold text-white pl-11 tracking-wide" 
                                                 placeholder="Nama Item..." 
                                                 value={itemForm.name} 
                                                 onChange={e => setItemForm({...itemForm, name: e.target.value})} 
                                             />
                                         </div>
                                     </div>
-                                    <div className="col-span-4 space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kategori</label>
+                                    <div className="col-span-4 space-y-2 group">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide group-focus-within:text-spectra transition-colors">Kategori</label>
                                         <div className="relative">
-                                            <Layers size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <Layers size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-spectra transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
                                                 list="category-suggestions"
-                                                className="modal-input pl-11" 
+                                                className="modal-input pl-11 font-bold text-slate-200" 
                                                 placeholder="Pilih / Ketik Kategori..." 
                                                 value={itemForm.category} 
                                                 onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
@@ -390,7 +390,7 @@ export const InventoryView: React.FC = () => {
                                                     <option key={cat} value={cat} />
                                                 ))}
                                             </datalist>
-                                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"/>
                                         </div>
                                     </div>
                                 </div>
@@ -403,35 +403,43 @@ export const InventoryView: React.FC = () => {
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Kontrol Stok</h4>
                                 </div>
                                 <div className="grid grid-cols-12 gap-5">
-                                    <div className="col-span-4 space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Satuan Dasar</label>
-                                        <input 
-                                            type="text" 
-                                            className="modal-input bg-emerald-900/10 border-emerald-900/50 text-emerald-400 font-bold text-center" 
-                                            placeholder="Pcs" 
-                                            value={itemForm.baseUnit} 
-                                            onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
-                                        />
-                                    </div>
-                                    {!editingItem && (
-                                        <div className="col-span-4 space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Stok Awal</label>
+                                    <div className="col-span-4 space-y-2 group">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide group-focus-within:text-spectra transition-colors">Satuan Dasar</label>
+                                        <div className="relative">
+                                            <Ruler size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors pointer-events-none"/>
                                             <input 
-                                                type="number" 
-                                                className="modal-input text-right font-mono text-spectra bg-spectra/10 border-spectra/50" 
-                                                value={itemForm.initialStock} 
-                                                onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
+                                                type="text" 
+                                                className="modal-input font-black text-white text-center pl-10" 
+                                                placeholder="Pcs" 
+                                                value={itemForm.baseUnit} 
+                                                onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
                                             />
                                         </div>
+                                    </div>
+                                    {!editingItem && (
+                                        <div className="col-span-4 space-y-2 group">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide group-focus-within:text-spectra transition-colors">Stok Awal</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="number" 
+                                                    className="modal-input text-right font-mono text-emerald-400 font-bold pr-4" 
+                                                    value={itemForm.initialStock} 
+                                                    onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
+                                                />
+                                            </div>
+                                        </div>
                                     )}
-                                    <div className="col-span-4 space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Min. Alert</label>
-                                        <input 
-                                            type="number" 
-                                            className="modal-input text-right font-mono" 
-                                            value={itemForm.minStock} 
-                                            onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
-                                        />
+                                    <div className="col-span-4 space-y-2 group">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide group-focus-within:text-red-400 transition-colors">Min. Alert</label>
+                                        <div className="relative">
+                                            <AlertTriangle size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-red-400 transition-colors pointer-events-none"/>
+                                            <input 
+                                                type="number" 
+                                                className="modal-input text-right font-mono text-red-300 font-bold pl-10" 
+                                                value={itemForm.minStock} 
+                                                onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -542,13 +550,20 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .modal-input { 
-                    @apply w-full h-11 bg-daintree border border-spectra/50 rounded-xl px-4 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-inner placeholder:text-slate-600 appearance-none; 
+                    @apply w-full h-11 bg-gable/80 border border-white/5 rounded-xl px-4 text-xs text-white outline-none focus:bg-daintree focus:border-spectra focus:ring-1 focus:ring-spectra/50 transition-all placeholder:text-slate-600 appearance-none shadow-inner; 
                 }
                 .table-input {
-                    @apply w-full h-9 bg-daintree/50 border border-spectra/30 rounded-lg px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty;
+                    @apply w-full h-9 bg-daintree/50 border border-spectra/30 rounded-lg px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty appearance-none;
                 }
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
+
+                /* Remove number spinner arrows */
+                input[type=number]::-webkit-inner-spin-button, 
+                input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; 
+                    margin: 0; 
+                }
             `}</style>
         </div>
     );
