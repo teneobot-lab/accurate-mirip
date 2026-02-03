@@ -313,10 +313,10 @@ export const InventoryView: React.FC = () => {
             {/* Item Modal - Fully Rounded & Dense */}
             {showItemModal && (
                 <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300 font-sans">
-                    <div className="bg-gable rounded-[24px] w-full max-w-3xl border border-spectra overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in-95">
+                    <div className="bg-gable rounded-[32px] w-full max-w-3xl border border-spectra overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in-95">
                         
                         {/* Header */}
-                        <div className="bg-daintree border-b border-spectra px-6 py-4 flex justify-between items-center shrink-0">
+                        <div className="bg-daintree border-b border-spectra px-8 py-5 flex justify-between items-center shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-gable rounded-xl shadow-sm border border-spectra text-cutty">
                                     <Box size={20}/>
@@ -334,27 +334,27 @@ export const InventoryView: React.FC = () => {
                         </div>
 
                         {/* Modal Body - Vertical Layout */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+                        <div className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin">
                             
-                            {/* Section 1: Identitas Produk */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 pb-1 border-b border-spectra/50">
+                            {/* Section 1: Identitas Produk (Card Style) */}
+                            <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-spectra/50">
                                     <Tag size={14} className="text-spectra"/>
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
                                 </div>
-                                <div className="grid grid-cols-12 gap-4">
-                                    <div className="col-span-3 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Kode SKU</label>
+                                <div className="grid grid-cols-12 gap-5">
+                                    <div className="col-span-3 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kode SKU</label>
                                         <input 
                                             type="text" 
-                                            className="modal-input font-mono font-bold text-emerald-400 uppercase" 
+                                            className="modal-input font-mono font-bold text-emerald-400 uppercase tracking-widest" 
                                             placeholder="AUTO" 
                                             value={itemForm.code} 
                                             onChange={e => setItemForm({...itemForm, code: e.target.value})} 
                                         />
                                     </div>
-                                    <div className="col-span-5 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Nama Barang</label>
+                                    <div className="col-span-5 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nama Barang</label>
                                         <input 
                                             type="text" 
                                             className="modal-input font-bold text-white" 
@@ -363,8 +363,8 @@ export const InventoryView: React.FC = () => {
                                             onChange={e => setItemForm({...itemForm, name: e.target.value})} 
                                         />
                                     </div>
-                                    <div className="col-span-4 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Kategori</label>
+                                    <div className="col-span-4 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kategori</label>
                                         <input 
                                             type="text" 
                                             className="modal-input" 
@@ -376,26 +376,26 @@ export const InventoryView: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Section 2: Kontrol Stok */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 pb-1 border-b border-spectra/50">
+                            {/* Section 2: Kontrol Stok (Card Style) */}
+                            <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-spectra/50">
                                     <Database size={14} className="text-emerald-600"/>
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Kontrol Stok</h4>
                                 </div>
-                                <div className="grid grid-cols-12 gap-4">
-                                    <div className="col-span-4 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Satuan Dasar</label>
+                                <div className="grid grid-cols-12 gap-5">
+                                    <div className="col-span-4 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Satuan Dasar</label>
                                         <input 
                                             type="text" 
-                                            className="modal-input bg-emerald-900/10 border-emerald-900/50 text-emerald-400 font-bold" 
+                                            className="modal-input bg-emerald-900/10 border-emerald-900/50 text-emerald-400 font-bold text-center" 
                                             placeholder="Pcs" 
                                             value={itemForm.baseUnit} 
                                             onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
                                         />
                                     </div>
                                     {!editingItem && (
-                                        <div className="col-span-4 space-y-1.5">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Stok Awal</label>
+                                        <div className="col-span-4 space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Stok Awal</label>
                                             <input 
                                                 type="number" 
                                                 className="modal-input text-right font-mono text-spectra bg-spectra/10 border-spectra/50" 
@@ -404,8 +404,8 @@ export const InventoryView: React.FC = () => {
                                             />
                                         </div>
                                     )}
-                                    <div className="col-span-4 space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Min. Alert</label>
+                                    <div className="col-span-4 space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Min. Alert</label>
                                         <input 
                                             type="number" 
                                             className="modal-input text-right font-mono" 
@@ -417,44 +417,47 @@ export const InventoryView: React.FC = () => {
                             </div>
 
                             {/* Section 3: Multi-Unit Conversion (Table Style) */}
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center pb-1 border-b border-spectra/50">
+                            <div className="space-y-3 pt-2">
+                                <div className="flex justify-between items-center pb-2 px-1">
                                     <div className="flex items-center gap-2">
                                         <LayoutGrid size={14} className="text-amber-600"/>
                                         <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Konversi Satuan</h4>
                                     </div>
                                     <button 
                                         onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
-                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5"
                                     >
-                                        <Plus size={12}/> Tambah
+                                        <Plus size={12}/> Tambah Baris
                                     </button>
                                 </div>
                                 
                                 {/* TABLE WRAPPER (ROUNDED & DENSE) */}
-                                <div className="rounded-xl border border-spectra overflow-hidden bg-daintree/20 shadow-inner ring-1 ring-white/5">
+                                <div className="rounded-2xl border border-spectra/50 overflow-hidden bg-daintree/20 shadow-inner">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
                                             <tr>
-                                                <th className="px-3 py-2.5 w-10 text-center border-b border-spectra">#</th>
-                                                <th className="px-3 py-2.5 border-b border-spectra">Nama Satuan</th>
-                                                <th className="px-3 py-2.5 w-32 border-b border-spectra">Operator</th>
-                                                <th className="px-3 py-2.5 w-32 text-right border-b border-spectra">Rasio ({itemForm.baseUnit})</th>
-                                                <th className="px-3 py-2.5 w-10 border-b border-spectra"></th>
+                                                <th className="px-4 py-3 w-12 text-center border-b border-spectra/50">#</th>
+                                                <th className="px-4 py-3 border-b border-spectra/50">Nama Satuan</th>
+                                                <th className="px-4 py-3 w-36 border-b border-spectra/50">Operator</th>
+                                                <th className="px-4 py-3 w-36 text-right border-b border-spectra/50">Rasio ({itemForm.baseUnit})</th>
+                                                <th className="px-4 py-3 w-12 border-b border-spectra/50"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-spectra/20 text-xs bg-gable/30">
                                             {(itemForm.conversions || []).length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={5} className="p-4 text-center text-[10px] text-slate-500 italic">
-                                                        Belum ada satuan konversi
+                                                    <td colSpan={5} className="p-8 text-center text-[10px] text-slate-500 italic">
+                                                        <div className="flex flex-col items-center gap-2 opacity-50">
+                                                            <Equal size={20}/>
+                                                            <span>Belum ada satuan konversi tambahan</span>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ) : (
                                                 itemForm.conversions?.map((c, i) => (
                                                     <tr key={i} className="hover:bg-daintree/50 transition-colors group">
-                                                        <td className="px-3 py-2 text-center text-[10px] text-slate-500 font-bold align-middle">{i+1}</td>
-                                                        <td className="px-3 py-2 align-middle">
+                                                        <td className="px-4 py-2 text-center text-[10px] text-slate-500 font-bold align-middle">{i+1}</td>
+                                                        <td className="px-4 py-2 align-middle">
                                                             <input 
                                                                 type="text" 
                                                                 className="table-input" 
@@ -463,7 +466,7 @@ export const InventoryView: React.FC = () => {
                                                                 onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-2 align-middle">
+                                                        <td className="px-4 py-2 align-middle">
                                                             <div className="relative">
                                                                 <select 
                                                                     className="table-input appearance-none pr-8 cursor-pointer"
@@ -473,10 +476,10 @@ export const InventoryView: React.FC = () => {
                                                                     <option value="*">KALI (*)</option>
                                                                     <option value="/">BAGI (/)</option>
                                                                 </select>
-                                                                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                                                             </div>
                                                         </td>
-                                                        <td className="px-3 py-2 align-middle">
+                                                        <td className="px-4 py-2 align-middle">
                                                             <input 
                                                                 type="number" 
                                                                 className="table-input text-right font-mono" 
@@ -484,10 +487,10 @@ export const InventoryView: React.FC = () => {
                                                                 onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-2 text-center align-middle">
+                                                        <td className="px-4 py-2 text-center align-middle">
                                                             <button 
                                                                 onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
-                                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
+                                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded-xl transition-colors"
                                                             >
                                                                 <Trash2 size={14}/>
                                                             </button>
@@ -502,12 +505,12 @@ export const InventoryView: React.FC = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="bg-daintree p-4 border-t border-spectra flex justify-end gap-3 shrink-0">
-                            <button onClick={() => setShowItemModal(false)} className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest rounded-xl hover:bg-white/5">Batal</button>
+                        <div className="bg-daintree p-6 border-t border-spectra flex justify-end gap-3 shrink-0">
+                            <button onClick={() => setShowItemModal(false)} className="px-6 py-3 text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest rounded-xl hover:bg-white/5 border border-transparent">Batal</button>
                             <button 
                                 onClick={handleSaveItem} 
                                 disabled={isLoading} 
-                                className="px-8 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl font-black text-xs shadow-lg shadow-black/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50 border border-spectra"
+                                className="px-8 py-3 bg-spectra hover:bg-daintree text-white rounded-xl font-black text-xs shadow-lg shadow-black/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50 border border-spectra"
                             >
                                 {isLoading ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
                                 {editingItem ? 'SIMPAN PERUBAHAN' : 'SIMPAN DATA'}
@@ -519,10 +522,10 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .modal-input { 
-                    @apply w-full h-10 bg-daintree border border-spectra/50 rounded-xl px-4 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-spectra/50 focus:border-spectra transition-all shadow-inner placeholder:text-slate-600; 
+                    @apply w-full h-11 bg-daintree border border-spectra/50 rounded-xl px-4 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-inner placeholder:text-slate-600; 
                 }
                 .table-input {
-                    @apply w-full bg-daintree/50 border border-spectra/50 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty;
+                    @apply w-full h-9 bg-daintree/50 border border-spectra/30 rounded-lg px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty;
                 }
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
