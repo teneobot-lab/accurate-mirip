@@ -98,7 +98,7 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
         <input
           ref={inputRef}
           type="text"
-          className="block w-full pl-10 pr-4 py-2.5 border-0 bg-slate-100/80 text-slate-900 rounded-xl ring-1 ring-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm transition-all shadow-sm"
+          className="block w-full pl-10 pr-4 py-2.5 border border-spectra bg-daintree text-white rounded-xl placeholder:text-slate-500 focus:ring-2 focus:ring-spectra focus:bg-gable text-sm transition-all shadow-sm outline-none"
           placeholder="Cari Barang (Kode, Nama, atau Kategori)..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -108,7 +108,7 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
           spellCheck="false"
         />
         <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-          <kbd className="hidden sm:inline-block border border-slate-300 rounded px-1.5 text-[10px] font-mono text-slate-400 bg-white shadow-sm">
+          <kbd className="hidden sm:inline-block border border-spectra rounded px-1.5 text-[10px] font-mono text-cutty bg-gable shadow-sm">
             /
           </kbd>
         </div>
@@ -116,8 +116,8 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
 
       {/* Dropdown Results - Posisi Tepat di Bawah Search Bar */}
       {isOpen && (
-        <div className="absolute z-[100] mt-2 left-0 w-full bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="text-[10px] uppercase font-bold text-slate-400 px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+        <div className="absolute z-[100] mt-2 left-0 w-full bg-gable rounded-xl shadow-2xl border border-spectra overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="text-[10px] uppercase font-bold text-cutty px-4 py-2.5 bg-daintree border-b border-spectra flex justify-between items-center">
                 <span className="flex items-center gap-1.5"><Tag size={10}/> Hasil Pencarian</span>
                 <span>Pilih dengan <ArrowRight size={10} className="inline mx-1"/> atau Enter</span>
             </div>
@@ -126,26 +126,26 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
                 <li
                     key={item.id}
                     onClick={() => handleSelect(item)}
-                    className={`cursor-pointer px-4 py-3 border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors ${
-                        index === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50'
+                    className={`cursor-pointer px-4 py-3 border-b border-spectra last:border-0 flex justify-between items-center transition-colors ${
+                        index === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'
                     }`}
                 >
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${index === selectedIndex ? 'bg-blue-500 text-white' : 'bg-blue-50 text-blue-600'}`}>
+                        <div className={`p-2 rounded-lg ${index === selectedIndex ? 'bg-daintree text-white' : 'bg-daintree text-spectra'}`}>
                             <Package size={18} />
                         </div>
                         <div className="flex flex-col">
-                            <span className={`text-sm font-bold ${index === selectedIndex ? 'text-white' : 'text-slate-800'}`}>
+                            <span className={`text-sm font-bold ${index === selectedIndex ? 'text-white' : 'text-slate-200'}`}>
                                  {item.name}
                             </span>
-                            <span className={`text-xs font-mono ${index === selectedIndex ? 'text-blue-100' : 'text-slate-500'}`}>
+                            <span className={`text-xs font-mono ${index === selectedIndex ? 'text-slate-200' : 'text-slate-500'}`}>
                                 {item.code} • {item.category}
                             </span>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <span className={`text-[10px] font-bold px-2 py-1 rounded border ${
-                            index === selectedIndex ? 'bg-blue-500 border-blue-400 text-white' : 'bg-slate-100 border-slate-200 text-slate-500'
+                            index === selectedIndex ? 'bg-daintree border-cutty text-white' : 'bg-daintree border-spectra text-slate-400'
                         }`}>
                             {item.baseUnit}
                         </span>

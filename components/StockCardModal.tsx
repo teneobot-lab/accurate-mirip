@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
-import { X, Package, TrendingUp, History, MapPin } from 'lucide-react';
+import { X, Package, TrendingUp, History, MapPin, Box } from 'lucide-react';
 
 interface Props {
   item: Item;
@@ -49,7 +49,7 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
     const relevantTx = transactions.filter(tx => 
         tx.items.some(ti => ti.itemId === item.id)
     );
-    // Sort desc, take top 5
+    // Sort desc, take top 10
     return relevantTx
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 10)
@@ -67,75 +67,80 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
   }, [item, transactions, warehouses]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-gable rounded-[24px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-spectra" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
-        <div className="bg-slate-800 dark:bg-slate-950 text-white p-4 flex justify-between items-start">
-            <div>
-                <div className="text-xs font-bold text-slate-400 uppercase mb-1 tracking-wider">Stock Card</div>
-                <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <Package className="text-blue-400" /> 
-                    {item.name}
-                </h2>
-                <div className="font-mono text-sm text-slate-300 mt-1">CODE: {item.code} | Unit: {item.baseUnit}</div>
+        <div className="bg-daintree px-6 py-4 flex justify-between items-center border-b border-spectra">
+            <div className="flex items-center gap-4">
+                 <div className="p-3 bg-gable rounded-2xl shadow-sm border border-spectra text-white">
+                    <Box size={24}/>
+                 </div>
+                 <div>
+                    <h2 className="text-lg font-bold text-white leading-none mb-1">Kartu Stok Barang</h2>
+                    <div className="flex items-center gap-2 text-[10px] text-cutty font-bold uppercase tracking-widest">
+                         <span>{item.code}</span>
+                         <span>•</span>
+                         <span>{item.name}</span>
+                    </div>
+                 </div>
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-700 transition-colors">
+            <button onClick={onClose} className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-spectra/20 transition-colors">
                 <X size={24} />
             </button>
         </div>
 
-        <div className="overflow-y-auto p-6 space-y-6 bg-white dark:bg-slate-900">
+        <div className="overflow-y-auto p-6 space-y-6 bg-gable scrollbar-thin">
             
             {/* KPI Section */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Total Stock</div>
-                    <div className={`text-3xl font-mono font-bold ${stockData.total <= item.minStock ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-100'}`}>
-                        {stockData.total} <span className="text-sm font-sans font-normal text-slate-500 dark:text-slate-400">{item.baseUnit}</span>
+                <div className="p-4 bg-daintree/50 border border-spectra rounded-2xl">
+                    <div className="text-[10px] font-black text-cutty uppercase mb-1 tracking-wider">Total Inventory</div>
+                    <div className={`text-3xl font-mono font-bold ${stockData.total <= item.minStock ? 'text-red-400' : 'text-white'}`}>
+                        {stockData.total.toLocaleString()} <span className="text-sm font-sans font-bold text-slate-500">{item.baseUnit}</span>
                     </div>
                     {stockData.total <= item.minStock && (
-                        <div className="text-xs text-red-500 dark:text-red-400 font-bold mt-1 flex items-center">
+                        <div className="text-[10px] text-red-400 font-bold mt-2 flex items-center bg-red-900/20 px-2 py-1 rounded w-fit border border-red-900/50">
                             ⚠️ Below Min Stock ({item.minStock})
                         </div>
                     )}
                 </div>
-                 <div className="p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Conversions</div>
+                 <div className="p-4 bg-daintree/50 border border-spectra rounded-2xl">
+                    <div className="text-[10px] font-black text-cutty uppercase mb-2 tracking-wider">Unit Conversions</div>
                     <div className="space-y-1">
                         {item.conversions.length > 0 ? item.conversions.map((c, i) => (
-                            <div key={i} className="text-sm text-slate-700 dark:text-slate-300 flex justify-between border-b border-dashed border-slate-300 dark:border-slate-600 last:border-0 py-1">
-                                <span>1 {c.name}</span>
-                                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">= {c.ratio} {item.baseUnit}</span>
+                            <div key={i} className="text-xs text-slate-300 flex justify-between border-b border-dashed border-spectra pb-1 mb-1 last:border-0 last:pb-0 last:mb-0">
+                                <span className="font-medium">1 {c.name}</span>
+                                <span className="font-mono font-bold text-white">= {c.ratio} {item.baseUnit}</span>
                             </div>
-                        )) : <span className="text-sm text-slate-400 italic">No conversions defined</span>}
+                        )) : <span className="text-xs text-slate-500 italic">No conversions defined</span>}
                     </div>
                 </div>
             </div>
 
             {/* Warehouse Breakdown */}
             <div>
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-                    <MapPin size={16} /> Warehouse Distribution
+                <h3 className="text-xs font-black text-cutty uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <MapPin size={14} /> Warehouse Distribution
                 </h3>
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-100 dark:bg-slate-900/50 text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">
+                <div className="bg-daintree border border-spectra rounded-2xl overflow-hidden">
+                    <table className="w-full text-xs text-left">
+                        <thead className="bg-gable text-slate-400 uppercase font-bold border-b border-spectra">
                             <tr>
-                                <th className="p-3">Location</th>
+                                <th className="p-3 w-1/2">Location</th>
                                 <th className="p-3 text-right">Quantity</th>
-                                <th className="p-3 w-1/3">Status</th>
+                                <th className="p-3 w-1/3 text-center">Visual</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        <tbody className="divide-y divide-spectra/30">
                             {stockData.breakdown.map(wh => (
-                                <tr key={wh.name}>
-                                    <td className="p-3 font-medium text-slate-700 dark:text-slate-200">{wh.name}</td>
-                                    <td className="p-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200">{wh.qty}</td>
+                                <tr key={wh.name} className="hover:bg-gable/50 transition-colors">
+                                    <td className="p-3 font-bold text-slate-200">{wh.name}</td>
+                                    <td className="p-3 text-right font-mono font-bold text-white">{wh.qty.toLocaleString()}</td>
                                     <td className="p-3">
-                                        <div className="h-2 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div className="h-1.5 w-full bg-gable rounded-full overflow-hidden">
                                             <div 
-                                                className={`h-full ${wh.qty > 0 ? 'bg-blue-500' : 'bg-slate-300 dark:bg-slate-600'}`} 
+                                                className={`h-full ${wh.qty > 0 ? 'bg-spectra' : 'bg-slate-700'}`} 
                                                 style={{ width: `${Math.min((wh.qty / Math.max(stockData.total, 1)) * 100, 100)}%` }}
                                             ></div>
                                         </div>
@@ -149,39 +154,39 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
 
             {/* Recent History */}
             <div>
-                 <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3 flex items-center gap-2">
-                    <History size={16} /> Recent Movements (Last 10)
+                 <h3 className="text-xs font-black text-cutty uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <History size={14} /> Recent Movements (Last 10)
                 </h3>
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <div className="bg-daintree border border-spectra rounded-2xl overflow-hidden">
                      <table className="w-full text-xs text-left">
-                        <thead className="bg-slate-100 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase font-bold">
+                        <thead className="bg-gable text-slate-400 uppercase font-bold border-b border-spectra">
                             <tr>
-                                <th className="p-2">Date</th>
-                                <th className="p-2">Ref</th>
-                                <th className="p-2">Type</th>
-                                <th className="p-2 text-right">Qty</th>
-                                <th className="p-2">Unit</th>
-                                <th className="p-2">Source</th>
+                                <th className="p-3">Date</th>
+                                <th className="p-3">Ref</th>
+                                <th className="p-3">Type</th>
+                                <th className="p-3 text-right">Qty</th>
+                                <th className="p-3 text-center">Unit</th>
+                                <th className="p-3">Source</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        <tbody className="divide-y divide-spectra/30 text-slate-300">
                             {history.length === 0 ? (
-                                <tr><td colSpan={6} className="p-4 text-center text-slate-400 italic">No transaction history.</td></tr>
+                                <tr><td colSpan={6} className="p-6 text-center text-slate-500 italic font-bold">No transaction history found.</td></tr>
                             ) : history.map((h, idx) => (
-                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                    <td className="p-2 text-slate-500 dark:text-slate-400">{h.date}</td>
-                                    <td className="p-2 font-mono text-slate-600 dark:text-slate-300">{h.ref}</td>
-                                    <td className="p-2">
-                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                            h.type === 'IN' || h.type === 'ADJUSTMENT' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' :
-                                            h.type === 'OUT' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                <tr key={idx} className="hover:bg-gable/50 transition-colors">
+                                    <td className="p-3 font-mono text-slate-400">{h.date}</td>
+                                    <td className="p-3 font-mono font-bold text-white">{h.ref}</td>
+                                    <td className="p-3">
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight ${
+                                            h.type === 'IN' || h.type === 'ADJUSTMENT' ? 'bg-emerald-900/30 text-emerald-400' :
+                                            h.type === 'OUT' ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'
                                         }`}>{h.type}</span>
                                     </td>
-                                    <td className={`p-2 text-right font-bold ${h.type === 'OUT' || h.type === 'TRANSFER' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                        {h.qty}
+                                    <td className={`p-3 text-right font-black ${h.type === 'OUT' || h.type === 'TRANSFER' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                        {h.qty.toLocaleString()}
                                     </td>
-                                    <td className="p-2 text-slate-500 dark:text-slate-400">{h.unit}</td>
-                                    <td className="p-2 text-slate-500 dark:text-slate-400 truncate max-w-[100px]">{h.wh}</td>
+                                    <td className="p-3 text-center text-slate-500 font-bold">{h.unit}</td>
+                                    <td className="p-3 text-slate-400 truncate max-w-[100px]">{h.wh}</td>
                                 </tr>
                             ))}
                         </tbody>
