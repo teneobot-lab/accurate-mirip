@@ -70,10 +70,6 @@ export const InventoryView: React.FC = () => {
         );
     }, [items, stocks, warehouses, searchTerm]);
 
-    const uniqueCategories = useMemo(() => {
-        return Array.from(new Set(items.map(i => i.category))).sort();
-    }, [items]);
-
     const downloadTemplate = () => {
         const templateData = [
             { "Kode": "BRG-001", "Nama": "Contoh Barang A", "Kategori": "Elektronik", "Satuan_Dasar": "Pcs", "Stok_Minimum": 10 },
@@ -341,7 +337,7 @@ export const InventoryView: React.FC = () => {
                         <div className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin">
                             
                             {/* Section 1: Identitas Produk (Card Style) */}
-                            <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4">
+                            <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4 shadow-sm">
                                 <div className="flex items-center gap-2 pb-2 border-b border-spectra/50">
                                     <Tag size={14} className="text-spectra"/>
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
@@ -355,6 +351,7 @@ export const InventoryView: React.FC = () => {
                                                 type="text" 
                                                 className="modal-input font-mono font-bold text-emerald-400 uppercase tracking-widest pl-11" 
                                                 placeholder="AUTO" 
+                                                autoComplete="off"
                                                 value={itemForm.code} 
                                                 onChange={e => setItemForm({...itemForm, code: e.target.value})} 
                                             />
@@ -368,6 +365,7 @@ export const InventoryView: React.FC = () => {
                                                 type="text" 
                                                 className="modal-input font-bold text-white pl-11 tracking-wide" 
                                                 placeholder="Nama Item..." 
+                                                autoComplete="off"
                                                 value={itemForm.name} 
                                                 onChange={e => setItemForm({...itemForm, name: e.target.value})} 
                                             />
@@ -379,25 +377,19 @@ export const InventoryView: React.FC = () => {
                                             <Layers size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-spectra transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
-                                                list="category-suggestions"
                                                 className="modal-input pl-11 font-bold text-slate-200" 
-                                                placeholder="Pilih / Ketik Kategori..." 
+                                                placeholder="Ketik Kategori..." 
+                                                autoComplete="off"
                                                 value={itemForm.category} 
                                                 onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
                                             />
-                                            <datalist id="category-suggestions">
-                                                {uniqueCategories.map(cat => (
-                                                    <option key={cat} value={cat} />
-                                                ))}
-                                            </datalist>
-                                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"/>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Section 2: Kontrol Stok (Card Style) */}
-                            <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4">
+                            <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4 shadow-sm">
                                 <div className="flex items-center gap-2 pb-2 border-b border-spectra/50">
                                     <Database size={14} className="text-emerald-600"/>
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Kontrol Stok</h4>
@@ -411,6 +403,7 @@ export const InventoryView: React.FC = () => {
                                                 type="text" 
                                                 className="modal-input font-black text-white text-center pl-10" 
                                                 placeholder="Pcs" 
+                                                autoComplete="off"
                                                 value={itemForm.baseUnit} 
                                                 onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
                                             />
@@ -423,6 +416,7 @@ export const InventoryView: React.FC = () => {
                                                 <input 
                                                     type="number" 
                                                     className="modal-input text-right font-mono text-emerald-400 font-bold pr-4" 
+                                                    autoComplete="off"
                                                     value={itemForm.initialStock} 
                                                     onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
                                                 />
@@ -436,6 +430,7 @@ export const InventoryView: React.FC = () => {
                                             <input 
                                                 type="number" 
                                                 className="modal-input text-right font-mono text-red-300 font-bold pl-10" 
+                                                autoComplete="off"
                                                 value={itemForm.minStock} 
                                                 onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
                                             />
@@ -453,7 +448,7 @@ export const InventoryView: React.FC = () => {
                                     </div>
                                     <button 
                                         onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
-                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-3 py-1.5 rounded-xl transition-colors flex items-center gap-1.5"
+                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
                                     >
                                         <Plus size={12}/> Tambah Baris
                                     </button>
@@ -490,6 +485,7 @@ export const InventoryView: React.FC = () => {
                                                                 type="text" 
                                                                 className="table-input" 
                                                                 placeholder="BOX"
+                                                                autoComplete="off"
                                                                 value={c.name} 
                                                                 onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
                                                             />
@@ -511,6 +507,7 @@ export const InventoryView: React.FC = () => {
                                                             <input 
                                                                 type="number" 
                                                                 className="table-input text-right font-mono" 
+                                                                autoComplete="off"
                                                                 value={c.ratio} 
                                                                 onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
                                                             />
@@ -518,7 +515,7 @@ export const InventoryView: React.FC = () => {
                                                         <td className="px-4 py-2 text-center align-middle">
                                                             <button 
                                                                 onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
-                                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded-xl transition-colors"
+                                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded-full transition-colors"
                                                             >
                                                                 <Trash2 size={14}/>
                                                             </button>
@@ -550,10 +547,10 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .modal-input { 
-                    @apply w-full h-11 bg-gable/80 border border-white/5 rounded-xl px-4 text-xs text-white outline-none focus:bg-daintree focus:border-spectra focus:ring-1 focus:ring-spectra/50 transition-all placeholder:text-slate-600 appearance-none shadow-inner; 
+                    @apply w-full h-11 bg-black/20 border-transparent rounded-full px-4 text-xs text-white outline-none focus:bg-black/40 focus:ring-1 focus:ring-spectra/50 transition-all placeholder:text-slate-600 appearance-none shadow-inner; 
                 }
                 .table-input {
-                    @apply w-full h-9 bg-daintree/50 border border-spectra/30 rounded-lg px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty appearance-none;
+                    @apply w-full h-9 bg-black/20 border-transparent rounded-full px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-black/40 transition-all placeholder:text-cutty appearance-none;
                 }
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
