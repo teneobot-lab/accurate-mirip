@@ -95,10 +95,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
 
     return (
         <div className="flex flex-col h-full bg-gradient-to-br from-cutty to-daintree p-4 gap-4 overflow-hidden transition-colors font-sans">
-            {/* Header & Filter Bar */}
-            <div className="bg-white/95 dark:bg-gable/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 dark:border-spectra flex flex-wrap gap-4 items-end">
+            {/* Header & Filter Bar - Now consistently Gable Green */}
+            <div className="bg-gable p-4 rounded-2xl shadow-xl border border-spectra flex flex-wrap gap-4 items-end">
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-cutty uppercase tracking-widest ml-1">Rentang Tanggal</label>
+                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Rentang Tanggal</label>
                     <div className="flex items-center gap-2">
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="report-input w-36" />
                         <span className="text-white/50 font-bold">s/d</span>
@@ -106,14 +106,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-cutty uppercase tracking-widest ml-1">Gudang</label>
+                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Gudang</label>
                     <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="report-input w-40">
                         <option value="ALL">Semua Gudang</option>
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-cutty uppercase tracking-widest ml-1">Jenis Transaksi</label>
+                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Jenis Transaksi</label>
                     <select value={filterType} onChange={e => setFilterType(e.target.value)} className="report-input w-40">
                         <option value="ALL">Semua Jenis</option>
                         <option value="IN">Masuk (Inbound)</option>
@@ -121,23 +121,23 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </select>
                 </div>
                 <div className="flex-1 flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-slate-500 dark:text-cutty uppercase tracking-widest ml-1">Cari No. Bukti / Barang</label>
+                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Cari No. Bukti / Barang</label>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty" size={14} />
                         <input type="text" placeholder="Ketik keyword..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="report-input w-full pl-10" />
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={refreshData} className="p-2.5 bg-slate-100 dark:bg-daintree rounded-xl hover:bg-slate-200 dark:hover:bg-spectra transition-colors shadow-sm text-cutty dark:text-slate-300 border border-transparent dark:border-spectra"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
+                    <button onClick={refreshData} className="p-2.5 bg-daintree rounded-xl hover:bg-spectra transition-colors shadow-sm text-slate-300 border border-spectra"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
                     <button onClick={handleExport} className="px-5 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-black flex items-center gap-2 shadow-lg shadow-black/20 active:scale-95 transition-all"><FileSpreadsheet size={16}/> EXPORT XLSX</button>
                 </div>
             </div>
 
             {/* Transaction Grid */}
-            <div className="flex-1 bg-white dark:bg-gable rounded-2xl shadow-2xl border border-white/20 dark:border-spectra overflow-hidden flex flex-col">
+            <div className="flex-1 bg-gable rounded-2xl shadow-2xl border border-spectra overflow-hidden flex flex-col">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-separate border-spacing-0">
-                        <thead className="bg-gable text-[10px] font-bold text-white uppercase tracking-widest sticky top-0 z-10 shadow-md">
+                        <thead className="bg-daintree text-[10px] font-bold text-white uppercase tracking-widest sticky top-0 z-10 shadow-md">
                             <tr>
                                 <th className="p-4 w-10 border-b border-spectra/50"></th>
                                 <th className="p-4 w-32 border-b border-spectra/50">Tanggal</th>
@@ -148,7 +148,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                 <th className="p-4 w-36 text-center border-b border-spectra/50">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody className="text-[11px] divide-y divide-slate-100 dark:divide-spectra/30 text-daintree dark:text-slate-200">
+                        <tbody className="text-[11px] divide-y divide-spectra/30 text-slate-200">
                             {isLoading ? (
                                 <tr>
                                     <td colSpan={10} className="p-20 text-center">
@@ -162,34 +162,34 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                 </tr>
                             ) : filteredTransactions.map((tx) => (
                                 <React.Fragment key={tx.id}>
-                                    <tr className={`group hover:bg-slate-50 dark:hover:bg-spectra/20 transition-all ${expandedTx.has(tx.id) ? 'bg-slate-50 dark:bg-spectra/10' : ''}`}>
+                                    <tr className={`group hover:bg-spectra/20 transition-all ${expandedTx.has(tx.id) ? 'bg-spectra/10' : ''}`}>
                                         <td className="p-4 text-center">
-                                            <button onClick={() => toggleExpand(tx.id)} className="p-1.5 hover:bg-white dark:hover:bg-daintree rounded-lg transition-colors text-slate-400 dark:text-slate-500">
+                                            <button onClick={() => toggleExpand(tx.id)} className="p-1.5 hover:bg-daintree rounded-lg transition-colors text-slate-500">
                                                 {expandedTx.has(tx.id) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                                             </button>
                                         </td>
-                                        <td className="p-4 font-mono font-bold text-cutty dark:text-slate-400">{tx.date}</td>
-                                        <td className="p-4 font-black text-daintree dark:text-slate-200">
-                                            <div className="flex items-center gap-2"><Hash size={12} className="text-slate-300 dark:text-spectra"/> {tx.referenceNo}</div>
+                                        <td className="p-4 font-mono font-bold text-slate-400">{tx.date}</td>
+                                        <td className="p-4 font-black text-slate-200">
+                                            <div className="flex items-center gap-2"><Hash size={12} className="text-spectra"/> {tx.referenceNo}</div>
                                         </td>
                                         <td className="p-4">
                                             <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter ${
-                                                tx.type === 'IN' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                                                tx.type === 'IN' ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'
                                             }`}>{tx.type === 'IN' ? 'Barang Masuk' : 'Barang Keluar'}</span>
                                         </td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <div className="font-bold flex items-center gap-1.5 text-slate-700 dark:text-slate-300"><Box size={12} className="text-spectra"/> {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Default WH'}</div>
-                                                {tx.partnerName && <div className="text-[9px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1.5 uppercase mt-0.5"><User size={10}/> {tx.partnerName}</div>}
+                                                <div className="font-bold flex items-center gap-1.5 text-slate-300"><Box size={12} className="text-spectra"/> {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Default WH'}</div>
+                                                {tx.partnerName && <div className="text-[9px] font-bold text-slate-500 flex items-center gap-1.5 uppercase mt-0.5"><User size={10}/> {tx.partnerName}</div>}
                                             </div>
                                         </td>
-                                        <td className="p-4 text-right font-black text-slate-500 dark:text-slate-400">{tx.items.length} Line</td>
+                                        <td className="p-4 text-right font-black text-slate-400">{tx.items.length} Line</td>
                                         <td className="p-4 text-center">
                                             <div className="flex justify-center gap-2.5">
                                                 {/* Edit Button */}
                                                 <button 
                                                     onClick={() => onEditTransaction(tx)} 
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white dark:bg-spectra/20 dark:text-white dark:hover:bg-spectra border border-blue-100 dark:border-spectra/50 rounded-xl transition-all shadow-sm active:scale-90"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-spectra/20 text-white hover:bg-spectra border border-spectra/50 rounded-xl transition-all shadow-sm active:scale-90"
                                                     title="Edit Transaksi"
                                                 >
                                                     <Edit3 size={14}/>
@@ -199,7 +199,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                 {/* Delete Button */}
                                                 <button 
                                                     onClick={() => handleDelete(tx.id)} 
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900 border border-red-100 dark:border-red-900/50 rounded-xl transition-all shadow-sm active:scale-90"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-900/20 text-red-400 hover:bg-red-900 border border-red-900/50 rounded-xl transition-all shadow-sm active:scale-90"
                                                     title="Hapus Transaksi"
                                                 >
                                                     <Trash2 size={14}/>
@@ -209,10 +209,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         </td>
                                     </tr>
                                     {expandedTx.has(tx.id) && (
-                                        <tr className="bg-slate-50/50 dark:bg-daintree/40 animate-in fade-in slide-in-from-top-1">
+                                        <tr className="bg-daintree/40 animate-in fade-in slide-in-from-top-1">
                                             <td colSpan={7} className="p-0">
                                                 <div className="px-16 py-6 space-y-3">
-                                                    <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-slate-400 dark:text-cutty tracking-wider mb-2 border-b border-slate-200 dark:border-spectra pb-2">
+                                                    <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-cutty tracking-wider mb-2 border-b border-spectra pb-2">
                                                         <div className="col-span-1">#</div>
                                                         <div className="col-span-2">Kode SKU</div>
                                                         <div className="col-span-3">Deskripsi Barang</div>
@@ -221,20 +221,20 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                         <div className="col-span-2 text-right">Total Base</div>
                                                     </div>
                                                     {tx.items.map((it, idx) => (
-                                                        <div key={idx} className="grid grid-cols-12 gap-4 text-[10px] items-center py-1.5 hover:bg-white dark:hover:bg-gable rounded-lg px-2 -mx-2 transition-colors">
-                                                            <div className="col-span-1 text-slate-300 dark:text-slate-600 font-mono">{idx + 1}</div>
-                                                            <div className="col-span-2 font-mono text-spectra dark:text-white font-bold">{it.code}</div>
-                                                            <div className="col-span-3 font-bold text-slate-600 dark:text-slate-300 uppercase truncate">{it.name}</div>
-                                                            <div className="col-span-2 text-right font-black text-slate-800 dark:text-white">{it.qty.toLocaleString()}</div>
-                                                            <div className="col-span-2 text-center font-bold text-slate-400 dark:text-slate-500">{it.unit}</div>
-                                                            <div className="col-span-2 text-right font-black text-spectra dark:text-cutty">
+                                                        <div key={idx} className="grid grid-cols-12 gap-4 text-[10px] items-center py-1.5 hover:bg-gable rounded-lg px-2 -mx-2 transition-colors">
+                                                            <div className="col-span-1 text-slate-600 font-mono">{idx + 1}</div>
+                                                            <div className="col-span-2 font-mono text-white font-bold">{it.code}</div>
+                                                            <div className="col-span-3 font-bold text-slate-300 uppercase truncate">{it.name}</div>
+                                                            <div className="col-span-2 text-right font-black text-white">{it.qty.toLocaleString()}</div>
+                                                            <div className="col-span-2 text-center font-bold text-slate-500">{it.unit}</div>
+                                                            <div className="col-span-2 text-right font-black text-cutty">
                                                                 {(it.qty * (it.ratio || 1)).toLocaleString()}
                                                             </div>
                                                         </div>
                                                     ))}
                                                     {tx.notes && (
-                                                        <div className="mt-4 p-4 bg-white dark:bg-gable rounded-2xl border dark:border-spectra border-dashed italic text-[10px] text-slate-500 dark:text-slate-400 shadow-inner">
-                                                            <div className="font-black not-italic uppercase mb-1 text-slate-400 dark:text-cutty tracking-widest text-[8px]">Memo Internal:</div>
+                                                        <div className="mt-4 p-4 bg-gable rounded-2xl border border-spectra border-dashed italic text-[10px] text-slate-400 shadow-inner">
+                                                            <div className="font-black not-italic uppercase mb-1 text-cutty tracking-widest text-[8px]">Memo Internal:</div>
                                                             {tx.notes}
                                                         </div>
                                                     )}
@@ -250,7 +250,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             </div>
             <style>{`
                 .report-input { 
-                    @apply border border-cutty/20 dark:border-spectra bg-slate-50 dark:bg-daintree text-daintree dark:text-white rounded-xl px-4 py-2.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-sm placeholder:text-slate-400; 
+                    @apply border border-spectra bg-daintree text-white rounded-xl px-4 py-2.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-sm placeholder:text-slate-400; 
                 }
             `}</style>
         </div>

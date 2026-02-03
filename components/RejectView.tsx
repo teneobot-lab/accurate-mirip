@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
@@ -82,7 +81,7 @@ export const RejectView: React.FC = () => {
         if (filteredBatches.length === 0) return showToast("Tidak ada data di rentang tanggal tersebut", "warning");
 
         // 1. Dapatkan list unik tanggal dan barang
-        const dateList = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
+        const dateList: string[] = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
         const itemMap = new Map<string, { code: string, name: string }>();
         filteredBatches.forEach(b => b.items.forEach(it => {
             itemMap.set(it.itemId, { code: it.sku, name: it.name });
@@ -90,8 +89,8 @@ export const RejectView: React.FC = () => {
 
         // 2. Buat Header (Hari dan Tanggal)
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const headerRow1 = ['Kode', 'Nama Barang', ...dateList.map(d => days[new Date(d).getDay()])];
-        const headerRow2 = ['', '', ...dateList.map(d => {
+        const headerRow1 = ['Kode', 'Nama Barang', ...dateList.map((d: string) => days[new Date(d).getDay()])];
+        const headerRow2 = ['', '', ...dateList.map((d: string) => {
             const [y, m, day] = d.split('-');
             return `${day}/${m}/${y}`;
         })];
