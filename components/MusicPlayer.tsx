@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2 } from 'lucide-react';
+import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2, Youtube } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { Playlist } from '../types';
 import { useToast } from './Toast';
@@ -38,15 +38,12 @@ const MusicPlayer: React.FC = () => {
   const activePlaylist = playlists.find(p => p.id === activePlaylistId);
   const currentSong = activePlaylist?.songs[currentSongIndex];
 
+  // UPDATED: Robust Regex untuk menangkap ID dari link biasa, share, shorts, mobile, dll.
   const getYoutubeId = (url: string) => {
-    try {
-        if (!url) return null;
-        const regExp = new RegExp(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
-        const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
-    } catch (e) {
-        return null;
-    }
+    if (!url) return null;
+    const regExp = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
   };
 
   const handleCreatePlaylist = async () => {
@@ -76,7 +73,7 @@ const MusicPlayer: React.FC = () => {
   const handleAddSong = async (playlistId: string) => {
     if (!newSongTitle.trim() || !newSongUrl.trim()) return;
     const ytId = getYoutubeId(newSongUrl);
-    if (!ytId) return showToast('URL YouTube tidak valid', 'error');
+    if (!ytId) return showToast('Link YouTube tidak dikenali (Gunakan link Share/Browser)', 'error');
 
     try {
       await StorageService.addSongToPlaylist(playlistId, newSongTitle, newSongUrl);
@@ -84,7 +81,6 @@ const MusicPlayer: React.FC = () => {
       setNewSongUrl('');
       showToast("Lagu ditambahkan ke MySQL", "success");
       loadData();
-      // Update editing view if active
       const updated = await StorageService.fetchPlaylists();
       setEditingPlaylist(updated.find(p => p.id === playlistId) || null);
     } catch (e) {
@@ -132,28 +128,35 @@ const MusicPlayer: React.FC = () => {
             <div className="p-3 bg-daintree text-white flex flex-col gap-2 border-b border-spectra">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="animate-pulse bg-spectra/50 p-1 rounded-full"><Music size={12}/></div>
-                  <div className="truncate text-xs font-bold">{currentSong.title}</div>
+                  <div className="animate-pulse bg-spectra/50 p-1 rounded-full"><Youtube size={12}/></div>
+                  <div className="truncate text-xs font-bold max-w-[200px]">{currentSong.title}</div>
                 </div>
                 <button onClick={() => setActivePlaylistId(null)} className="text-slate-400 hover:text-white"><X size={14}/></button>
               </div>
-              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-spectra/30">
-                <iframe 
-                  width="100%" 
-                  height="100%" 
-                  src={`https://www.youtube.com/embed/${getYoutubeId(currentSong.youtubeUrl)}?autoplay=1&controls=1&modestbranding=1`}
-                  title="YouTube player" 
-                  frameBorder="0" 
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                  allowFullScreen
-                ></iframe>
+              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-spectra/30 relative group">
+                {getYoutubeId(currentSong.youtubeUrl) ? (
+                    <iframe 
+                      width="100%" 
+                      height="100%" 
+                      src={`https://www.youtube.com/embed/${getYoutubeId(currentSong.youtubeUrl)}?autoplay=1&controls=1&modestbranding=1&rel=0&origin=${window.location.origin}`}
+                      title="YouTube player" 
+                      frameBorder="0" 
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowFullScreen
+                      className="absolute inset-0"
+                    ></iframe>
+                ) : (
+                    <div className="flex items-center justify-center h-full text-xs text-red-400">Invalid YouTube ID</div>
+                )}
               </div>
               <div className="flex justify-center items-center gap-4 py-1">
                 <button 
                    onClick={() => setCurrentSongIndex(prev => (prev - 1 + activePlaylist!.songs.length) % activePlaylist!.songs.length)}
                    className="hover:scale-110 transition-transform text-slate-300 hover:text-white"
                 ><SkipBack size={18}/></button>
-                <button className="bg-spectra text-white p-2 rounded-full shadow-lg border border-white/10 hover:bg-white hover:text-spectra transition-colors"><Play size={16}/></button>
+                <div className="text-[10px] font-mono text-spectra">
+                    {currentSongIndex + 1} / {activePlaylist!.songs.length}
+                </div>
                 <button 
                   onClick={() => setCurrentSongIndex(prev => (prev + 1) % activePlaylist!.songs.length)}
                   className="hover:scale-110 transition-transform text-slate-300 hover:text-white"
@@ -195,16 +198,16 @@ const MusicPlayer: React.FC = () => {
                         <input 
                           type="text" placeholder="Song Title" 
                           value={newSongTitle} onChange={e => setNewSongTitle(e.target.value)}
-                          className="w-full text-xs p-2 border border-spectra rounded mb-2 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra" 
+                          className="w-full text-xs p-2 border border-spectra rounded mb-2 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
                         />
                         <input 
-                          type="text" placeholder="YouTube URL" 
+                          type="text" placeholder="Paste YouTube Link Here..." 
                           value={newSongUrl} onChange={e => setNewSongUrl(e.target.value)}
-                          className="w-full text-xs p-2 border border-spectra rounded mb-3 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra" 
+                          className="w-full text-xs p-2 border border-spectra rounded mb-3 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
                         />
                         <button 
                           onClick={() => handleAddSong(editingPlaylist.id)}
-                          className="w-full py-2 bg-spectra text-white rounded text-xs font-bold hover:bg-cutty transition-colors"
+                          className="w-full py-2 bg-spectra text-white rounded text-xs font-bold hover:bg-white hover:text-spectra transition-colors shadow-lg"
                         >Add Song</button>
                     </div>
                     <div className="space-y-1">
@@ -222,9 +225,9 @@ const MusicPlayer: React.FC = () => {
                       <input 
                         type="text" placeholder="New Playlist Name" 
                         value={newPlaylistName} onChange={e => setNewPlaylistName(e.target.value)}
-                        className="flex-1 text-xs p-2 border border-spectra rounded bg-daintree text-white outline-none focus:ring-1 focus:ring-spectra" 
+                        className="flex-1 text-xs p-2 border border-spectra rounded bg-daintree text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
                       />
-                      <button onClick={handleCreatePlaylist} className="p-2 bg-spectra text-white rounded hover:bg-cutty"><Plus size={16}/></button>
+                      <button onClick={handleCreatePlaylist} className="p-2 bg-spectra text-white rounded hover:bg-white hover:text-spectra transition-colors"><Plus size={16}/></button>
                     </div>
                     <div className="space-y-2">
                        {playlists.map(p => (
@@ -247,7 +250,7 @@ const MusicPlayer: React.FC = () => {
               <div className="space-y-2">
                 {playlists.length === 0 && (
                    <div className="text-center py-8 text-cutty text-xs italic">
-                      Tidak ada playlist ditemukan.<br/>Gunakan 'Manage' untuk membuat.
+                      Tidak ada playlist.<br/>Klik 'Manage' untuk membuat.
                    </div>
                 )}
                 {playlists.map(p => (
