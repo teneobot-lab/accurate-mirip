@@ -85,6 +85,13 @@ exports.updateTransaction = async (req, res, next) => {
             return res.status(409).json({ success: false, message: 'Nomor referensi sudah digunakan' });
         }
 
+        if (error.code === 'INSUFFICIENT_STOCK') {
+            return res.status(409).json({
+                success: false,
+                message: `Update Gagal: ${error.message}`
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: error.message || 'Gagal memperbarui transaksi'
@@ -102,6 +109,14 @@ exports.deleteTransaction = async (req, res, next) => {
         return res.json({ success: true, message: 'Transaksi berhasil dihapus' });
     } catch (error) {
         console.error('[TX_CONTROLLER] Delete Error:', error);
+
+        if (error.code === 'INSUFFICIENT_STOCK') {
+            return res.status(409).json({
+                success: false,
+                message: `Hapus Gagal: Stok tidak cukup untuk mengembalikan (Revert) transaksi ini. ${error.message}`
+            });
+        }
+
         return res.status(500).json({ success: false, message: 'Gagal menghapus transaksi' });
     }
 };
