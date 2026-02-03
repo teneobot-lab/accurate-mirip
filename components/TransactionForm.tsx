@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner } from '../types';
+import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner, Stock } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote, ChevronDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { useToast } from './Toast';
+import * as XLSX from 'xlsx';
 
 interface Props {
   type: TransactionType;
@@ -17,7 +18,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [items, setItems] = useState<Item[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form States
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
@@ -35,8 +39,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingUnit, setPendingUnit] = useState('');
-  const [pendingQty, setPendingQty] = useState<number | string>(1);
-  const [pendingNote, setPendingNote] = useState('');
+  const [pendingQty, setPendingQty] = useState<string>(''); // Default empty string to remove 0/1
 
   // Refs for Navigation
   const itemInputRef = useRef<HTMLInputElement>(null);
@@ -46,13 +49,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   useEffect(() => {
     const load = async () => {
         try {
-            const [its, whs, pts] = await Promise.all([
+            const [its, whs, pts, stks] = await Promise.all([
                 StorageService.fetchItems().catch(() => []),
                 StorageService.fetchWarehouses().catch(() => []),
-                StorageService.fetchPartners().catch(() => [])
+                StorageService.fetchPartners().catch(() => []),
+                StorageService.fetchStocks().catch(() => [])
             ]);
             setItems(its || []);
             setWarehouses(whs || []);
+            setStocks(stks || []);
             setPartners(pts.filter(p => type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER') || []);
             if (whs && whs.length > 0 && !initialData) setSelectedWh(whs[0].id);
         } catch (e) {
@@ -73,17 +78,24 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     const results = items.filter(it => 
         it.name.toLowerCase().includes(lowerQuery) || 
         it.code.toLowerCase().includes(lowerQuery)
-    ).slice(0, 10);
+    ).slice(0, 10); // Limit results
     setFilteredItems(results);
     setIsDropdownOpen(results.length > 0);
     setSelectedIndex(0);
   }, [query, items, pendingItem]);
+
+  const getStockQty = (itemId: string) => {
+      if (!selectedWh) return 0;
+      const stock = stocks.find(s => s.itemId === itemId && s.warehouseId === selectedWh);
+      return stock ? Number(stock.qty) : 0;
+  };
 
   const selectItem = (item: Item) => {
     setPendingItem(item);
     setPendingUnit(item.baseUnit);
     setQuery(item.name);
     setIsDropdownOpen(false);
+    // Focus move to Qty
     setTimeout(() => qtyInputRef.current?.focus(), 10);
   };
 
@@ -97,15 +109,19 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            selectItem(filteredItems[selectedIndex]);
+            if (filteredItems[selectedIndex]) selectItem(filteredItems[selectedIndex]);
         } else if (e.key === 'Escape') {
             setIsDropdownOpen(false);
         }
+    } else if (e.key === 'Enter' && pendingItem) {
+         e.preventDefault();
+         qtyInputRef.current?.focus();
     }
   };
 
   const handleAddLine = () => {
-    if (!pendingItem || !pendingQty || Number(pendingQty) <= 0) return;
+    if (!pendingItem) return showToast("Pilih barang terlebih dahulu", "warning");
+    if (!pendingQty || Number(pendingQty) <= 0) return showToast("Masukkan jumlah valid", "warning");
     
     let ratio = 1;
     if (pendingUnit !== pendingItem.baseUnit) {
@@ -120,25 +136,138 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       qty: Number(pendingQty),
       unit: pendingUnit || pendingItem.baseUnit,
       ratio: ratio,
-      note: pendingNote,
       name: pendingItem.name,
       code: pendingItem.code
     };
     
-    setLines([...lines, newLine]);
+    setLines(prev => [...prev, newLine]); // Append to bottom
     
+    // Reset for next input
     setQuery('');
     setPendingItem(null);
     setPendingUnit('');
-    setPendingQty(1);
-    setPendingNote('');
+    setPendingQty('');
     
     setTimeout(() => itemInputRef.current?.focus(), 10);
+  };
+
+  // Inline Editing
+  const updateLine = (index: number, field: keyof TransactionItem, value: any) => {
+      const newLines = [...lines];
+      const line = newLines[index];
+      const itemMaster = items.find(i => i.id === line.itemId);
+
+      if (field === 'unit' && itemMaster) {
+         let newRatio = 1;
+         if (value !== itemMaster.baseUnit) {
+             const conv = itemMaster.conversions?.find(c => c.name === value);
+             if (conv) newRatio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
+         }
+         line.unit = value;
+         line.ratio = newRatio;
+      } else if (field === 'qty') {
+          line.qty = Number(value);
+      }
+
+      setLines(newLines);
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsImporting(true);
+      const reader = new FileReader();
+      
+      reader.onload = async (evt) => {
+          try {
+              const bstr = evt.target?.result;
+              const wb = XLSX.read(bstr, { type: 'binary' });
+              const ws = wb.Sheets[wb.SheetNames[0]];
+              const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+              const newLines: TransactionItem[] = [];
+              const createdItems: Item[] = [];
+
+              for (const row of data) {
+                  // Format Excel: SKU | Nama | Qty | Satuan
+                  const code = String(row.SKU || row.Code || row.Kode || '').trim();
+                  const name = String(row.Nama || row.Name || row.Barang || '').trim();
+                  const qty = Number(row.Qty || row.Jumlah || 0);
+                  const unit = String(row.Satuan || row.Unit || 'Pcs').trim();
+
+                  if (!code || !name || qty <= 0) continue;
+
+                  let item = items.find(i => i.code === code);
+                  
+                  // Auto-create SKU Logic
+                  if (!item) {
+                      const newItem: Item = {
+                          id: crypto.randomUUID(),
+                          code,
+                          name,
+                          category: 'Uncategorized',
+                          baseUnit: unit,
+                          conversions: [],
+                          minStock: 0
+                      };
+                      // Save to DB immediately
+                      await StorageService.saveItem(newItem);
+                      createdItems.push(newItem);
+                      item = newItem;
+                  }
+
+                  newLines.push({
+                      itemId: item.id,
+                      qty,
+                      unit,
+                      ratio: 1, // Default ratio for imported items unless we do complex matching
+                      name: item.name,
+                      code: item.code
+                  });
+              }
+
+              // Refresh items state if we created new ones
+              if (createdItems.length > 0) {
+                  const updatedItems = await StorageService.fetchItems();
+                  setItems(updatedItems);
+                  showToast(`${createdItems.length} SKU baru otomatis dibuat`, "info");
+              }
+
+              setLines(prev => [...prev, ...newLines]);
+              showToast(`${newLines.length} baris berhasil diimport`, "success");
+
+          } catch (err) {
+              showToast("Gagal membaca file excel", "error");
+          } finally {
+              setIsImporting(false);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+          }
+      };
+      reader.readAsBinaryString(file);
   };
 
   const handleSubmit = async () => {
     if (lines.length === 0) return showToast("Tambahkan baris barang terlebih dahulu", "warning");
     if (!selectedWh) return showToast("Pilih gudang terlebih dahulu", "warning");
+    
+    // VALIDASI STOK MINUS (Toast/Confirm Logic)
+    if (type === 'OUT') {
+        const lowStockItems = [];
+        for (const line of lines) {
+            const currentStock = getStockQty(line.itemId);
+            const reqQty = line.qty * (line.ratio || 1);
+            if (currentStock - reqQty < 0) {
+                lowStockItems.push(`${line.name} (Sisa: ${currentStock}, Minta: ${reqQty})`);
+            }
+        }
+
+        if (lowStockItems.length > 0) {
+            const confirmed = window.confirm(
+                `PERINGATAN: Stok berikut akan menjadi MINUS:\n\n${lowStockItems.join('\n')}\n\nLanjutkan transaksi? (Klik OK untuk VALID)`
+            );
+            if (!confirmed) return;
+        }
+    }
     
     setIsSubmitting(true);
     try {
@@ -153,7 +282,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 qty: line.qty,
                 unit: line.unit,
                 conversionRatio: line.ratio || 1,
-                note: line.note
+                note: '' // Removed per request
             })),
             notes
         };
@@ -167,7 +296,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         }
         onSuccess();
     } catch (e: any) {
-        const msg = e.message?.includes('409') ? "Gagal: Stok tidak mencukupi untuk salah satu item!" : `Gagal: ${e.message}`;
+        const msg = e.message?.includes('409') ? "Gagal: Stok tidak mencukupi (Backend Rejected)" : `Gagal: ${e.message}`;
         showToast(msg, "error");
     } finally {
         setIsSubmitting(false);
@@ -196,11 +325,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </button>
         </div>
 
-        {/* Header Form - Table Layout (Consistent Rounded Wrapper) */}
+        {/* Header Form */}
         <div className="p-4 bg-gable border-b border-spectra shadow-sm">
             <div className="grid grid-cols-12 gap-4">
-                
-                {/* Main Inputs as Table (Rounded) */}
                 <div className="col-span-9">
                     <div className="rounded-xl border border-spectra overflow-hidden shadow-sm bg-daintree/10">
                         <table className="w-full text-left text-xs border-collapse">
@@ -268,18 +395,23 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </div>
                 </div>
                 
-                 {/* Right Column (Summary Box - Consistent Rounded) */}
+                 {/* Right Column */}
                 <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-center">
                     <div className="bg-daintree rounded-xl border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
                         <div className="flex justify-between items-center text-[10px] font-bold text-cutty uppercase">
-                            <span>Total Qty</span>
-                            <span className="text-white font-mono">{lines.reduce((a,b) => a + Number(b.qty), 0).toLocaleString()}</span>
+                            <span>Total Lines</span>
+                            <span className="text-white font-mono">{lines.length}</span>
                         </div>
                          <div className="w-full h-px bg-spectra/30"></div>
-                        <div className="flex justify-between items-center text-[10px] font-black text-white uppercase">
-                            <span>Total Item</span>
-                            <span className="text-emerald-500 text-lg">{lines.length} <span className="text-[9px] text-cutty">SKU</span></span>
-                        </div>
+                        <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleImportExcel} />
+                        <button 
+                            onClick={() => fileInputRef.current?.click()} 
+                            disabled={isImporting}
+                            className="w-full py-2 bg-emerald-900/20 text-emerald-400 border border-emerald-900/50 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-all active:scale-95"
+                        >
+                            {isImporting ? <Loader2 size={14} className="animate-spin"/> : <FileSpreadsheet size={14}/>} Import Excel
+                        </button>
+                        <div className="text-[9px] text-cutty text-center italic">Format: SKU, Nama, Qty, Satuan</div>
                     </div>
                 </div>
             </div>
@@ -291,23 +423,23 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 <table className="w-full text-left border-separate border-spacing-0">
                     <thead className="sticky top-0 z-20 bg-daintree text-cutty text-[10px] font-black uppercase tracking-widest shadow-md">
                         <tr>
-                            <th className="px-3 py-2 border-b border-spectra w-12 text-center">#</th>
+                            <th className="px-3 py-2 border-b border-spectra w-10 text-center">#</th>
                             <th className="px-3 py-2 border-b border-spectra">Kode & Nama Barang</th>
-                            <th className="px-3 py-2 border-b border-spectra w-28 text-right">Kuantitas</th>
-                            <th className="px-3 py-2 border-b border-spectra w-24 text-center">Satuan</th>
-                            <th className="px-3 py-2 border-b border-spectra w-1/3">Memo Line</th>
-                            <th className="px-3 py-2 border-b border-spectra w-16 text-center">Aksi</th>
+                            <th className="px-3 py-2 border-b border-spectra w-32 text-right">Kuantitas</th>
+                            <th className="px-3 py-2 border-b border-spectra w-32 text-center">Satuan</th>
+                            <th className="px-3 py-2 border-b border-spectra w-40 text-right">Total Dasar</th>
+                            <th className="px-3 py-2 border-b border-spectra w-10 text-center"></th>
                         </tr>
                     </thead>
                     <tbody className="text-xs text-slate-200">
                         {/* Entry Row */}
-                        <tr className="bg-daintree/50 border-b border-spectra sticky top-[33px] z-10 shadow-sm backdrop-blur-sm">
+                        <tr className="bg-daintree/50 border-b border-spectra sticky top-[33px] z-10 shadow-sm backdrop-blur-sm group">
                             <td className="p-2 border-b border-spectra text-center"><Plus size={14} className="text-spectra mx-auto"/></td>
                             <td className="p-2 border-b border-spectra relative">
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
                                     placeholder="Cari Barang (Kode/Nama)..."
                                     value={query}
                                     onChange={e => {
@@ -318,23 +450,28 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
                                     onFocus={() => { if(query && !pendingItem) setIsDropdownOpen(true); }}
                                 />
-                                {/* Autocomplete Dropdown */}
                                 {isDropdownOpen && (
-                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
-                                        {filteredItems.map((it, idx) => (
-                                            <div 
-                                                key={it.id}
-                                                className={`px-3 py-2 cursor-pointer border-b border-spectra/30 text-xs flex justify-between items-center ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'}`}
-                                                onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
-                                                onMouseEnter={() => setSelectedIndex(idx)}
-                                            >
-                                                <div>
-                                                    <div className="font-bold">{it.code}</div>
-                                                    <div className={`text-[10px] ${idx === selectedIndex ? 'text-white/80' : 'text-slate-400'}`}>{it.name}</div>
+                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[500px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
+                                        {filteredItems.map((it, idx) => {
+                                            const stockQty = getStockQty(it.id);
+                                            return (
+                                                <div 
+                                                    key={it.id}
+                                                    className={`px-3 py-2 cursor-pointer border-b border-spectra/30 text-xs flex justify-between items-center ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'}`}
+                                                    onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
+                                                    onMouseEnter={() => setSelectedIndex(idx)}
+                                                >
+                                                    <div>
+                                                        <div className="font-bold">{it.code}</div>
+                                                        <div className={`text-[10px] ${idx === selectedIndex ? 'text-white/80' : 'text-slate-400'}`}>{it.name}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`text-[9px] font-bold ${stockQty < 0 ? 'text-red-400' : 'text-emerald-400'}`}>Stok: {stockQty}</div>
+                                                        <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
+                                                    </div>
                                                 </div>
-                                                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </td>
@@ -342,7 +479,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 <input 
                                     ref={qtyInputRef}
                                     type="number" 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs appearance-none"
+                                    placeholder="0"
                                     value={pendingQty} 
                                     onChange={e => setPendingQty(e.target.value)} 
                                     disabled={!pendingItem}
@@ -351,7 +489,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </td>
                             <td className="p-2 border-b border-spectra relative">
                                  <select 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-1 py-1 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-1 py-1.5 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none cursor-pointer"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
@@ -364,40 +502,55 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     )}
                                 </select>
                             </td>
-                            <td className="p-2 border-b border-spectra">
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-spectra text-white shadow-sm text-xs"
-                                    placeholder="Catatan baris..." 
-                                    value={pendingNote} 
-                                    onChange={e => setPendingNote(e.target.value)} 
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
-                                    disabled={!pendingItem} 
-                                />
+                            <td className="p-2 border-b border-spectra text-right font-mono text-slate-500 text-[10px]">
+                                -
                             </td>
                             <td className="p-2 border-b border-spectra text-center">
-                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
+                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
                             </td>
                         </tr>
 
-                        {/* Existing Lines */}
-                        {lines.map((l, i) => (
-                            <tr key={i} className="hover:bg-spectra/10 transition-colors group">
-                                <td className="px-3 py-1.5 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
-                                <td className="px-3 py-1.5 border-b border-spectra/10">
-                                    <div className="font-bold text-slate-200">{l.name}</div>
-                                    <div className="text-[10px] text-cutty font-mono">{l.code}</div>
-                                </td>
-                                <td className="px-3 py-1.5 border-b border-spectra/10 text-right font-black text-white">{l.qty.toLocaleString()}</td>
-                                <td className="px-3 py-1.5 border-b border-spectra/10 text-center text-slate-400 font-bold text-[10px]">{l.unit}</td>
-                                <td className="px-3 py-1.5 border-b border-spectra/10 italic text-slate-500">{l.note || '-'}</td>
-                                <td className="px-3 py-1.5 border-b border-spectra/10 text-center">
-                                    <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                                        <Trash2 size={14}/>
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
+                        {/* Existing Lines - Inline Editing */}
+                        {lines.map((l, i) => {
+                            const itemMaster = items.find(it => it.id === l.itemId);
+                            return (
+                                <tr key={i} className="hover:bg-spectra/5 transition-colors group">
+                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
+                                    <td className="px-3 py-1.5 border-b border-spectra/10">
+                                        <div className="font-bold text-slate-200">{l.name}</div>
+                                        <div className="text-[10px] text-cutty font-mono">{l.code}</div>
+                                    </td>
+                                    <td className="px-3 py-1.5 border-b border-spectra/10">
+                                        <input 
+                                            type="number"
+                                            value={l.qty}
+                                            onChange={e => updateLine(i, 'qty', e.target.value)}
+                                            className="w-full bg-transparent border-b border-transparent focus:border-spectra outline-none text-right font-black text-white text-xs py-1 appearance-none"
+                                        />
+                                    </td>
+                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-center">
+                                        {itemMaster ? (
+                                            <select 
+                                                value={l.unit} 
+                                                onChange={e => updateLine(i, 'unit', e.target.value)}
+                                                className="bg-transparent text-slate-300 font-bold text-[10px] outline-none cursor-pointer appearance-none text-center w-full"
+                                            >
+                                                <option value={itemMaster.baseUnit}>{itemMaster.baseUnit}</option>
+                                                {itemMaster.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                            </select>
+                                        ) : <span className="text-[10px]">{l.unit}</span>}
+                                    </td>
+                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-right font-mono text-cutty text-[11px]">
+                                        {(l.qty * (l.ratio || 1)).toLocaleString()}
+                                    </td>
+                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-center">
+                                        <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                            <Trash2 size={14}/>
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
                 
@@ -430,10 +583,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
       </div>
       <style>{`
-        /* Local Override to ensure inputs inside table blend in */
-        input, select { background-color: transparent !important; border-color: transparent !important; }
-        /* Re-apply colors for inputs not in the header table if needed, but here we want transparency in header cells */
-        /* Force specific background for dropdown options */
+        /* Remove Spinner */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        /* Dropdown options background */
         option { background-color: #193338 !important; }
       `}</style>
     </div>
