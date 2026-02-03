@@ -11,21 +11,27 @@ const initDb = require('./config/initDb');
 
 const app = express();
 
+// --- 1. DEBUG LOGGER (TOP PRIORITY) ---
+app.use((req, res, next) => {
+    console.log(`[REQ] ${new Date().toISOString()} | ${req.method} ${req.url} | IP: ${req.ip}`);
+    next();
+});
+
 // Security & Utility Middlewares
 app.use(helmet());
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Increase limit for bulk imports
+app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
-// 1. Health Check
+// 2. Health Check
 app.get('/ping', (req, res) => {
     res.json({ status: 'OK', service: 'waresix-acc', timestamp: new Date() });
 });
 
-// 2. Rute API
+// 3. Rute API
 app.use('/api', routes);
 
-// 3. 404 Handler
+// 4. 404 Handler
 app.use((req, res, next) => {
     res.status(404).json({
         status: 'error',
@@ -33,7 +39,7 @@ app.use((req, res, next) => {
     });
 });
 
-// 4. Global Error Handler
+// 5. Global Error Handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
@@ -42,10 +48,7 @@ const PORT = process.env.PORT || 3000;
 const startServer = async () => {
     try {
         console.log("🚀 Starting Waresix Server...");
-        
-        // Auto Create/Migrate Tables before accepting requests
         await initDb();
-        
         app.listen(PORT, () => {
             console.log(`✅ Server running successfully on port ${PORT}`);
             console.log(`👉 Health Check: http://localhost:${PORT}/ping`);
