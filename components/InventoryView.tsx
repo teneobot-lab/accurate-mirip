@@ -310,10 +310,10 @@ export const InventoryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Item Modal - Improved Layout & Dense Table */}
+            {/* Item Modal - Fully Rounded & Dense */}
             {showItemModal && (
                 <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300 font-sans">
-                    <div className="bg-gable rounded-[20px] w-full max-w-3xl border border-spectra overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in-95">
+                    <div className="bg-gable rounded-[24px] w-full max-w-3xl border border-spectra overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in-95">
                         
                         {/* Header */}
                         <div className="bg-daintree border-b border-spectra px-6 py-4 flex justify-between items-center shrink-0">
@@ -343,18 +343,18 @@ export const InventoryView: React.FC = () => {
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
                                 </div>
                                 <div className="grid grid-cols-12 gap-4">
-                                    <div className="col-span-3 space-y-1">
+                                    <div className="col-span-3 space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase">Kode SKU</label>
                                         <input 
                                             type="text" 
-                                            className="modal-input font-mono font-bold text-spectra uppercase" 
+                                            className="modal-input font-mono font-bold text-emerald-400 uppercase" 
                                             placeholder="AUTO" 
                                             value={itemForm.code} 
                                             onChange={e => setItemForm({...itemForm, code: e.target.value})} 
                                         />
                                     </div>
-                                    <div className="col-span-5 space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Nama Barang (Wajib)</label>
+                                    <div className="col-span-5 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Nama Barang</label>
                                         <input 
                                             type="text" 
                                             className="modal-input font-bold text-white" 
@@ -363,7 +363,7 @@ export const InventoryView: React.FC = () => {
                                             onChange={e => setItemForm({...itemForm, name: e.target.value})} 
                                         />
                                     </div>
-                                    <div className="col-span-4 space-y-1">
+                                    <div className="col-span-4 space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase">Kategori</label>
                                         <input 
                                             type="text" 
@@ -383,7 +383,7 @@ export const InventoryView: React.FC = () => {
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Kontrol Stok</h4>
                                 </div>
                                 <div className="grid grid-cols-12 gap-4">
-                                    <div className="col-span-4 space-y-1">
+                                    <div className="col-span-4 space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase">Satuan Dasar</label>
                                         <input 
                                             type="text" 
@@ -393,17 +393,8 @@ export const InventoryView: React.FC = () => {
                                             onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
                                         />
                                     </div>
-                                    <div className="col-span-4 space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Min. Alert</label>
-                                        <input 
-                                            type="number" 
-                                            className="modal-input text-right font-mono" 
-                                            value={itemForm.minStock} 
-                                            onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
-                                        />
-                                    </div>
                                     {!editingItem && (
-                                        <div className="col-span-4 space-y-1">
+                                        <div className="col-span-4 space-y-1.5">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Stok Awal</label>
                                             <input 
                                                 type="number" 
@@ -413,6 +404,15 @@ export const InventoryView: React.FC = () => {
                                             />
                                         </div>
                                     )}
+                                    <div className="col-span-4 space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Min. Alert</label>
+                                        <input 
+                                            type="number" 
+                                            className="modal-input text-right font-mono" 
+                                            value={itemForm.minStock} 
+                                            onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -425,7 +425,7 @@ export const InventoryView: React.FC = () => {
                                     </div>
                                     <button 
                                         onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
-                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded transition-colors flex items-center gap-1"
+                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
                                     >
                                         <Plus size={12}/> Tambah
                                     </button>
@@ -519,10 +519,10 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .modal-input { 
-                    @apply w-full h-9 bg-daintree border border-spectra rounded-lg px-3 text-xs text-white outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-sm placeholder:text-slate-600; 
+                    @apply w-full h-10 bg-daintree border border-spectra/50 rounded-xl px-4 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-spectra/50 focus:border-spectra transition-all shadow-inner placeholder:text-slate-600; 
                 }
                 .table-input {
-                    @apply w-full bg-daintree border border-spectra rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-inner placeholder:text-cutty;
+                    @apply w-full bg-daintree/50 border border-spectra/50 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty;
                 }
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
