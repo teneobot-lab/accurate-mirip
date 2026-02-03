@@ -63,6 +63,45 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
+
+      /* Global Input Reset for Dark Mode Consistency */
+      :root {
+        color-scheme: dark;
+      }
+      
+      input, select, textarea {
+        background-color: #02272c !important; /* daintree */
+        border-color: #335157 !important; /* spectra */
+        color: #e2e8f0 !important; /* slate-200 */
+      }
+
+      input::placeholder, textarea::placeholder {
+        color: #496569 !important; /* cutty */
+      }
+
+      /* Fix Select Option Backgrounds */
+      select option {
+        background-color: #193338; /* gable */
+        color: white;
+        padding: 8px;
+      }
+
+      /* Autofill Fix */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #02272c inset !important;
+        -webkit-text-fill-color: white !important;
+        transition: background-color 5000s ease-in-out 0s;
+      }
+
+      /* Date Picker Icon Invert */
+      ::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        opacity: 0.5;
+        cursor: pointer;
+      }
     </style>
   <script type="importmap">
 {

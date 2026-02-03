@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote } from 'lucide-react';
+import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote, ChevronDown } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface Props {
@@ -205,27 +205,29 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <div className="col-span-4">
                         <label className="form-label">{type === 'IN' ? 'Supplier / Vendor' : 'Customer / Tujuan'}</label>
                         <div className="relative">
-                            <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                            <select className="form-input pl-8" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
+                            <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                            <select className="form-input pl-8 pr-8" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
                                 <option value="">-- Pilih Partner --</option>
                                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
+                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                         </div>
                     </div>
                     <div className="col-span-4">
                         <label className="form-label">Gudang {type === 'IN' ? 'Penerima' : 'Asal'}</label>
                         <div className="relative">
-                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                            <select className="form-input pl-8" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
+                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                            <select className="form-input pl-8 pr-8" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
                                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                             </select>
+                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                         </div>
                     </div>
                     <div className="col-span-4">
                         <label className="form-label">Tanggal Transaksi</label>
                         <div className="relative">
-                            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="form-input pl-8" />
+                            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                         </div>
                     </div>
 
@@ -233,14 +235,14 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <div className="col-span-4">
                          <label className="form-label">No. Referensi</label>
                          <div className="relative">
-                            <Hash size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                            <Hash size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
                             <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="form-input pl-8 font-mono uppercase text-emerald-400" />
                         </div>
                     </div>
                     <div className="col-span-8">
                          <label className="form-label">Catatan / Keterangan</label>
                          <div className="relative">
-                            <StickyNote size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                            <StickyNote size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
                             <input type="text" placeholder="Isi keterangan transaksi..." value={notes} onChange={e => setNotes(e.target.value)} className="form-input pl-8" />
                          </div>
                     </div>
@@ -327,9 +329,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
                                 />
                             </td>
-                            <td className="p-2 border-b border-spectra">
+                            <td className="p-2 border-b border-spectra relative">
                                  <select 
-                                    className="w-full bg-gable border border-spectra rounded px-1 py-1.5 outline-none font-bold text-center text-white text-xs shadow-sm"
+                                    className="w-full bg-gable border border-spectra rounded px-1 py-1.5 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
