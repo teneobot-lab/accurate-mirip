@@ -175,7 +175,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
       <div className="bg-[#eff3f8] dark:bg-gable rounded-lg shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-cutty dark:border-spectra">
         
         {/* Title Bar - Dense & Functional */}
@@ -274,26 +274,26 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         <div className="flex-1 bg-white dark:bg-gable overflow-hidden flex flex-col relative z-0">
             <div className="flex-1 overflow-auto scrollbar-thin">
                 <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 z-10 bg-slate-200 dark:bg-daintree text-slate-700 dark:text-cutty text-[11px] font-bold uppercase tracking-wider shadow-sm">
+                    <thead className="sticky top-0 z-10 bg-gable dark:bg-daintree text-white dark:text-cutty text-[11px] font-bold uppercase tracking-wider shadow-sm">
                         <tr>
-                            <th className="px-3 py-2 border-r border-slate-300 dark:border-spectra w-10 text-center">#</th>
-                            <th className="px-3 py-2 border-r border-slate-300 dark:border-spectra">Kode Barang</th>
-                            <th className="px-3 py-2 border-r border-slate-300 dark:border-spectra w-1/3">Nama Barang</th>
-                            <th className="px-3 py-2 border-r border-slate-300 dark:border-spectra w-32 text-right">Kuantitas</th>
-                            <th className="px-3 py-2 border-r border-slate-300 dark:border-spectra w-24 text-center">Satuan</th>
-                            <th className="px-3 py-2 border-r border-slate-300 dark:border-spectra w-48">Memo Line</th>
+                            <th className="px-3 py-2 border-r border-spectra dark:border-spectra w-10 text-center">#</th>
+                            <th className="px-3 py-2 border-r border-spectra dark:border-spectra">Kode Barang</th>
+                            <th className="px-3 py-2 border-r border-spectra dark:border-spectra w-1/3">Nama Barang</th>
+                            <th className="px-3 py-2 border-r border-spectra dark:border-spectra w-32 text-right">Kuantitas</th>
+                            <th className="px-3 py-2 border-r border-spectra dark:border-spectra w-24 text-center">Satuan</th>
+                            <th className="px-3 py-2 border-r border-spectra dark:border-spectra w-48">Memo Line</th>
                             <th className="px-3 py-2 w-16 text-center">Aksi</th>
                         </tr>
                     </thead>
-                    <tbody className="text-xs text-slate-800 dark:text-slate-200">
+                    <tbody className="text-xs text-daintree dark:text-slate-200">
                         {/* Entry Row */}
-                        <tr className="bg-yellow-50 dark:bg-yellow-900/10 border-b border-slate-300 dark:border-spectra">
-                            <td className="p-2 border-r border-slate-300 dark:border-spectra text-center"><Plus size={16} className="text-spectra dark:text-cutty mx-auto"/></td>
-                            <td className="p-2 border-r border-slate-300 dark:border-spectra relative" colSpan={2}>
+                        <tr className="bg-orange-50 dark:bg-yellow-900/10 border-b border-cutty dark:border-spectra">
+                            <td className="p-2 border-r border-cutty dark:border-spectra text-center"><Plus size={16} className="text-spectra dark:text-cutty mx-auto"/></td>
+                            <td className="p-2 border-r border-cutty dark:border-spectra relative" colSpan={2}>
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-white dark:bg-daintree border border-slate-400 dark:border-cutty rounded px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra font-bold placeholder:text-slate-400 placeholder:font-normal uppercase text-daintree dark:text-white"
+                                    className="w-full bg-white dark:bg-daintree border border-cutty dark:border-cutty rounded-none px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra font-bold placeholder:text-slate-400 placeholder:font-normal uppercase text-daintree dark:text-white"
                                     placeholder="CARI BARANG (Ketik Kode/Nama)..."
                                     value={query}
                                     onChange={e => {
@@ -306,7 +306,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                                 {/* Autocomplete Dropdown */}
                                 {isDropdownOpen && (
-                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-white dark:bg-daintree rounded-md shadow-xl border border-slate-400 dark:border-spectra z-[100] max-h-60 overflow-y-auto">
+                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-white dark:bg-daintree rounded-md shadow-xl border border-cutty dark:border-spectra z-[100] max-h-60 overflow-y-auto">
                                         {filteredItems.map((it, idx) => (
                                             <div 
                                                 key={it.id}
@@ -321,20 +321,20 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     </div>
                                 )}
                             </td>
-                            <td className="p-2 border-r border-slate-300 dark:border-spectra">
+                            <td className="p-2 border-r border-cutty dark:border-spectra">
                                 <input 
                                     ref={qtyInputRef}
                                     type="number" 
-                                    className="w-full bg-white dark:bg-daintree border border-slate-400 dark:border-cutty rounded px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra text-right font-mono font-bold text-daintree dark:text-white"
+                                    className="w-full bg-white dark:bg-daintree border border-cutty dark:border-cutty rounded-none px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra text-right font-mono font-bold text-daintree dark:text-white"
                                     value={pendingQty} 
                                     onChange={e => setPendingQty(e.target.value)} 
                                     disabled={!pendingItem}
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
                                 />
                             </td>
-                            <td className="p-2 border-r border-slate-300 dark:border-spectra">
+                            <td className="p-2 border-r border-cutty dark:border-spectra">
                                  <select 
-                                    className="w-full bg-white dark:bg-daintree border border-slate-400 dark:border-cutty rounded px-1 py-1.5 outline-none font-bold text-center text-daintree dark:text-white"
+                                    className="w-full bg-white dark:bg-daintree border border-cutty dark:border-cutty rounded-none px-1 py-1.5 outline-none font-bold text-center text-daintree dark:text-white"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
@@ -347,10 +347,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     )}
                                 </select>
                             </td>
-                            <td className="p-2 border-r border-slate-300 dark:border-spectra">
+                            <td className="p-2 border-r border-cutty dark:border-spectra">
                                 <input 
                                     type="text" 
-                                    className="w-full bg-white dark:bg-daintree border border-slate-400 dark:border-cutty rounded px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra text-daintree dark:text-white"
+                                    className="w-full bg-white dark:bg-daintree border border-cutty dark:border-cutty rounded-none px-2 py-1.5 outline-none focus:ring-2 focus:ring-spectra text-daintree dark:text-white"
                                     placeholder="Catatan baris..." 
                                     value={pendingNote} 
                                     onChange={e => setPendingNote(e.target.value)} 
@@ -359,7 +359,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                             </td>
                             <td className="p-2 text-center">
-                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-spectra text-white rounded hover:bg-daintree disabled:opacity-50 transition-colors"><CornerDownLeft size={16}/></button>
+                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-daintree text-white rounded hover:bg-spectra disabled:opacity-50 transition-colors"><CornerDownLeft size={16}/></button>
                             </td>
                         </tr>
 
@@ -386,23 +386,23 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             {/* Empty State Overlay if no items */}
             {lines.length === 0 && (
                 <div className="absolute inset-x-0 top-20 bottom-0 flex flex-col items-center justify-center pointer-events-none opacity-10">
-                    <Package size={80} className="text-slate-800 dark:text-white"/>
-                    <div className="text-4xl font-black uppercase text-slate-800 dark:text-white mt-4">No Items</div>
+                    <Package size={80} className="text-daintree dark:text-white"/>
+                    <div className="text-4xl font-black uppercase text-daintree dark:text-white mt-4">No Items</div>
                 </div>
             )}
         </div>
 
         {/* Footer Actions */}
         <div className="bg-slate-100 dark:bg-daintree p-4 border-t border-slate-300 dark:border-spectra flex justify-between items-center z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-             <div className="text-[10px] text-slate-500 dark:text-cutty font-bold uppercase tracking-widest flex gap-4">
+             <div className="text-[10px] text-cutty dark:text-cutty font-bold uppercase tracking-widest flex gap-4">
                 <span className="flex items-center gap-1"><Info size={14}/> Pastikan data sudah benar sebelum simpan</span>
              </div>
              <div className="flex gap-3">
-                <button onClick={onClose} className="px-6 py-2.5 rounded-lg border border-slate-300 dark:border-cutty bg-white dark:bg-gable hover:bg-slate-50 dark:hover:bg-spectra text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
+                <button onClick={onClose} className="px-6 py-2.5 rounded-lg border border-cutty dark:border-cutty bg-white dark:bg-gable hover:bg-slate-50 dark:hover:bg-spectra text-daintree dark:text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
                 <button 
                     onClick={handleSubmit} 
                     disabled={isSubmitting || !selectedWh}
-                    className="px-8 py-2.5 rounded-lg bg-spectra hover:bg-daintree text-white text-xs font-bold uppercase tracking-wide shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                    className="px-8 py-2.5 rounded-lg bg-daintree hover:bg-gable text-white text-xs font-bold uppercase tracking-wide shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
                 >
                     {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                     {initialData ? 'Simpan Perubahan' : 'Simpan Transaksi'}
@@ -412,10 +412,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
       <style>{`
         .form-input { 
-            @apply w-full bg-white dark:bg-daintree border border-slate-400 dark:border-cutty rounded-md px-3 py-2 text-xs font-bold text-slate-800 dark:text-white focus:ring-2 focus:ring-spectra focus:border-spectra outline-none transition-all shadow-sm; 
+            @apply w-full bg-white dark:bg-daintree border border-cutty dark:border-cutty rounded-none px-3 py-2 text-xs font-bold text-daintree dark:text-white focus:ring-2 focus:ring-spectra focus:border-spectra outline-none transition-all shadow-sm; 
         }
         .form-label {
-            @apply block text-[10px] font-bold uppercase text-slate-500 dark:text-cutty mb-1.5 tracking-wide ml-0.5;
+            @apply block text-[10px] font-bold uppercase text-cutty dark:text-cutty mb-1.5 tracking-wide ml-0.5;
         }
         .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: #f1f5f9; }

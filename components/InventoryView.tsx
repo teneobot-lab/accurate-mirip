@@ -199,7 +199,7 @@ export const InventoryView: React.FC = () => {
                             placeholder="Cari Master Barang..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-daintree border border-slate-300 dark:border-spectra rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-spectra/20 focus:border-spectra w-80 transition-all text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
+                            className="pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-daintree border border-slate-300 dark:border-spectra rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-spectra/20 focus:border-spectra w-80 transition-all text-daintree dark:text-slate-200 placeholder:text-slate-400"
                         />
                     </div>
                     <div className="h-8 w-px bg-slate-200 dark:bg-spectra"></div>
@@ -244,7 +244,7 @@ export const InventoryView: React.FC = () => {
                         {isImporting ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16}/>} 
                         Import
                     </button>
-                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0, conversions: [] }); setShowItemModal(true); }} className="flex items-center gap-2 px-6 py-2.5 bg-spectra text-white rounded-xl text-xs font-bold shadow-lg shadow-black/20 hover:bg-daintree active:scale-95 transition-all">
+                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0, conversions: [] }); setShowItemModal(true); }} className="flex items-center gap-2 px-6 py-2.5 bg-daintree text-white rounded-xl text-xs font-bold shadow-lg shadow-black/20 hover:bg-gable active:scale-95 transition-all">
                         <Plus size={18}/> Item Baru
                     </button>
                     <button onClick={loadData} className="p-2.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-spectra/20 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-spectra"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
@@ -255,22 +255,22 @@ export const InventoryView: React.FC = () => {
             <div className="flex-1 bg-white dark:bg-gable rounded-2xl shadow-sm border border-slate-200 dark:border-spectra overflow-hidden flex flex-col">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-collapse table-fixed">
-                        <thead className="bg-[#f8fafc] dark:bg-daintree text-[11px] font-bold text-slate-500 dark:text-cutty uppercase tracking-wider sticky top-0 z-10 border-b border-slate-200 dark:border-spectra">
+                        <thead className="bg-gable dark:bg-daintree text-[11px] font-bold text-white dark:text-cutty uppercase tracking-wider sticky top-0 z-10 border-b border-slate-200 dark:border-spectra">
                             <tr>
                                 <th className="p-4 w-12 text-center">
                                     <button onClick={handleToggleSelectAll} className="hover:scale-110 transition-transform">
-                                        {selectedIds.size === inventoryData.length && inventoryData.length > 0 ? <CheckSquare size={18} className="text-spectra"/> : <Square size={18} className="text-slate-300 dark:text-spectra/50"/>}
+                                        {selectedIds.size === inventoryData.length && inventoryData.length > 0 ? <CheckSquare size={18} className="text-white"/> : <Square size={18} className="text-white/30 dark:text-spectra/50"/>}
                                     </button>
                                 </th>
-                                {visibleColumns.has('code') && <th className="p-4 w-40 border-l border-slate-100 dark:border-spectra">Kode Ref</th>}
-                                {visibleColumns.has('name') && <th className="p-4 w-auto border-l border-slate-100 dark:border-spectra">Nama Barang</th>}
-                                {visibleColumns.has('category') && <th className="p-4 w-40 border-l border-slate-100 dark:border-spectra">Kategori</th>}
+                                {visibleColumns.has('code') && <th className="p-4 w-40 border-l border-white/10 dark:border-spectra">Kode Ref</th>}
+                                {visibleColumns.has('name') && <th className="p-4 w-auto border-l border-white/10 dark:border-spectra">Nama Barang</th>}
+                                {visibleColumns.has('category') && <th className="p-4 w-40 border-l border-white/10 dark:border-spectra">Kategori</th>}
                                 {warehouses.map(wh => (
-                                    <th key={wh.id} className="p-4 w-28 text-right text-slate-600 dark:text-slate-400 border-l border-slate-100 dark:border-spectra">{wh.name}</th>
+                                    <th key={wh.id} className="p-4 w-28 text-right text-white/80 dark:text-slate-400 border-l border-white/10 dark:border-spectra">{wh.name}</th>
                                 ))}
-                                {visibleColumns.has('total') && <th className="p-4 w-28 text-right bg-blue-50/50 dark:bg-spectra/10 text-spectra dark:text-cutty border-l border-blue-100 dark:border-spectra">Total Stok</th>}
-                                {visibleColumns.has('unit') && <th className="p-4 w-24 text-center border-l border-slate-100 dark:border-spectra">Unit</th>}
-                                {visibleColumns.has('actions') && <th className="p-4 w-20 text-center border-l border-slate-100 dark:border-spectra">Aksi</th>}
+                                {visibleColumns.has('total') && <th className="p-4 w-28 text-right bg-black/20 dark:bg-spectra/10 text-white dark:text-cutty border-l border-white/10 dark:border-spectra">Total Stok</th>}
+                                {visibleColumns.has('unit') && <th className="p-4 w-24 text-center border-l border-white/10 dark:border-spectra">Unit</th>}
+                                {visibleColumns.has('actions') && <th className="p-4 w-20 text-center border-l border-white/10 dark:border-spectra">Aksi</th>}
                             </tr>
                         </thead>
                         <tbody className="text-xs divide-y divide-slate-100 dark:divide-spectra/30">
@@ -290,11 +290,11 @@ export const InventoryView: React.FC = () => {
                                             {selectedIds.has(item.id) ? <CheckSquare size={18} className="text-spectra"/> : <Square size={18} className="text-slate-300 dark:text-spectra/50 group-hover:text-slate-400"/>}
                                         </button>
                                     </td>
-                                    {visibleColumns.has('code') && <td className="p-4 font-mono font-bold text-slate-500 dark:text-slate-400 border-l border-transparent">{item.code}</td>}
-                                    {visibleColumns.has('name') && <td className="p-4 font-bold text-slate-700 dark:text-slate-200 truncate group-hover:text-spectra dark:group-hover:text-cutty transition-colors border-l border-transparent">{item.name}</td>}
+                                    {visibleColumns.has('code') && <td className="p-4 font-mono font-bold text-cutty dark:text-slate-400 border-l border-transparent">{item.code}</td>}
+                                    {visibleColumns.has('name') && <td className="p-4 font-bold text-daintree dark:text-slate-200 truncate group-hover:text-spectra dark:group-hover:text-cutty transition-colors border-l border-transparent">{item.name}</td>}
                                     {visibleColumns.has('category') && <td className="p-4 text-slate-500 font-bold text-[10px] uppercase tracking-wide border-l border-transparent">{item.category}</td>}
                                     {item.whBreakdown.map(bd => (
-                                        <td key={bd.whId} className={`p-4 text-right font-mono border-l ${bd.qty > 0 ? 'text-slate-800 dark:text-slate-200 font-bold' : 'text-slate-300 dark:text-slate-600'}`}>{bd.qty > 0 ? bd.qty.toLocaleString() : '-'}</td>
+                                        <td key={bd.whId} className={`p-4 text-right font-mono border-l ${bd.qty > 0 ? 'text-daintree dark:text-slate-200 font-bold' : 'text-slate-300 dark:text-slate-600'}`}>{bd.qty > 0 ? bd.qty.toLocaleString() : '-'}</td>
                                     ))}
                                     {visibleColumns.has('total') && <td className="p-4 text-right font-black font-mono text-spectra dark:text-cutty border-l border-blue-50 dark:border-spectra/30 group-hover:border-transparent text-[13px]">{item.totalStock.toLocaleString()}</td>}
                                     {visibleColumns.has('unit') && <td className="p-4 text-center border-l border-transparent"><span className="px-2 py-1 rounded bg-slate-100 dark:bg-daintree text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-spectra">{item.baseUnit}</span></td>}
@@ -447,7 +447,7 @@ export const InventoryView: React.FC = () => {
                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Nama Satuan</label>
                                                     <input 
                                                         type="text" 
-                                                        className="w-full bg-white dark:bg-gable p-2.5 rounded-xl border border-slate-300 dark:border-spectra text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-spectra" 
+                                                        className="w-full bg-white dark:bg-gable p-2.5 rounded-xl border border-cutty dark:border-spectra text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-spectra" 
                                                         placeholder="BOX / DUS" 
                                                         value={c.name} 
                                                         onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
@@ -457,7 +457,7 @@ export const InventoryView: React.FC = () => {
                                                 <div className="col-span-3 space-y-1">
                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Operator</label>
                                                     <select 
-                                                        className="w-full bg-white dark:bg-gable p-2.5 rounded-xl border border-slate-300 dark:border-spectra text-xs font-bold outline-none"
+                                                        className="w-full bg-white dark:bg-gable p-2.5 rounded-xl border border-cutty dark:border-spectra text-xs font-bold outline-none"
                                                         value={c.operator}
                                                         onChange={e => updateConversion(i, { operator: e.target.value as any })}
                                                     >
@@ -470,7 +470,7 @@ export const InventoryView: React.FC = () => {
                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Rasio ke {itemForm.baseUnit}</label>
                                                     <input 
                                                         type="number" 
-                                                        className="w-full bg-white dark:bg-gable p-2.5 rounded-xl border border-slate-300 dark:border-spectra text-xs font-bold text-right outline-none focus:ring-2 focus:ring-spectra" 
+                                                        className="w-full bg-white dark:bg-gable p-2.5 rounded-xl border border-cutty dark:border-spectra text-xs font-bold text-right outline-none focus:ring-2 focus:ring-spectra" 
                                                         value={c.ratio} 
                                                         onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
                                                     />
@@ -495,7 +495,7 @@ export const InventoryView: React.FC = () => {
                             <button 
                                 onClick={handleSaveItem} 
                                 disabled={isLoading} 
-                                className="px-10 py-3 bg-spectra hover:bg-daintree text-white rounded-xl font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-3 active:scale-95 transition-all disabled:opacity-50"
+                                className="px-10 py-3 bg-daintree hover:bg-gable text-white rounded-xl font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-3 active:scale-95 transition-all disabled:opacity-50"
                             >
                                 {isLoading ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>}
                                 {editingItem ? 'SIMPAN PERUBAHAN' : 'SIMPAN DATA'}
@@ -507,7 +507,7 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .accurate-input { 
-                    @apply w-full border border-slate-300 dark:border-spectra bg-slate-100 dark:bg-daintree dark:text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-spectra/20 focus:border-spectra transition-all shadow-sm placeholder:text-slate-400; 
+                    @apply w-full border border-cutty dark:border-spectra bg-slate-100 dark:bg-daintree dark:text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-spectra/20 focus:border-spectra transition-all shadow-sm placeholder:text-slate-400; 
                 }
                 .scrollbar-thin::-webkit-scrollbar { width: 6px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-cutty rounded-full; }
