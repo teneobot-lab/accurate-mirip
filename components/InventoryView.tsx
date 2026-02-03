@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown, Barcode, Package } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -69,6 +69,10 @@ export const InventoryView: React.FC = () => {
             item.code.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [items, stocks, warehouses, searchTerm]);
+
+    const uniqueCategories = useMemo(() => {
+        return Array.from(new Set(items.map(i => i.category))).sort();
+    }, [items]);
 
     const downloadTemplate = () => {
         const templateData = [
@@ -345,33 +349,49 @@ export const InventoryView: React.FC = () => {
                                 <div className="grid grid-cols-12 gap-5">
                                     <div className="col-span-3 space-y-2">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kode SKU</label>
-                                        <input 
-                                            type="text" 
-                                            className="modal-input font-mono font-bold text-emerald-400 uppercase tracking-widest" 
-                                            placeholder="AUTO" 
-                                            value={itemForm.code} 
-                                            onChange={e => setItemForm({...itemForm, code: e.target.value})} 
-                                        />
+                                        <div className="relative">
+                                            <Barcode size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <input 
+                                                type="text" 
+                                                className="modal-input font-mono font-bold text-emerald-400 uppercase tracking-widest pl-11" 
+                                                placeholder="AUTO" 
+                                                value={itemForm.code} 
+                                                onChange={e => setItemForm({...itemForm, code: e.target.value})} 
+                                            />
+                                        </div>
                                     </div>
                                     <div className="col-span-5 space-y-2">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Nama Barang</label>
-                                        <input 
-                                            type="text" 
-                                            className="modal-input font-bold text-white" 
-                                            placeholder="Nama Item..." 
-                                            value={itemForm.name} 
-                                            onChange={e => setItemForm({...itemForm, name: e.target.value})} 
-                                        />
+                                        <div className="relative">
+                                            <Package size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <input 
+                                                type="text" 
+                                                className="modal-input font-bold text-white pl-11" 
+                                                placeholder="Nama Item..." 
+                                                value={itemForm.name} 
+                                                onChange={e => setItemForm({...itemForm, name: e.target.value})} 
+                                            />
+                                        </div>
                                     </div>
                                     <div className="col-span-4 space-y-2">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Kategori</label>
-                                        <input 
-                                            type="text" 
-                                            className="modal-input" 
-                                            placeholder="Kategori..." 
-                                            value={itemForm.category} 
-                                            onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
-                                        />
+                                        <div className="relative">
+                                            <Layers size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                            <input 
+                                                type="text" 
+                                                list="category-suggestions"
+                                                className="modal-input pl-11" 
+                                                placeholder="Pilih / Ketik Kategori..." 
+                                                value={itemForm.category} 
+                                                onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
+                                            />
+                                            <datalist id="category-suggestions">
+                                                {uniqueCategories.map(cat => (
+                                                    <option key={cat} value={cat} />
+                                                ))}
+                                            </datalist>
+                                            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -522,7 +542,7 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .modal-input { 
-                    @apply w-full h-11 bg-daintree border border-spectra/50 rounded-xl px-4 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-inner placeholder:text-slate-600; 
+                    @apply w-full h-11 bg-daintree border border-spectra/50 rounded-xl px-4 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-inner placeholder:text-slate-600 appearance-none; 
                 }
                 .table-input {
                     @apply w-full h-9 bg-daintree/50 border border-spectra/30 rounded-lg px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-daintree transition-all placeholder:text-cutty;
