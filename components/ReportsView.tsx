@@ -194,28 +194,35 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                     {expandedTx.has(tx.id) && (
                                         <tr className="bg-daintree/30 animate-in fade-in slide-in-from-top-1">
                                             <td colSpan={7} className="p-0 border-b border-spectra/50">
-                                                <div className="px-14 py-4">
-                                                    <div className="bg-gable rounded-xl border border-spectra p-4 shadow-inner">
-                                                        <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-cutty tracking-wider mb-2 border-b border-spectra pb-2">
-                                                            <div className="col-span-1">#</div>
-                                                            <div className="col-span-2">Kode SKU</div>
-                                                            <div className="col-span-3">Deskripsi Barang</div>
-                                                            <div className="col-span-2 text-right">Kuantitas</div>
-                                                            <div className="col-span-2 text-center">Satuan</div>
-                                                            <div className="col-span-2 text-right">Total Base</div>
-                                                        </div>
-                                                        {tx.items.map((it, idx) => (
-                                                            <div key={idx} className="grid grid-cols-12 gap-4 text-[10px] items-center py-1.5 hover:bg-daintree/50 rounded-lg px-2 -mx-2 transition-colors border-b border-spectra/10 last:border-0">
-                                                                <div className="col-span-1 text-cutty font-mono">{idx + 1}</div>
-                                                                <div className="col-span-2 font-mono text-emerald-500 font-bold">{it.code}</div>
-                                                                <div className="col-span-3 font-bold text-slate-200 uppercase truncate">{it.name}</div>
-                                                                <div className="col-span-2 text-right font-black text-white">{it.qty.toLocaleString()}</div>
-                                                                <div className="col-span-2 text-center font-bold text-cutty">{it.unit}</div>
-                                                                <div className="col-span-2 text-right font-black text-cutty">{(it.qty * (it.ratio || 1)).toLocaleString()}</div>
-                                                            </div>
-                                                        ))}
+                                                <div className="px-10 py-4">
+                                                    {/* Nested Table Wrapper - Consistent with Main Table */}
+                                                    <div className="bg-gable rounded-xl border border-spectra overflow-hidden shadow-inner">
+                                                        <table className="w-full text-left border-separate border-spacing-0">
+                                                            <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
+                                                                <tr>
+                                                                    <th className="px-4 py-2 border-b border-spectra w-10 text-center">#</th>
+                                                                    <th className="px-4 py-2 border-b border-spectra">Kode SKU</th>
+                                                                    <th className="px-4 py-2 border-b border-spectra">Deskripsi Barang</th>
+                                                                    <th className="px-4 py-2 border-b border-spectra text-right">Kuantitas</th>
+                                                                    <th className="px-4 py-2 border-b border-spectra text-center">Satuan</th>
+                                                                    <th className="px-4 py-2 border-b border-spectra text-right">Total Base</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="text-[10px] text-slate-300 divide-y divide-spectra/20">
+                                                                {tx.items.map((it, idx) => (
+                                                                    <tr key={idx} className="hover:bg-spectra/10 transition-colors">
+                                                                        <td className="px-4 py-1.5 text-center text-cutty font-mono">{idx + 1}</td>
+                                                                        <td className="px-4 py-1.5 font-mono text-emerald-500 font-bold">{it.code}</td>
+                                                                        <td className="px-4 py-1.5 font-bold text-slate-200 uppercase">{it.name}</td>
+                                                                        <td className="px-4 py-1.5 text-right font-black text-white">{it.qty.toLocaleString()}</td>
+                                                                        <td className="px-4 py-1.5 text-center font-bold text-cutty">{it.unit}</td>
+                                                                        <td className="px-4 py-1.5 text-right font-black text-cutty">{(it.qty * (it.ratio || 1)).toLocaleString()}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
                                                         {tx.notes && (
-                                                            <div className="mt-3 pt-2 border-t border-spectra/30 flex gap-2">
+                                                            <div className="px-4 py-2 border-t border-spectra bg-daintree/20 flex gap-2">
                                                                 <span className="text-[9px] font-black uppercase text-cutty">Catatan:</span>
                                                                 <span className="text-[10px] text-slate-400 italic">{tx.notes}</span>
                                                             </div>
