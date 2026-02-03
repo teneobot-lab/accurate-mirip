@@ -133,7 +133,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 </div>
             </div>
 
-            {/* Transaction Grid - Rounded Wrapper & Dense */}
+            {/* Transaction Grid - Rounded Wrapper & Dense - THE BLUEPRINT */}
             <div className="flex-1 rounded-xl shadow-xl border border-spectra overflow-hidden flex flex-col bg-gable">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-separate border-spacing-0">
@@ -195,36 +195,41 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         <tr className="bg-daintree/30 animate-in fade-in slide-in-from-top-1">
                                             <td colSpan={7} className="p-0 border-b border-spectra/50">
                                                 <div className="px-10 py-4">
-                                                    {/* Nested Table Wrapper - Consistent with Main Table */}
-                                                    <div className="bg-gable rounded-xl border border-spectra overflow-hidden shadow-inner">
+                                                    {/* Nested Table Wrapper - EXACT MATCH with Main Table Wrapper */}
+                                                    <div className="rounded-xl border border-spectra overflow-hidden bg-gable shadow-inner">
                                                         <table className="w-full text-left border-separate border-spacing-0">
-                                                            <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
+                                                            {/* Match Header: bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest */}
+                                                            <thead className="bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest">
                                                                 <tr>
-                                                                    <th className="px-4 py-2 border-b border-spectra w-10 text-center">#</th>
-                                                                    <th className="px-4 py-2 border-b border-spectra">Kode SKU</th>
-                                                                    <th className="px-4 py-2 border-b border-spectra">Deskripsi Barang</th>
-                                                                    <th className="px-4 py-2 border-b border-spectra text-right">Kuantitas</th>
-                                                                    <th className="px-4 py-2 border-b border-spectra text-center">Satuan</th>
-                                                                    <th className="px-4 py-2 border-b border-spectra text-right">Total Base</th>
+                                                                    {/* Match TH: px-4 py-2.5 border-b border-spectra */}
+                                                                    <th className="px-4 py-2.5 border-b border-spectra w-10 text-center">#</th>
+                                                                    <th className="px-4 py-2.5 border-b border-spectra">Kode SKU</th>
+                                                                    <th className="px-4 py-2.5 border-b border-spectra">Deskripsi Barang</th>
+                                                                    <th className="px-4 py-2.5 border-b border-spectra text-right">Kuantitas</th>
+                                                                    <th className="px-4 py-2.5 border-b border-spectra text-center">Satuan</th>
+                                                                    <th className="px-4 py-2.5 border-b border-spectra text-right">Total Base</th>
                                                                 </tr>
                                                             </thead>
-                                                            <tbody className="text-[10px] text-slate-300 divide-y divide-spectra/20">
+                                                            {/* Match Body: text-[11px] divide-y divide-spectra/20 text-slate-300 */}
+                                                            <tbody className="text-[11px] divide-y divide-spectra/20 text-slate-300">
                                                                 {tx.items.map((it, idx) => (
                                                                     <tr key={idx} className="hover:bg-spectra/10 transition-colors">
-                                                                        <td className="px-4 py-1.5 text-center text-cutty font-mono">{idx + 1}</td>
-                                                                        <td className="px-4 py-1.5 font-mono text-emerald-500 font-bold">{it.code}</td>
-                                                                        <td className="px-4 py-1.5 font-bold text-slate-200 uppercase">{it.name}</td>
-                                                                        <td className="px-4 py-1.5 text-right font-black text-white">{it.qty.toLocaleString()}</td>
-                                                                        <td className="px-4 py-1.5 text-center font-bold text-cutty">{it.unit}</td>
-                                                                        <td className="px-4 py-1.5 text-right font-black text-cutty">{(it.qty * (it.ratio || 1)).toLocaleString()}</td>
+                                                                        {/* Match TD: px-4 py-2.5 */}
+                                                                        <td className="px-4 py-2.5 text-center text-cutty font-mono">{idx + 1}</td>
+                                                                        <td className="px-4 py-2.5 font-mono text-emerald-500 font-bold">{it.code}</td>
+                                                                        <td className="px-4 py-2.5 font-bold text-slate-200 uppercase">{it.name}</td>
+                                                                        <td className="px-4 py-2.5 text-right font-black text-white">{it.qty.toLocaleString()}</td>
+                                                                        <td className="px-4 py-2.5 text-center font-bold text-cutty">{it.unit}</td>
+                                                                        <td className="px-4 py-2.5 text-right font-black text-cutty">{(it.qty * (it.ratio || 1)).toLocaleString()}</td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
                                                         </table>
                                                         {tx.notes && (
-                                                            <div className="px-4 py-2 border-t border-spectra bg-daintree/20 flex gap-2">
-                                                                <span className="text-[9px] font-black uppercase text-cutty">Catatan:</span>
-                                                                <span className="text-[10px] text-slate-400 italic">{tx.notes}</span>
+                                                            // Match padding px-4 py-2.5
+                                                            <div className="px-4 py-2.5 border-t border-spectra bg-daintree/20 flex gap-2 text-[11px]">
+                                                                <span className="font-black uppercase text-cutty">Catatan:</span>
+                                                                <span className="text-slate-400 italic">{tx.notes}</span>
                                                             </div>
                                                         )}
                                                     </div>
