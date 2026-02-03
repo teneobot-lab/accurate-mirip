@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GudangPro - Professional Inventory</title>
+    <title>GudangPro Inventory</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -12,61 +12,116 @@
         theme: {
           extend: {
             colors: {
-              acc: {
-                blue: '#004b8d',
-                light: '#f0f4f8',
-                border: '#cbd5e1',
-                header: '#e2e8f0',
-                text: '#1e293b'
-              }
+              slate: {
+                950: '#020617',
+              },
+              // Custom Palette
+              cutty: '#496569',
+              spectra: '#335157',
+              gable: '#193338',
+              daintree: '#02272c',
             },
             fontFamily: {
-              sans: ['Inter', 'Segoe UI', 'Tahoma', 'sans-serif'],
+              sans: ['Helvetica', 'Arial', 'sans-serif'],
             }
           }
         }
       }
     </script>
     <style>
-      body { font-size: 13px; color: #1e293b; background-color: #f8fafc; }
-      .dense-table th, .dense-table td { padding: 4px 8px; border: 1px solid #cbd5e1; }
-      .dense-table th { background-color: #f1f5f9; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11px; }
-      
-      input, select, textarea { 
-        font-size: 12px !important; 
-        padding: 4px 8px !important; 
-        border-radius: 4px !important;
-        border: 1px solid #cbd5e1 !important;
-        background-color: white !important;
-        color: #1e293b !important;
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
       }
-      input:focus { border-color: #004b8d !important; outline: none; ring: 0; }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #02272c;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #496569; 
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #335157;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #335157; 
+      }
       
-      .erp-card { background: white; border: 1px solid #cbd5e1; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-      .erp-header { background: #e2e8f0; padding: 4px 12px; border-bottom: 1px solid #cbd5e1; font-weight: 800; color: #1e293b; text-transform: uppercase; font-size: 11px; }
+      /* Global Transitions */
+      * {
+        transition-property: background-color, border-color, color, fill, stroke;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms;
+      }
       
-      /* Hide arrows in number input */
-      input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+      /* HD Text Rendering */
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Global Input Reset for Dark Mode Consistency */
+      :root {
+        color-scheme: dark;
+      }
       
-      ::-webkit-scrollbar { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
-      ::-webkit-scrollbar-track { background: #f1f5f9; }
+      input, select, textarea {
+        background-color: #02272c !important; /* daintree */
+        border-color: #335157 !important; /* spectra */
+        color: #e2e8f0 !important; /* slate-200 */
+      }
+
+      input::placeholder, textarea::placeholder {
+        color: #496569 !important; /* cutty */
+      }
+
+      /* Fix Select Option Backgrounds */
+      select option {
+        background-color: #193338; /* gable */
+        color: white;
+        padding: 8px;
+      }
+
+      /* Autofill Fix */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 30px #02272c inset !important;
+        -webkit-text-fill-color: white !important;
+        transition: background-color 5000s ease-in-out 0s;
+      }
+
+      /* Date Picker Icon Invert */
+      ::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+        opacity: 0.5;
+        cursor: pointer;
+      }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "xlsx": "https://esm.sh/xlsx@^0.18.5",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react": "https://esm.sh/react@18.3.1",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+    "recharts": "https://esm.sh/recharts@2.12.2",
+    "xlsx": "https://esm.sh/xlsx@0.18.5",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
 </head>
-  <body class="antialiased overflow-hidden">
+  <body class="bg-[#eff3f8] dark:bg-daintree text-daintree dark:text-slate-200 antialiased overflow-hidden font-sans">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
