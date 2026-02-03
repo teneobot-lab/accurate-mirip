@@ -81,7 +81,7 @@ export const RejectView: React.FC = () => {
         const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
         if (filteredBatches.length === 0) return showToast("Tidak ada data di rentang tanggal tersebut", "warning");
 
-        const dateList: string[] = Array.from(new Set(filteredBatches.map(b => b.date))).sort();
+        const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
         const itemMap = new Map<string, { code: string, name: string }>();
         filteredBatches.forEach(b => b.items.forEach(it => {
             itemMap.set(it.itemId, { code: it.sku, name: it.name });
