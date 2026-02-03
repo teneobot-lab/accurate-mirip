@@ -96,10 +96,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     return (
         <div className="flex flex-col h-full bg-daintree p-4 gap-4 overflow-hidden font-sans">
             {/* Header & Filter Bar */}
-            <div className="bg-gable p-4 rounded-3xl shadow-lg border border-spectra flex flex-wrap gap-4 items-end">
+            <div className="bg-gable p-4 rounded-xl shadow-lg border border-spectra flex flex-wrap gap-4 items-end">
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Rentang Tanggal</label>
-                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-2xl border border-spectra">
+                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra">
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none px-2 py-1 w-32" />
                         <span className="text-cutty font-bold text-xs">s/d</span>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none px-2 py-1 w-32" />
@@ -133,19 +133,19 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 </div>
             </div>
 
-            {/* Transaction Grid */}
-            <div className="flex-1 bg-gable rounded-3xl shadow-xl border border-spectra overflow-hidden flex flex-col">
+            {/* Transaction Grid - Rounded Wrapper & Dense */}
+            <div className="flex-1 rounded-xl shadow-xl border border-spectra overflow-hidden flex flex-col bg-gable">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead className="bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest sticky top-0 z-10 shadow-md">
                             <tr>
                                 <th className="p-3 w-10 border-b border-spectra"></th>
-                                <th className="p-3 w-32 border-b border-spectra">Tanggal</th>
-                                <th className="p-3 w-44 border-b border-spectra">Nomor Bukti</th>
-                                <th className="p-3 w-28 border-b border-spectra">Tipe</th>
-                                <th className="p-3 border-b border-spectra">Warehouse / Partner</th>
-                                <th className="p-3 w-24 text-right border-b border-spectra">Total Items</th>
-                                <th className="p-3 w-36 text-center border-b border-spectra">Aksi</th>
+                                <th className="px-4 py-2.5 w-32 border-b border-spectra">Tanggal</th>
+                                <th className="px-4 py-2.5 w-44 border-b border-spectra">Nomor Bukti</th>
+                                <th className="px-4 py-2.5 w-28 border-b border-spectra">Tipe</th>
+                                <th className="px-4 py-2.5 border-b border-spectra">Warehouse / Partner</th>
+                                <th className="px-4 py-2.5 w-24 text-right border-b border-spectra">Total Items</th>
+                                <th className="px-4 py-2.5 w-36 text-center border-b border-spectra">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="text-[11px] divide-y divide-spectra/20 text-slate-300">
@@ -163,28 +163,28 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                             ) : filteredTransactions.map((tx) => (
                                 <React.Fragment key={tx.id}>
                                     <tr className={`group hover:bg-spectra/10 transition-colors ${expandedTx.has(tx.id) ? 'bg-spectra/5' : ''}`}>
-                                        <td className="p-3 text-center">
-                                            <button onClick={() => toggleExpand(tx.id)} className="p-1.5 hover:bg-daintree rounded-lg transition-colors text-cutty">
+                                        <td className="p-2 text-center">
+                                            <button onClick={() => toggleExpand(tx.id)} className="p-1 hover:bg-daintree rounded-lg transition-colors text-cutty">
                                                 {expandedTx.has(tx.id) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                                             </button>
                                         </td>
-                                        <td className="p-3 font-mono font-bold text-emerald-500 tracking-tight">{tx.date}</td>
-                                        <td className="p-3 font-black text-slate-200">
+                                        <td className="px-4 py-2.5 font-mono font-bold text-emerald-500 tracking-tight">{tx.date}</td>
+                                        <td className="px-4 py-2.5 font-black text-slate-200">
                                             <div className="flex items-center gap-2"><Hash size={12} className="text-cutty"/> {tx.referenceNo}</div>
                                         </td>
-                                        <td className="p-3">
+                                        <td className="px-4 py-2.5">
                                             <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border ${
                                                 tx.type === 'IN' ? 'bg-emerald-900/10 text-emerald-400 border-emerald-900/30' : 'bg-red-900/10 text-red-400 border-red-900/30'
                                             }`}>{tx.type === 'IN' ? 'Barang Masuk' : 'Barang Keluar'}</span>
                                         </td>
-                                        <td className="p-3">
+                                        <td className="px-4 py-2.5">
                                             <div className="flex flex-col">
                                                 <div className="font-bold flex items-center gap-1.5 text-slate-200"><Box size={12} className="text-cutty"/> {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Default WH'}</div>
                                                 {tx.partnerName && <div className="text-[9px] font-bold text-cutty flex items-center gap-1.5 uppercase mt-0.5"><User size={10}/> {tx.partnerName}</div>}
                                             </div>
                                         </td>
-                                        <td className="p-3 text-right font-black text-white">{tx.items.length}</td>
-                                        <td className="p-3 text-center">
+                                        <td className="px-4 py-2.5 text-right font-black text-white">{tx.items.length}</td>
+                                        <td className="px-4 py-2.5 text-center">
                                             <div className="flex justify-center gap-2">
                                                 <button onClick={() => onEditTransaction(tx)} className="p-1.5 text-slate-400 hover:text-white hover:bg-spectra rounded-lg transition-colors" title="Edit"><Edit3 size={14}/></button>
                                                 <button onClick={() => handleDelete(tx.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors" title="Hapus"><Trash2 size={14}/></button>
@@ -195,7 +195,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         <tr className="bg-daintree/30 animate-in fade-in slide-in-from-top-1">
                                             <td colSpan={7} className="p-0 border-b border-spectra/50">
                                                 <div className="px-14 py-4">
-                                                    <div className="bg-gable rounded-2xl border border-spectra p-4 shadow-inner">
+                                                    <div className="bg-gable rounded-xl border border-spectra p-4 shadow-inner">
                                                         <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-cutty tracking-wider mb-2 border-b border-spectra pb-2">
                                                             <div className="col-span-1">#</div>
                                                             <div className="col-span-2">Kode SKU</div>

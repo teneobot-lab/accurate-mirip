@@ -176,7 +176,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   return (
     <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-      <div className="bg-gable rounded-3xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
+      <div className="bg-gable rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
         
         {/* Title Bar - Dense */}
         <div className="bg-daintree px-5 py-3 flex justify-between items-center border-b border-spectra">
@@ -250,7 +250,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 
                  {/* Right Column (Summary Box - Condensed) */}
                 <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-center">
-                    <div className="bg-daintree rounded-2xl border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
+                    <div className="bg-daintree rounded-xl border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
                         <div className="flex justify-between items-center text-[10px] font-bold text-cutty uppercase">
                             <span>Total Qty</span>
                             <span className="text-white font-mono">{lines.reduce((a,b) => a + Number(b.qty), 0).toLocaleString()}</span>
@@ -265,29 +265,29 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </div>
         </div>
 
-        {/* Transaction Grid Table */}
-        <div className="flex-1 bg-gable overflow-hidden flex flex-col relative z-0">
-            <div className="flex-1 overflow-auto scrollbar-thin">
+        {/* Transaction Grid Table - Standardized */}
+        <div className="flex-1 bg-gable p-4 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-spectra bg-daintree/30 shadow-inner">
                 <table className="w-full text-left border-separate border-spacing-0">
-                    <thead className="sticky top-0 z-10 bg-daintree text-cutty text-[10px] font-black uppercase tracking-widest shadow-md">
+                    <thead className="sticky top-0 z-20 bg-daintree text-cutty text-[10px] font-black uppercase tracking-widest shadow-md">
                         <tr>
-                            <th className="px-4 py-2 border-b border-spectra w-12 text-center">#</th>
-                            <th className="px-4 py-2 border-b border-spectra">Kode & Nama Barang</th>
-                            <th className="px-4 py-2 border-b border-spectra w-28 text-right">Kuantitas</th>
-                            <th className="px-4 py-2 border-b border-spectra w-24 text-center">Satuan</th>
-                            <th className="px-4 py-2 border-b border-spectra w-1/3">Memo Line</th>
-                            <th className="px-4 py-2 border-b border-spectra w-16 text-center">Aksi</th>
+                            <th className="px-3 py-2 border-b border-spectra w-12 text-center">#</th>
+                            <th className="px-3 py-2 border-b border-spectra">Kode & Nama Barang</th>
+                            <th className="px-3 py-2 border-b border-spectra w-28 text-right">Kuantitas</th>
+                            <th className="px-3 py-2 border-b border-spectra w-24 text-center">Satuan</th>
+                            <th className="px-3 py-2 border-b border-spectra w-1/3">Memo Line</th>
+                            <th className="px-3 py-2 border-b border-spectra w-16 text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody className="text-xs text-slate-200">
-                        {/* Entry Row */}
-                        <tr className="bg-daintree/30 border-b border-spectra">
+                        {/* Entry Row - Sticky below Header */}
+                        <tr className="bg-daintree/50 border-b border-spectra sticky top-[33px] z-10 shadow-sm backdrop-blur-sm">
                             <td className="p-2 border-b border-spectra text-center"><Plus size={14} className="text-spectra mx-auto"/></td>
                             <td className="p-2 border-b border-spectra relative">
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
                                     placeholder="Cari Barang (Kode/Nama)..."
                                     value={query}
                                     onChange={e => {
@@ -300,7 +300,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                                 {/* Autocomplete Dropdown */}
                                 {isDropdownOpen && (
-                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-2xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
+                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
                                         {filteredItems.map((it, idx) => (
                                             <div 
                                                 key={it.id}
@@ -322,7 +322,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 <input 
                                     ref={qtyInputRef}
                                     type="number" 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs"
                                     value={pendingQty} 
                                     onChange={e => setPendingQty(e.target.value)} 
                                     disabled={!pendingItem}
@@ -331,7 +331,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </td>
                             <td className="p-2 border-b border-spectra relative">
                                  <select 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-2 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-1 py-1 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
@@ -347,7 +347,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             <td className="p-2 border-b border-spectra">
                                 <input 
                                     type="text" 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-spectra text-white shadow-sm text-xs"
                                     placeholder="Catatan baris..." 
                                     value={pendingNote} 
                                     onChange={e => setPendingNote(e.target.value)} 
@@ -356,22 +356,22 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                             </td>
                             <td className="p-2 border-b border-spectra text-center">
-                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
+                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
                             </td>
                         </tr>
 
                         {/* Existing Lines */}
                         {lines.map((l, i) => (
                             <tr key={i} className="hover:bg-spectra/10 transition-colors group">
-                                <td className="px-4 py-2 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
-                                <td className="px-4 py-2 border-b border-spectra/10">
+                                <td className="px-3 py-1.5 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
+                                <td className="px-3 py-1.5 border-b border-spectra/10">
                                     <div className="font-bold text-slate-200">{l.name}</div>
                                     <div className="text-[10px] text-cutty font-mono">{l.code}</div>
                                 </td>
-                                <td className="px-4 py-2 border-b border-spectra/10 text-right font-black text-white">{l.qty.toLocaleString()}</td>
-                                <td className="px-4 py-2 border-b border-spectra/10 text-center text-slate-400 font-bold text-[10px]">{l.unit}</td>
-                                <td className="px-4 py-2 border-b border-spectra/10 italic text-slate-500">{l.note || '-'}</td>
-                                <td className="px-4 py-2 border-b border-spectra/10 text-center">
+                                <td className="px-3 py-1.5 border-b border-spectra/10 text-right font-black text-white">{l.qty.toLocaleString()}</td>
+                                <td className="px-3 py-1.5 border-b border-spectra/10 text-center text-slate-400 font-bold text-[10px]">{l.unit}</td>
+                                <td className="px-3 py-1.5 border-b border-spectra/10 italic text-slate-500">{l.note || '-'}</td>
+                                <td className="px-3 py-1.5 border-b border-spectra/10 text-center">
                                     <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
                                         <Trash2 size={14}/>
                                     </button>
@@ -380,15 +380,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         ))}
                     </tbody>
                 </table>
+                
+                {/* Empty State Overlay */}
+                {lines.length === 0 && (
+                    <div className="flex flex-col items-center justify-center p-12 pointer-events-none opacity-20">
+                        <Package size={48} className="text-spectra"/>
+                        <div className="text-sm font-black uppercase text-spectra mt-2 tracking-widest">Belum ada item</div>
+                    </div>
+                )}
             </div>
-            
-            {/* Empty State Overlay */}
-            {lines.length === 0 && (
-                <div className="absolute inset-x-0 top-20 bottom-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
-                    <Package size={64} className="text-spectra"/>
-                    <div className="text-xl font-black uppercase text-spectra mt-4 tracking-widest">Belum ada item</div>
-                </div>
-            )}
         </div>
 
         {/* Footer Actions */}

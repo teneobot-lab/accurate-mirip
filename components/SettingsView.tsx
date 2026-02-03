@@ -14,7 +14,7 @@ const DenseRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 const DenseCell: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <td className={`p-4 text-xs text-slate-300 ${className}`}>
+  <td className={`px-4 py-2.5 text-xs text-slate-300 ${className}`}>
     {children}
   </td>
 );
@@ -131,7 +131,7 @@ function setupSheet() {
             <div className="flex-1 flex flex-col overflow-hidden bg-daintree">
                 {activeTab !== 'EXTERNAL_SYNC' ? (
                     <div className="p-6 h-full flex flex-col">
-                        <div className="bg-gable p-4 rounded-2xl border border-spectra flex justify-between items-center shadow-sm mb-6">
+                        <div className="bg-gable p-4 rounded-xl border border-spectra flex justify-between items-center shadow-sm mb-6">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty" size={16} />
                                 <input 
@@ -150,17 +150,17 @@ function setupSheet() {
                             {isLoading ? (
                                 <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold tracking-[0.2em] animate-pulse"><Loader2 className="animate-spin mr-2"/> Sinkronisasi MySQL...</div>
                             ) : (
-                                <div className="bg-gable border border-spectra rounded-2xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-daintree text-[10px] font-black uppercase text-cutty border-b border-spectra tracking-wider">
+                                <div className="bg-gable border border-spectra rounded-xl overflow-hidden shadow-sm">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-daintree text-[10px] font-black uppercase text-cutty border-b border-spectra tracking-wider sticky top-0 z-10">
                                             <tr>
-                                                <th className="p-4 w-12 text-center">#</th>
-                                                <th className="p-4">Informasi Master</th>
-                                                <th className="p-4">Kontak / Kredensial</th>
-                                                <th className="p-4 w-24 text-center">Aksi</th>
+                                                <th className="px-4 py-2.5 w-12 text-center">#</th>
+                                                <th className="px-4 py-2.5">Informasi Master</th>
+                                                <th className="px-4 py-2.5">Kontak / Kredensial</th>
+                                                <th className="px-4 py-2.5 w-24 text-center">Aksi</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-spectra/30">
+                                        <tbody className="divide-y divide-spectra/30 bg-gable">
                                             {filteredData().map((item: any, idx) => (
                                                 <DenseRow key={item.id}>
                                                     <DenseCell className="text-center font-mono opacity-40">{idx + 1}</DenseCell>
@@ -179,8 +179,8 @@ function setupSheet() {
                                                     </DenseCell>
                                                     <DenseCell className="text-center">
                                                         <div className="flex justify-center gap-2">
-                                                            <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-2 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-colors"><Edit3 size={16}/></button>
-                                                            <button onClick={() => handleDelete(item.id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                                            <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-colors"><Edit3 size={16}/></button>
+                                                            <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 size={16}/></button>
                                                         </div>
                                                     </DenseCell>
                                                 </DenseRow>

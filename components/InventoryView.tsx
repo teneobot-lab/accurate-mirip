@@ -190,7 +190,7 @@ export const InventoryView: React.FC = () => {
     return (
         <div className="flex flex-col h-full p-4 gap-4 transition-colors font-sans">
             {/* Toolbar - Gable Green Card */}
-            <div className="bg-gable p-3 rounded-2xl shadow-sm border border-spectra flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-gable p-3 rounded-xl shadow-sm border border-spectra flex flex-wrap justify-between items-center gap-4">
                 <div className="flex items-center gap-3">
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-spectra transition-colors" size={16} />
@@ -207,7 +207,7 @@ export const InventoryView: React.FC = () => {
                     <div className="relative">
                         <button onClick={() => setShowColumnFilter(!showColumnFilter)} title="Filter Kolom" className={`p-2.5 rounded-xl transition-all border ${showColumnFilter ? 'bg-spectra/10 border-spectra/30 text-cutty' : 'border-transparent text-slate-400 hover:bg-daintree'}`}><Columns size={18}/></button>
                         {showColumnFilter && (
-                            <div className="absolute top-full left-0 mt-2 w-56 bg-gable border border-spectra rounded-2xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-top-2">
+                            <div className="absolute top-full left-0 mt-2 w-56 bg-gable border border-spectra rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-top-2">
                                 <p className="text-[10px] font-bold uppercase text-slate-400 mb-3 px-1 flex items-center gap-2"><Filter size={12}/> Visibilitas Kolom</p>
                                 <div className="space-y-1">
                                     {['code', 'name', 'category', 'total', 'unit'].map(c => (
@@ -251,26 +251,26 @@ export const InventoryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Data Table */}
-            <div className="flex-1 bg-gable rounded-2xl shadow-sm border border-spectra overflow-hidden flex flex-col">
+            {/* Data Table - Rounded Wrapper & Dense */}
+            <div className="flex-1 rounded-xl border border-spectra overflow-hidden flex flex-col shadow-sm bg-gable">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-collapse table-fixed">
-                        <thead className="bg-daintree text-[11px] font-bold text-cutty uppercase tracking-wider sticky top-0 z-10 border-b border-spectra">
+                        <thead className="bg-daintree text-[11px] font-bold text-cutty uppercase tracking-wider sticky top-0 z-10 border-b border-spectra shadow-md">
                             <tr>
-                                <th className="p-4 w-12 text-center">
+                                <th className="px-4 py-2.5 w-12 text-center">
                                     <button onClick={handleToggleSelectAll} className="hover:scale-110 transition-transform">
                                         {selectedIds.size === inventoryData.length && inventoryData.length > 0 ? <CheckSquare size={18} className="text-white"/> : <Square size={18} className="text-white/30 dark:text-spectra/50"/>}
                                     </button>
                                 </th>
-                                {visibleColumns.has('code') && <th className="p-4 w-40 border-l border-white/10 dark:border-spectra">Kode Ref</th>}
-                                {visibleColumns.has('name') && <th className="p-4 w-auto border-l border-white/10 dark:border-spectra">Nama Barang</th>}
-                                {visibleColumns.has('category') && <th className="p-4 w-40 border-l border-white/10 dark:border-spectra">Kategori</th>}
+                                {visibleColumns.has('code') && <th className="px-4 py-2.5 w-40 border-l border-white/10 dark:border-spectra">Kode Ref</th>}
+                                {visibleColumns.has('name') && <th className="px-4 py-2.5 w-auto border-l border-white/10 dark:border-spectra">Nama Barang</th>}
+                                {visibleColumns.has('category') && <th className="px-4 py-2.5 w-40 border-l border-white/10 dark:border-spectra">Kategori</th>}
                                 {warehouses.map(wh => (
-                                    <th key={wh.id} className="p-4 w-28 text-right text-slate-400 border-l border-white/10 dark:border-spectra">{wh.name}</th>
+                                    <th key={wh.id} className="px-4 py-2.5 w-28 text-right text-slate-400 border-l border-white/10 dark:border-spectra">{wh.name}</th>
                                 ))}
-                                {visibleColumns.has('total') && <th className="p-4 w-28 text-right bg-spectra/10 text-cutty border-l border-white/10 dark:border-spectra">Total Stok</th>}
-                                {visibleColumns.has('unit') && <th className="p-4 w-24 text-center border-l border-white/10 dark:border-spectra">Unit</th>}
-                                {visibleColumns.has('actions') && <th className="p-4 w-20 text-center border-l border-white/10 dark:border-spectra">Aksi</th>}
+                                {visibleColumns.has('total') && <th className="px-4 py-2.5 w-28 text-right bg-spectra/10 text-cutty border-l border-white/10 dark:border-spectra">Total Stok</th>}
+                                {visibleColumns.has('unit') && <th className="px-4 py-2.5 w-24 text-center border-l border-white/10 dark:border-spectra">Unit</th>}
+                                {visibleColumns.has('actions') && <th className="px-4 py-2.5 w-20 text-center border-l border-white/10 dark:border-spectra">Aksi</th>}
                             </tr>
                         </thead>
                         <tbody className="text-xs divide-y divide-spectra/30">
@@ -285,22 +285,22 @@ export const InventoryView: React.FC = () => {
                                 </tr>
                             ) : inventoryData.map((item, idx) => (
                                 <tr key={item.id} className={`group transition-colors ${selectedIds.has(item.id) ? 'bg-spectra/20' : (isZebra && idx % 2 !== 0 ? 'bg-daintree/30' : 'hover:bg-spectra/20')}`}>
-                                    <td className="p-4 text-center">
+                                    <td className="px-4 py-2 text-center">
                                         <button onClick={() => handleToggleSelect(item.id)} className="transition-transform active:scale-90">
                                             {selectedIds.has(item.id) ? <CheckSquare size={18} className="text-spectra"/> : <Square size={18} className="text-slate-300 dark:text-spectra/50 group-hover:text-slate-400"/>}
                                         </button>
                                     </td>
-                                    {visibleColumns.has('code') && <td className="p-4 font-mono font-bold text-slate-400 border-l border-transparent">{item.code}</td>}
-                                    {visibleColumns.has('name') && <td className="p-4 font-bold text-slate-200 truncate group-hover:text-cutty transition-colors border-l border-transparent">{item.name}</td>}
-                                    {visibleColumns.has('category') && <td className="p-4 text-slate-500 font-bold text-[10px] uppercase tracking-wide border-l border-transparent">{item.category}</td>}
+                                    {visibleColumns.has('code') && <td className="px-4 py-2 font-mono font-bold text-slate-400 border-l border-transparent">{item.code}</td>}
+                                    {visibleColumns.has('name') && <td className="px-4 py-2 font-bold text-slate-200 truncate group-hover:text-cutty transition-colors border-l border-transparent">{item.name}</td>}
+                                    {visibleColumns.has('category') && <td className="px-4 py-2 text-slate-500 font-bold text-[10px] uppercase tracking-wide border-l border-transparent">{item.category}</td>}
                                     {item.whBreakdown.map(bd => (
-                                        <td key={bd.whId} className={`p-4 text-right font-mono border-l ${bd.qty > 0 ? 'text-slate-200 font-bold' : 'text-slate-600'}`}>{bd.qty > 0 ? bd.qty.toLocaleString() : '-'}</td>
+                                        <td key={bd.whId} className={`px-4 py-2 text-right font-mono border-l ${bd.qty > 0 ? 'text-slate-200 font-bold' : 'text-slate-600'}`}>{bd.qty > 0 ? bd.qty.toLocaleString() : '-'}</td>
                                     ))}
-                                    {visibleColumns.has('total') && <td className="p-4 text-right font-black font-mono text-cutty border-l border-spectra/30 group-hover:border-transparent text-[13px]">{item.totalStock.toLocaleString()}</td>}
-                                    {visibleColumns.has('unit') && <td className="p-4 text-center border-l border-transparent"><span className="px-2 py-1 rounded bg-daintree text-[10px] font-bold uppercase text-slate-400 border border-spectra">{item.baseUnit}</span></td>}
+                                    {visibleColumns.has('total') && <td className="px-4 py-2 text-right font-black font-mono text-cutty border-l border-spectra/30 group-hover:border-transparent text-[13px]">{item.totalStock.toLocaleString()}</td>}
+                                    {visibleColumns.has('unit') && <td className="px-4 py-2 text-center border-l border-transparent"><span className="px-2 py-0.5 rounded bg-daintree text-[10px] font-bold uppercase text-slate-400 border border-spectra">{item.baseUnit}</span></td>}
                                     {visibleColumns.has('actions') && (
-                                        <td className="p-4 text-center border-l border-transparent">
-                                            <button onClick={() => handleOpenEdit(item)} className="p-2 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-all"><Edit3 size={16}/></button>
+                                        <td className="px-4 py-2 text-center border-l border-transparent">
+                                            <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-all"><Edit3 size={16}/></button>
                                         </td>
                                     )}
                                 </tr>

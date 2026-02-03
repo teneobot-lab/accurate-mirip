@@ -250,7 +250,7 @@ export const RejectView: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-daintree p-4 gap-4 transition-colors font-sans">
             {/* Header Tabs */}
-            <div className="bg-gable p-2 rounded-2xl shadow-lg border border-spectra flex flex-wrap gap-2">
+            <div className="bg-gable p-2 rounded-xl shadow-lg border border-spectra flex flex-wrap gap-2">
                 <TabBtn active={activeTab === 'NEW'} onClick={() => setActiveTab('NEW')} label="Entry Reject" icon={<Plus size={16}/>} />
                 <TabBtn active={activeTab === 'HISTORY'} onClick={() => setActiveTab('HISTORY')} label="History" icon={<History size={16}/>} />
                 <TabBtn active={activeTab === 'MASTER_ITEMS'} onClick={() => setActiveTab('MASTER_ITEMS')} label="Master Items" icon={<Database size={16}/>} />
@@ -261,7 +261,7 @@ export const RejectView: React.FC = () => {
                 <div className="flex-1 flex items-center justify-center text-cutty animate-pulse uppercase text-xs font-bold tracking-widest"><Loader2 className="animate-spin mr-2 text-spectra"/> Syncing Reject Data...</div>
             ) : activeTab === 'NEW' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                    <div className="bg-gable p-6 rounded-2xl border border-spectra grid grid-cols-2 gap-8 shadow-sm">
+                    <div className="bg-gable p-6 rounded-xl border border-spectra grid grid-cols-2 gap-8 shadow-sm">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Outlet Afkir</label>
                             <div className="flex items-center gap-3 bg-daintree p-3 rounded-xl border border-spectra">
@@ -280,44 +280,44 @@ export const RejectView: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 bg-gable rounded-2xl border border-spectra flex flex-col overflow-hidden shadow-sm">
+                    <div className="flex-1 bg-gable rounded-xl border border-spectra flex flex-col overflow-hidden shadow-sm">
                         <div className="overflow-auto flex-1 scrollbar-thin">
                             <table className="w-full text-[11px] text-left">
                                 <thead className="bg-daintree sticky top-0 font-black uppercase text-cutty border-b border-spectra tracking-widest p-4 z-10">
                                     <tr>
-                                        <th className="p-4">Informasi Barang</th>
-                                        <th className="p-4 w-32 text-right">Qty</th>
-                                        <th className="p-4 w-32 text-center">Satuan</th>
-                                        <th className="p-4">Alasan</th>
-                                        <th className="p-4 w-20 text-center">Aksi</th>
+                                        <th className="px-4 py-2.5">Informasi Barang</th>
+                                        <th className="px-4 py-2.5 w-32 text-right">Qty</th>
+                                        <th className="px-4 py-2.5 w-32 text-center">Satuan</th>
+                                        <th className="px-4 py-2.5">Alasan</th>
+                                        <th className="px-4 py-2.5 w-20 text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rejectLines.map((line, idx) => (
                                         <tr key={idx} className="border-b border-spectra/20 group hover:bg-spectra/10 transition-colors">
-                                            <td className="p-4">
+                                            <td className="px-4 py-2">
                                                 <div className="font-bold text-white">{line.name}</div>
                                                 <div className="text-[9px] text-slate-400 font-mono font-bold mt-0.5">{line.sku}</div>
                                             </td>
-                                            <td className="p-4 text-right font-mono text-red-400 font-black text-sm">-{line.qty.toLocaleString()}</td>
-                                            <td className="p-4 text-center"><span className="px-2 py-0.5 rounded-lg bg-daintree text-[10px] font-black text-slate-300 border border-spectra">{line.unit}</span></td>
-                                            <td className="p-4 text-slate-400 italic font-medium">{line.reason}</td>
-                                            <td className="p-4 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16}/></button></td>
+                                            <td className="px-4 py-2 text-right font-mono text-red-400 font-black text-sm">-{line.qty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[10px] font-black text-slate-300 border border-spectra">{line.unit}</span></td>
+                                            <td className="px-4 py-2 text-slate-400 italic font-medium">{line.reason}</td>
+                                            <td className="px-4 py-2 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16}/></button></td>
                                         </tr>
                                     ))}
                                     {/* Input Row */}
                                     <tr className="bg-daintree/30 border-t border-spectra/50">
-                                        <td className="p-3">
+                                        <td className="p-2">
                                             <input list="reject-master-list" placeholder="Cari Master Reject..." value={query} onChange={e => {
                                                 setQuery(e.target.value);
                                                 const it = rejectMasterItems.find(i => i.name === e.target.value || i.code === e.target.value);
                                                 if(it) { setPendingItem(it); setPendingUnit(it.baseUnit); }
-                                            }} className="w-full p-2.5 bg-gable border border-spectra rounded-xl text-xs text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" />
+                                            }} className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" />
                                             <datalist id="reject-master-list">{rejectMasterItems.map(it => <option key={it.id} value={it.name}>{it.code}</option>)}</datalist>
                                         </td>
-                                        <td className="p-3"><input type="number" placeholder="Qty" value={pendingQty} onChange={e => setPendingQty(Number(e.target.value))} className="w-full p-2.5 bg-gable border border-spectra rounded-xl text-right text-sm text-white font-black outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" /></td>
-                                        <td className="p-3 text-center">
-                                            <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full p-2.5 bg-gable border border-spectra rounded-xl text-[10px] font-black text-white outline-none">
+                                        <td className="p-2"><input type="number" placeholder="Qty" value={pendingQty} onChange={e => setPendingQty(Number(e.target.value))} className="w-full p-2 bg-gable border border-spectra rounded-lg text-right text-sm text-white font-black outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" /></td>
+                                        <td className="p-2 text-center">
+                                            <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full p-2 bg-gable border border-spectra rounded-lg text-[10px] font-black text-white outline-none">
                                                 {pendingItem ? (
                                                     <>
                                                         <option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>
@@ -326,8 +326,8 @@ export const RejectView: React.FC = () => {
                                                 ) : <option value="">-</option>}
                                             </select>
                                         </td>
-                                        <td className="p-3"><input type="text" placeholder="Catatan alasan..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} className="w-full p-2.5 bg-gable border border-spectra rounded-xl text-xs text-white outline-none placeholder:text-cutty" /></td>
-                                        <td className="p-3 text-center"><button onClick={handleAddLine} className="p-2.5 bg-spectra text-white rounded-xl shadow-lg hover:bg-white hover:text-spectra transition-all border border-transparent"><Plus size={16}/></button></td>
+                                        <td className="p-2"><input type="text" placeholder="Catatan alasan..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none placeholder:text-cutty" /></td>
+                                        <td className="p-2 text-center"><button onClick={handleAddLine} className="p-2 bg-spectra text-white rounded-lg shadow-lg hover:bg-white hover:text-spectra transition-all border border-transparent"><Plus size={16}/></button></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -349,7 +349,7 @@ export const RejectView: React.FC = () => {
                 </div>
             ) : activeTab === 'HISTORY' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                    <div className="bg-gable p-4 rounded-2xl shadow-sm border border-spectra flex items-center justify-between gap-4">
+                    <div className="bg-gable p-4 rounded-xl shadow-sm border border-spectra flex items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
                             <div className="flex flex-col gap-1">
                                 <label className="text-[10px] font-black text-cutty uppercase">Export Range Start</label>
@@ -366,27 +366,27 @@ export const RejectView: React.FC = () => {
                         <button onClick={loadData} className="p-3 text-cutty hover:bg-spectra/20 hover:text-white rounded-full transition-colors"><History size={20}/></button>
                     </div>
 
-                    <div className="flex-1 bg-gable rounded-2xl border border-spectra overflow-auto shadow-sm">
+                    <div className="flex-1 bg-gable rounded-xl border border-spectra overflow-auto shadow-sm">
                         <table className="w-full text-left text-[11px]">
                             <thead className="bg-daintree uppercase font-black text-cutty border-b border-spectra tracking-widest sticky top-0 z-10">
                                 <tr>
-                                    <th className="p-4 w-32">ID Batch</th>
-                                    <th className="p-4 w-32">Tanggal</th>
-                                    <th className="p-4">Lokasi Outlet</th>
-                                    <th className="p-4 w-24 text-right">Items</th>
-                                    <th className="p-4 w-40 text-center">Aksi</th>
+                                    <th className="px-4 py-2.5 w-32">ID Batch</th>
+                                    <th className="px-4 py-2.5 w-32">Tanggal</th>
+                                    <th className="px-4 py-2.5">Lokasi Outlet</th>
+                                    <th className="px-4 py-2.5 w-24 text-right">Items</th>
+                                    <th className="px-4 py-2.5 w-40 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-spectra/20 text-white">
                                 {batches.map(b => (
                                     <tr key={b.id} className="hover:bg-spectra/10 transition-colors">
-                                        <td className="p-4 font-mono font-bold text-cutty">{b.id}</td>
-                                        <td className="p-4 font-bold">{b.date}</td>
-                                        <td className="p-4">
+                                        <td className="px-4 py-2 font-mono font-bold text-cutty">{b.id}</td>
+                                        <td className="px-4 py-2 font-bold">{b.date}</td>
+                                        <td className="px-4 py-2">
                                             <div className="flex items-center gap-2"><MapPin size={12} className="text-red-400"/> <span className="font-black uppercase text-slate-200">{b.outlet}</span></div>
                                         </td>
-                                        <td className="p-4 text-right font-black text-red-400">{b.items.length}</td>
-                                        <td className="p-4 text-center">
+                                        <td className="px-4 py-2 text-right font-black text-red-400">{b.items.length}</td>
+                                        <td className="px-4 py-2 text-center">
                                             <div className="flex justify-center gap-2">
                                                 <button onClick={() => handleCopyToClipboard(b)} title="Salin format teks" className="p-2 text-emerald-500 hover:bg-emerald-900/20 rounded-lg transition-all"><Share2 size={16}/></button>
                                                 <button onClick={() => setViewingBatch(b)} className="p-2 text-blue-400 hover:bg-blue-900/20 rounded-lg transition-all"><Eye size={16}/></button>
@@ -402,7 +402,7 @@ export const RejectView: React.FC = () => {
                 </div>
             ) : activeTab === 'MASTER_ITEMS' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="bg-gable p-3 rounded-2xl shadow-sm border border-spectra flex justify-between items-center">
+                    <div className="bg-gable p-3 rounded-xl shadow-sm border border-spectra flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:bg-spectra/20 rounded-xl text-[10px] font-black border border-spectra bg-daintree">
                                 <Download size={14}/> Template
@@ -417,33 +417,33 @@ export const RejectView: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="flex-1 bg-gable rounded-2xl border border-spectra overflow-auto shadow-sm">
+                    <div className="flex-1 bg-gable rounded-xl border border-spectra overflow-auto shadow-sm">
                         <table className="w-full text-left text-[11px]">
                             <thead className="bg-daintree font-black uppercase text-cutty border-b border-spectra tracking-widest sticky top-0 z-10">
                                 <tr>
-                                    <th className="p-4 w-32">Kode Ref</th>
-                                    <th className="p-4">Deskripsi Master Reject</th>
-                                    <th className="p-4 w-32">Kategori</th>
-                                    <th className="p-4 w-24 text-center">Unit</th>
-                                    <th className="p-4 w-32 text-center">Conversions</th>
-                                    <th className="p-4 w-16 text-center">Aksi</th>
+                                    <th className="px-4 py-2.5 w-32">Kode Ref</th>
+                                    <th className="px-4 py-2.5">Deskripsi Master Reject</th>
+                                    <th className="px-4 py-2.5 w-32">Kategori</th>
+                                    <th className="px-4 py-2.5 w-24 text-center">Unit</th>
+                                    <th className="px-4 py-2.5 w-32 text-center">Conversions</th>
+                                    <th className="px-4 py-2.5 w-16 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-spectra/20 text-white">
                                 {rejectMasterItems.map(item => (
                                     <tr key={item.id} className="hover:bg-spectra/10 transition-colors">
-                                        <td className="p-4 font-mono font-bold text-cutty uppercase">{item.code}</td>
-                                        <td className="p-4 font-black text-slate-200">{item.name}</td>
-                                        <td className="p-4 text-slate-400 font-bold uppercase">{item.category}</td>
-                                        <td className="p-4 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] font-black border border-spectra">{item.baseUnit}</span></td>
-                                        <td className="p-4 text-center">
+                                        <td className="px-4 py-2 font-mono font-bold text-cutty uppercase">{item.code}</td>
+                                        <td className="px-4 py-2 font-black text-slate-200">{item.name}</td>
+                                        <td className="px-4 py-2 text-slate-400 font-bold uppercase">{item.category}</td>
+                                        <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] font-black border border-spectra">{item.baseUnit}</span></td>
+                                        <td className="px-4 py-2 text-center">
                                             {item.conversions?.length > 0 ? (
                                                 <div className="flex flex-wrap justify-center gap-1">
                                                     {item.conversions.map(c => <span key={c.name} className="bg-spectra/20 text-white text-[8px] font-bold px-1.5 py-0.5 rounded border border-spectra">{c.name}</span>)}
                                                 </div>
                                             ) : '-'}
                                         </td>
-                                        <td className="p-4 text-center">
+                                        <td className="px-4 py-2 text-center">
                                             <div className="flex justify-center gap-2">
                                                 <button onClick={() => { setEditingItem(item); setItemForm({...item}); setShowItemModal(true); }} className="p-1.5 text-blue-400 hover:bg-blue-900/20 rounded"><Edit3 size={14}/></button>
                                                 <button onClick={() => handleDeleteMasterItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-900/20 rounded"><Trash2 size={14}/></button>
@@ -577,18 +577,18 @@ export const RejectView: React.FC = () => {
                         <div className="p-8 overflow-auto max-h-[60vh] scrollbar-thin">
                             <table className="w-full text-left text-[11px]">
                                 <thead className="border-b border-spectra font-black uppercase text-cutty tracking-widest pb-4">
-                                    <tr><th className="p-3">Item</th><th className="p-3 w-32 text-right">Qty Terpilih</th><th className="p-3 w-32 text-right">Qty Base (Pcs)</th><th className="p-3">Alasan</th></tr>
+                                    <tr><th className="px-4 py-2">Item</th><th className="px-4 py-2 w-32 text-right">Qty Terpilih</th><th className="px-4 py-2 w-32 text-right">Qty Base (Pcs)</th><th className="px-4 py-2">Alasan</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-spectra/20 text-white">
                                     {viewingBatch.items.map((item, idx) => (
                                         <tr key={idx} className="hover:bg-spectra/10 transition-colors">
-                                            <td className="p-3">
+                                            <td className="px-4 py-2">
                                                 <div className="font-bold">{item.name}</div>
                                                 <div className="text-[9px] text-spectra font-mono">{item.sku}</div>
                                             </td>
-                                            <td className="p-3 text-right font-black text-red-400">{item.qty.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span></td>
-                                            <td className="p-3 text-right font-black text-slate-400">{item.baseQty.toLocaleString()}</td>
-                                            <td className="p-3 italic text-slate-500">{item.reason}</td>
+                                            <td className="px-4 py-2 text-right font-black text-red-400">{item.qty.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span></td>
+                                            <td className="px-4 py-2 text-right font-black text-slate-400">{item.baseQty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 italic text-slate-500">{item.reason}</td>
                                         </tr>
                                     ))}
                                 </tbody>

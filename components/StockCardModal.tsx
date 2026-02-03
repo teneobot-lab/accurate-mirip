@@ -123,21 +123,21 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
                 <h3 className="text-xs font-black text-cutty uppercase tracking-widest mb-3 flex items-center gap-2">
                     <MapPin size={14} /> Warehouse Distribution
                 </h3>
-                <div className="bg-daintree border border-spectra rounded-2xl overflow-hidden">
+                <div className="bg-daintree border border-spectra rounded-xl overflow-hidden">
                     <table className="w-full text-xs text-left">
                         <thead className="bg-gable text-slate-400 uppercase font-bold border-b border-spectra">
                             <tr>
-                                <th className="p-3 w-1/2">Location</th>
-                                <th className="p-3 text-right">Quantity</th>
-                                <th className="p-3 w-1/3 text-center">Visual</th>
+                                <th className="px-4 py-2 w-1/2">Location</th>
+                                <th className="px-4 py-2 text-right">Quantity</th>
+                                <th className="px-4 py-2 w-1/3 text-center">Visual</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-spectra/30">
                             {stockData.breakdown.map(wh => (
                                 <tr key={wh.name} className="hover:bg-gable/50 transition-colors">
-                                    <td className="p-3 font-bold text-slate-200">{wh.name}</td>
-                                    <td className="p-3 text-right font-mono font-bold text-white">{wh.qty.toLocaleString()}</td>
-                                    <td className="p-3">
+                                    <td className="px-4 py-2 font-bold text-slate-200">{wh.name}</td>
+                                    <td className="px-4 py-2 text-right font-mono font-bold text-white">{wh.qty.toLocaleString()}</td>
+                                    <td className="px-4 py-2">
                                         <div className="h-1.5 w-full bg-gable rounded-full overflow-hidden">
                                             <div 
                                                 className={`h-full ${wh.qty > 0 ? 'bg-spectra' : 'bg-slate-700'}`} 
@@ -157,16 +157,16 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
                  <h3 className="text-xs font-black text-cutty uppercase tracking-widest mb-3 flex items-center gap-2">
                     <History size={14} /> Recent Movements (Last 10)
                 </h3>
-                <div className="bg-daintree border border-spectra rounded-2xl overflow-hidden">
+                <div className="bg-daintree border border-spectra rounded-xl overflow-hidden">
                      <table className="w-full text-xs text-left">
                         <thead className="bg-gable text-slate-400 uppercase font-bold border-b border-spectra">
                             <tr>
-                                <th className="p-3">Date</th>
-                                <th className="p-3">Ref</th>
-                                <th className="p-3">Type</th>
-                                <th className="p-3 text-right">Qty</th>
-                                <th className="p-3 text-center">Unit</th>
-                                <th className="p-3">Source</th>
+                                <th className="px-4 py-2">Date</th>
+                                <th className="px-4 py-2">Ref</th>
+                                <th className="px-4 py-2">Type</th>
+                                <th className="px-4 py-2 text-right">Qty</th>
+                                <th className="px-4 py-2 text-center">Unit</th>
+                                <th className="px-4 py-2">Source</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-spectra/30 text-slate-300">
@@ -174,19 +174,19 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
                                 <tr><td colSpan={6} className="p-6 text-center text-slate-500 italic font-bold">No transaction history found.</td></tr>
                             ) : history.map((h, idx) => (
                                 <tr key={idx} className="hover:bg-gable/50 transition-colors">
-                                    <td className="p-3 font-mono text-slate-400">{h.date}</td>
-                                    <td className="p-3 font-mono font-bold text-white">{h.ref}</td>
-                                    <td className="p-3">
+                                    <td className="px-4 py-2 font-mono text-slate-400">{h.date}</td>
+                                    <td className="px-4 py-2 font-mono font-bold text-white">{h.ref}</td>
+                                    <td className="px-4 py-2">
                                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight ${
                                             h.type === 'IN' || h.type === 'ADJUSTMENT' ? 'bg-emerald-900/30 text-emerald-400' :
                                             h.type === 'OUT' ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'
                                         }`}>{h.type}</span>
                                     </td>
-                                    <td className={`p-3 text-right font-black ${h.type === 'OUT' || h.type === 'TRANSFER' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                    <td className={`px-4 py-2 text-right font-black ${h.type === 'OUT' || h.type === 'TRANSFER' ? 'text-red-400' : 'text-emerald-400'}`}>
                                         {h.qty.toLocaleString()}
                                     </td>
-                                    <td className="p-3 text-center text-slate-500 font-bold">{h.unit}</td>
-                                    <td className="p-3 text-slate-400 truncate max-w-[100px]">{h.wh}</td>
+                                    <td className="px-4 py-2 text-center text-slate-500 font-bold">{h.unit}</td>
+                                    <td className="px-4 py-2 text-slate-400 truncate max-w-[100px]">{h.wh}</td>
                                 </tr>
                             ))}
                         </tbody>
