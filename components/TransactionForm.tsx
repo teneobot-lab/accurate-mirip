@@ -176,12 +176,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   return (
     <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-      <div className="bg-gable rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
+      <div className="bg-gable rounded-3xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
         
         {/* Title Bar - Dense */}
-        <div className="bg-daintree px-4 py-3 flex justify-between items-center border-b border-spectra">
+        <div className="bg-daintree px-5 py-3 flex justify-between items-center border-b border-spectra">
             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg border shadow-inner ${type === 'IN' ? 'bg-emerald-900/20 border-emerald-900/50 text-emerald-400' : 'bg-red-900/20 border-red-900/50 text-red-400'}`}>
+                <div className={`p-2 rounded-xl border shadow-inner ${type === 'IN' ? 'bg-emerald-900/20 border-emerald-900/50 text-emerald-400' : 'bg-red-900/20 border-red-900/50 text-red-400'}`}>
                    <FileText size={18} />
                 </div>
                 <div>
@@ -191,12 +191,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                    <p className="text-[10px] text-cutty font-bold uppercase tracking-widest">Ref: {refNo}</p>
                 </div>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
+            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
                 <X size={18}/>
             </button>
         </div>
 
-        {/* Header Form - Dense & Compact */}
+        {/* Header Form - Dense & Compact & Roundy */}
         <div className="p-4 bg-gable border-b border-spectra shadow-sm">
             <div className="grid grid-cols-12 gap-3">
                 {/* Main Inputs (Left & Center) */}
@@ -205,29 +205,29 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <div className="col-span-4">
                         <label className="form-label">{type === 'IN' ? 'Supplier / Vendor' : 'Customer / Tujuan'}</label>
                         <div className="relative">
-                            <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <select className="form-input pl-8 pr-8" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
+                            <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                            <select className="form-input pl-9 pr-8" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
                                 <option value="">-- Pilih Partner --</option>
                                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
-                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                         </div>
                     </div>
                     <div className="col-span-4">
                         <label className="form-label">Gudang {type === 'IN' ? 'Penerima' : 'Asal'}</label>
                         <div className="relative">
-                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <select className="form-input pl-8 pr-8" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
+                            <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                            <select className="form-input pl-9 pr-8" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
                                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                             </select>
-                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                         </div>
                     </div>
                     <div className="col-span-4">
                         <label className="form-label">Tanggal Transaksi</label>
                         <div className="relative">
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="form-input pl-8" />
-                            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="form-input pl-9" />
+                            <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                         </div>
                     </div>
 
@@ -235,22 +235,22 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <div className="col-span-4">
                          <label className="form-label">No. Referensi</label>
                          <div className="relative">
-                            <Hash size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="form-input pl-8 font-mono uppercase text-emerald-400" />
+                            <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="form-input pl-9 font-mono uppercase text-emerald-400" />
                         </div>
                     </div>
                     <div className="col-span-8">
                          <label className="form-label">Catatan / Keterangan</label>
                          <div className="relative">
-                            <StickyNote size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <input type="text" placeholder="Isi keterangan transaksi..." value={notes} onChange={e => setNotes(e.target.value)} className="form-input pl-8" />
+                            <StickyNote size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                            <input type="text" placeholder="Isi keterangan transaksi..." value={notes} onChange={e => setNotes(e.target.value)} className="form-input pl-9" />
                          </div>
                     </div>
                 </div>
                 
                  {/* Right Column (Summary Box - Condensed) */}
                 <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-center">
-                    <div className="bg-daintree rounded-lg border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
+                    <div className="bg-daintree rounded-2xl border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
                         <div className="flex justify-between items-center text-[10px] font-bold text-cutty uppercase">
                             <span>Total Qty</span>
                             <span className="text-white font-mono">{lines.reduce((a,b) => a + Number(b.qty), 0).toLocaleString()}</span>
@@ -287,7 +287,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-gable border border-spectra rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
                                     placeholder="Cari Barang (Kode/Nama)..."
                                     value={query}
                                     onChange={e => {
@@ -300,7 +300,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                                 {/* Autocomplete Dropdown */}
                                 {isDropdownOpen && (
-                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
+                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-2xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
                                         {filteredItems.map((it, idx) => (
                                             <div 
                                                 key={it.id}
@@ -312,7 +312,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                                     <div className="font-bold">{it.code}</div>
                                                     <div className={`text-[10px] ${idx === selectedIndex ? 'text-white/80' : 'text-slate-400'}`}>{it.name}</div>
                                                 </div>
-                                                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
+                                                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -322,7 +322,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 <input 
                                     ref={qtyInputRef}
                                     type="number" 
-                                    className="w-full bg-gable border border-spectra rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs"
                                     value={pendingQty} 
                                     onChange={e => setPendingQty(e.target.value)} 
                                     disabled={!pendingItem}
@@ -331,7 +331,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             </td>
                             <td className="p-2 border-b border-spectra relative">
                                  <select 
-                                    className="w-full bg-gable border border-spectra rounded px-1 py-1.5 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-2 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
@@ -347,7 +347,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             <td className="p-2 border-b border-spectra">
                                 <input 
                                     type="text" 
-                                    className="w-full bg-gable border border-spectra rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra text-white shadow-sm text-xs"
+                                    className="w-full bg-gable border border-spectra rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-spectra text-white shadow-sm text-xs"
                                     placeholder="Catatan baris..." 
                                     value={pendingNote} 
                                     onChange={e => setPendingNote(e.target.value)} 
@@ -356,7 +356,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                 />
                             </td>
                             <td className="p-2 border-b border-spectra text-center">
-                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-spectra text-white rounded hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
+                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
                             </td>
                         </tr>
 
@@ -397,11 +397,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 <span className="flex items-center gap-2"><Info size={14} className="text-spectra"/> Pastikan data sudah valid</span>
              </div>
              <div className="flex gap-3">
-                <button onClick={onClose} className="px-5 py-2 rounded-lg border border-spectra bg-gable hover:bg-spectra/20 text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
+                <button onClick={onClose} className="px-5 py-2 rounded-xl border border-spectra bg-gable hover:bg-spectra/20 text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
                 <button 
                     onClick={handleSubmit} 
                     disabled={isSubmitting || !selectedWh}
-                    className="px-6 py-2 rounded-lg bg-spectra hover:bg-white hover:text-daintree text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+                    className="px-6 py-2 rounded-xl bg-spectra hover:bg-white hover:text-daintree text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
                 >
                     {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                     {initialData ? 'Simpan Perubahan' : 'Simpan Transaksi'}
@@ -411,7 +411,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
       <style>{`
         .form-input { 
-            @apply w-full bg-daintree border border-spectra rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:ring-1 focus:ring-spectra outline-none transition-all shadow-inner placeholder:text-cutty appearance-none; 
+            @apply w-full bg-daintree border border-spectra rounded-xl px-2.5 py-1.5 text-xs font-bold text-white focus:ring-1 focus:ring-spectra outline-none transition-all shadow-inner placeholder:text-cutty appearance-none; 
         }
         .form-label {
             @apply block text-[10px] font-bold uppercase text-cutty mb-1 tracking-wide ml-1 truncate;

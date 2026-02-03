@@ -96,10 +96,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     return (
         <div className="flex flex-col h-full bg-daintree p-4 gap-4 overflow-hidden font-sans">
             {/* Header & Filter Bar */}
-            <div className="bg-gable p-4 rounded-2xl shadow-lg border border-spectra flex flex-wrap gap-4 items-end">
+            <div className="bg-gable p-4 rounded-3xl shadow-lg border border-spectra flex flex-wrap gap-4 items-end">
                 <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-cutty uppercase tracking-widest ml-1">Rentang Tanggal</label>
-                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra">
+                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-2xl border border-spectra">
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none px-2 py-1 w-32" />
                         <span className="text-cutty font-bold text-xs">s/d</span>
                         <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-white text-xs font-bold outline-none px-2 py-1 w-32" />
@@ -134,7 +134,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             </div>
 
             {/* Transaction Grid */}
-            <div className="flex-1 bg-gable rounded-2xl shadow-xl border border-spectra overflow-hidden flex flex-col">
+            <div className="flex-1 bg-gable rounded-3xl shadow-xl border border-spectra overflow-hidden flex flex-col">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead className="bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest sticky top-0 z-10 shadow-md">
@@ -195,7 +195,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         <tr className="bg-daintree/30 animate-in fade-in slide-in-from-top-1">
                                             <td colSpan={7} className="p-0 border-b border-spectra/50">
                                                 <div className="px-14 py-4">
-                                                    <div className="bg-gable rounded-xl border border-spectra p-4 shadow-inner">
+                                                    <div className="bg-gable rounded-2xl border border-spectra p-4 shadow-inner">
                                                         <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-cutty tracking-wider mb-2 border-b border-spectra pb-2">
                                                             <div className="col-span-1">#</div>
                                                             <div className="col-span-2">Kode SKU</div>
@@ -205,7 +205,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                             <div className="col-span-2 text-right">Total Base</div>
                                                         </div>
                                                         {tx.items.map((it, idx) => (
-                                                            <div key={idx} className="grid grid-cols-12 gap-4 text-[10px] items-center py-1.5 hover:bg-daintree/50 rounded px-2 -mx-2 transition-colors border-b border-spectra/10 last:border-0">
+                                                            <div key={idx} className="grid grid-cols-12 gap-4 text-[10px] items-center py-1.5 hover:bg-daintree/50 rounded-lg px-2 -mx-2 transition-colors border-b border-spectra/10 last:border-0">
                                                                 <div className="col-span-1 text-cutty font-mono">{idx + 1}</div>
                                                                 <div className="col-span-2 font-mono text-emerald-500 font-bold">{it.code}</div>
                                                                 <div className="col-span-3 font-bold text-slate-200 uppercase truncate">{it.name}</div>
