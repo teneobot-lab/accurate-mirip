@@ -98,7 +98,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             {/* Header & Filter Bar - Now consistently Gable Green */}
             <div className="bg-gable p-4 rounded-2xl shadow-xl border border-spectra flex flex-wrap gap-4 items-end">
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Rentang Tanggal</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Rentang Tanggal</label>
                     <div className="flex items-center gap-2">
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="report-input w-36" />
                         <span className="text-white/50 font-bold">s/d</span>
@@ -106,14 +106,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Gudang</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Gudang</label>
                     <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="report-input w-40">
                         <option value="ALL">Semua Gudang</option>
                         {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Jenis Transaksi</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Jenis Transaksi</label>
                     <select value={filterType} onChange={e => setFilterType(e.target.value)} className="report-input w-40">
                         <option value="ALL">Semua Jenis</option>
                         <option value="IN">Masuk (Inbound)</option>
@@ -121,14 +121,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     </select>
                 </div>
                 <div className="flex-1 flex flex-col gap-1.5">
-                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Cari No. Bukti / Barang</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Cari No. Bukti / Barang</label>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty" size={14} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input type="text" placeholder="Ketik keyword..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="report-input w-full pl-10" />
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={refreshData} className="p-2.5 bg-daintree rounded-xl hover:bg-spectra transition-colors shadow-sm text-slate-300 border border-spectra"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
+                    <button onClick={refreshData} className="p-2.5 bg-daintree rounded-xl hover:bg-spectra transition-colors shadow-sm text-slate-300 border border-transparent ring-1 ring-white/10"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
                     <button onClick={handleExport} className="px-5 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-black flex items-center gap-2 shadow-lg shadow-black/20 active:scale-95 transition-all"><FileSpreadsheet size={16}/> EXPORT XLSX</button>
                 </div>
             </div>
@@ -153,7 +153,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                 <tr>
                                     <td colSpan={10} className="p-20 text-center">
                                         <Loader2 className="animate-spin text-spectra mx-auto mb-3" size={32} />
-                                        <p className="text-[10px] font-black text-cutty uppercase tracking-widest">Sinkronisasi Database...</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sinkronisasi Database...</p>
                                     </td>
                                 </tr>
                             ) : filteredTransactions.length === 0 ? (
@@ -212,7 +212,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                         <tr className="bg-daintree/40 animate-in fade-in slide-in-from-top-1">
                                             <td colSpan={7} className="p-0">
                                                 <div className="px-16 py-6 space-y-3">
-                                                    <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-cutty tracking-wider mb-2 border-b border-spectra pb-2">
+                                                    <div className="grid grid-cols-12 gap-4 text-[9px] font-black uppercase text-slate-400 tracking-wider mb-2 border-b border-spectra pb-2">
                                                         <div className="col-span-1">#</div>
                                                         <div className="col-span-2">Kode SKU</div>
                                                         <div className="col-span-3">Deskripsi Barang</div>
@@ -227,14 +227,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                             <div className="col-span-3 font-bold text-slate-300 uppercase truncate">{it.name}</div>
                                                             <div className="col-span-2 text-right font-black text-white">{it.qty.toLocaleString()}</div>
                                                             <div className="col-span-2 text-center font-bold text-slate-500">{it.unit}</div>
-                                                            <div className="col-span-2 text-right font-black text-cutty">
+                                                            <div className="col-span-2 text-right font-black text-slate-400">
                                                                 {(it.qty * (it.ratio || 1)).toLocaleString()}
                                                             </div>
                                                         </div>
                                                     ))}
                                                     {tx.notes && (
                                                         <div className="mt-4 p-4 bg-gable rounded-2xl border border-spectra border-dashed italic text-[10px] text-slate-400 shadow-inner">
-                                                            <div className="font-black not-italic uppercase mb-1 text-cutty tracking-widest text-[8px]">Memo Internal:</div>
+                                                            <div className="font-black not-italic uppercase mb-1 text-slate-500 tracking-widest text-[8px]">Memo Internal:</div>
                                                             {tx.notes}
                                                         </div>
                                                     )}
@@ -250,7 +250,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             </div>
             <style>{`
                 .report-input { 
-                    @apply border border-spectra bg-daintree text-white rounded-xl px-4 py-2.5 text-[11px] font-bold outline-none focus:ring-2 focus:ring-spectra focus:border-spectra transition-all shadow-sm placeholder:text-slate-400; 
+                    @apply border-none bg-daintree text-white rounded-xl px-4 py-2.5 text-[11px] font-bold outline-none ring-1 ring-white/5 focus:ring-2 focus:ring-spectra transition-all shadow-inner placeholder:text-slate-600; 
                 }
             `}</style>
         </div>
