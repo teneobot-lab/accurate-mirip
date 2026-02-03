@@ -310,194 +310,203 @@ export const InventoryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Item Modal - Improved Style */}
+            {/* Item Modal - Improved Layout & Dense Table */}
             {showItemModal && (
-                <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-gable rounded-[28px] w-full max-w-3xl shadow-2xl border border-spectra overflow-hidden animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300 font-sans">
+                    <div className="bg-gable rounded-[20px] w-full max-w-3xl border border-spectra overflow-hidden flex flex-col max-h-[90vh] shadow-2xl animate-in zoom-in-95">
                         
                         {/* Header */}
-                        <div className="bg-daintree border-b border-spectra px-10 py-6 flex justify-between items-center relative overflow-hidden">
-                            <div className="relative z-10 flex items-center gap-5">
-                                <div className="p-3 bg-gable rounded-2xl shadow-sm border border-spectra text-cutty">
-                                    <Box size={24}/>
+                        <div className="bg-daintree border-b border-spectra px-6 py-4 flex justify-between items-center shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 bg-gable rounded-xl shadow-sm border border-spectra text-cutty">
+                                    <Box size={20}/>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-bold text-white tracking-tight leading-none mb-1">
+                                    <h3 className="text-base font-black text-white uppercase tracking-tight leading-none mb-1">
                                         {editingItem ? 'Edit Master Item' : 'Registrasi Barang Baru'}
                                     </h3>
                                     <p className="text-[10px] text-cutty font-bold uppercase tracking-widest flex items-center gap-2">
-                                        <ShieldCheck size={12} className="text-emerald-500"/> Database MySQL Connected
+                                        <ShieldCheck size={12} className="text-emerald-500"/> Database Management
                                     </p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowItemModal(false)} className="relative z-10 p-2 text-slate-400 hover:bg-spectra/20 rounded-xl transition-all"><X size={24}/></button>
+                            <button onClick={() => setShowItemModal(false)} className="p-2 text-slate-400 hover:bg-spectra/20 rounded-xl transition-all"><X size={20}/></button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-10 space-y-8 overflow-y-auto max-h-[70vh] bg-gable">
-                            <div className="grid grid-cols-12 gap-6">
-                                <div className="col-span-12 flex items-center gap-3 mb-2 pb-2 border-b border-spectra/30">
-                                    <div className="w-8 h-8 rounded-lg bg-spectra/20 flex items-center justify-center text-cutty"><Tag size={16}/></div>
-                                    <h4 className="text-[11px] font-bold uppercase text-cutty tracking-widest">Identitas Produk</h4>
+                        {/* Modal Body - Vertical Layout */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+                            
+                            {/* Section 1: Identitas Produk */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 pb-1 border-b border-spectra/50">
+                                    <Tag size={14} className="text-spectra"/>
+                                    <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
                                 </div>
-                                
-                                <div className="col-span-4 space-y-2">
-                                    <label className="text-[10px] font-bold text-cutty uppercase ml-1 tracking-wider">Kode SKU</label>
-                                    <input 
-                                        type="text" 
-                                        className="accurate-input font-mono font-bold text-spectra uppercase" 
-                                        placeholder="EX: SKU-001" 
-                                        value={itemForm.code} 
-                                        onChange={e => setItemForm({...itemForm, code: e.target.value})} 
-                                    />
-                                </div>
-                                <div className="col-span-8 space-y-2">
-                                    <label className="text-[10px] font-bold text-cutty uppercase ml-1 tracking-wider">Nama Barang (Wajib)</label>
-                                    <input 
-                                        type="text" 
-                                        className="accurate-input font-bold text-white" 
-                                        placeholder="Contoh: SEMEN TIGA RODA 50KG" 
-                                        value={itemForm.name} 
-                                        onChange={e => setItemForm({...itemForm, name: e.target.value})} 
-                                    />
-                                </div>
-                                <div className="col-span-12 space-y-2">
-                                    <label className="text-[10px] font-bold text-cutty uppercase ml-1 tracking-wider">Kategori</label>
-                                    <input 
-                                        type="text" 
-                                        className="accurate-input" 
-                                        placeholder="Contoh: MATERIAL / ELEKTRONIK" 
-                                        value={itemForm.category} 
-                                        onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-12 gap-6 pt-6">
-                                <div className="col-span-12 flex items-center gap-3 mb-2 pb-2 border-b border-spectra/30">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-900/20 flex items-center justify-center text-emerald-600"><Database size={16}/></div>
-                                    <h4 className="text-[11px] font-bold uppercase text-cutty tracking-widest">Kontrol Stok</h4>
-                                </div>
-
-                                <div className="col-span-4 space-y-2">
-                                    <label className="text-[10px] font-bold text-cutty uppercase ml-1 tracking-wider">Satuan Dasar</label>
-                                    <input 
-                                        type="text" 
-                                        className="accurate-input border-emerald-900 bg-emerald-900/10 font-bold text-emerald-400" 
-                                        placeholder="Pcs / Box" 
-                                        value={itemForm.baseUnit} 
-                                        onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
-                                    />
-                                </div>
-                                <div className="col-span-4 space-y-2">
-                                    <label className="text-[10px] font-bold text-cutty uppercase ml-1 tracking-wider">Min. Stok Alert</label>
-                                    <input 
-                                        type="number" 
-                                        className="accurate-input text-right font-mono font-bold" 
-                                        value={itemForm.minStock} 
-                                        onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
-                                    />
-                                </div>
-                                {!editingItem && (
-                                    <div className="col-span-4 space-y-2">
-                                        <label className="text-[10px] font-bold text-cutty uppercase ml-1 tracking-wider">Stok Awal</label>
+                                <div className="grid grid-cols-12 gap-4">
+                                    <div className="col-span-3 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Kode SKU</label>
                                         <input 
-                                            type="number" 
-                                            className="accurate-input text-right font-mono font-bold text-spectra bg-spectra/5 border-spectra/30" 
-                                            value={itemForm.initialStock} 
-                                            onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
+                                            type="text" 
+                                            className="modal-input font-mono font-bold text-spectra uppercase" 
+                                            placeholder="AUTO" 
+                                            value={itemForm.code} 
+                                            onChange={e => setItemForm({...itemForm, code: e.target.value})} 
                                         />
                                     </div>
-                                )}
+                                    <div className="col-span-5 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Nama Barang (Wajib)</label>
+                                        <input 
+                                            type="text" 
+                                            className="modal-input font-bold text-white" 
+                                            placeholder="Nama Item..." 
+                                            value={itemForm.name} 
+                                            onChange={e => setItemForm({...itemForm, name: e.target.value})} 
+                                        />
+                                    </div>
+                                    <div className="col-span-4 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Kategori</label>
+                                        <input 
+                                            type="text" 
+                                            className="modal-input" 
+                                            placeholder="Kategori..." 
+                                            value={itemForm.category} 
+                                            onChange={e => setItemForm({...itemForm, category: e.target.value.toUpperCase()})} 
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Multi-Unit Conversion Section */}
-                            <div className="pt-6">
-                                <div className="flex justify-between items-center mb-4 pb-2 border-b border-spectra/30">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-amber-900/20 flex items-center justify-center text-amber-600"><LayoutGrid size={16}/></div>
-                                        <h4 className="text-[11px] font-bold uppercase text-cutty tracking-widest">Konversi Satuan</h4>
+                            {/* Section 2: Kontrol Stok */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2 pb-1 border-b border-spectra/50">
+                                    <Database size={14} className="text-emerald-600"/>
+                                    <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Kontrol Stok</h4>
+                                </div>
+                                <div className="grid grid-cols-12 gap-4">
+                                    <div className="col-span-4 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Satuan Dasar</label>
+                                        <input 
+                                            type="text" 
+                                            className="modal-input bg-emerald-900/10 border-emerald-900/50 text-emerald-400 font-bold" 
+                                            placeholder="Pcs" 
+                                            value={itemForm.baseUnit} 
+                                            onChange={e => setItemForm({...itemForm, baseUnit: e.target.value})} 
+                                        />
+                                    </div>
+                                    <div className="col-span-4 space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase">Min. Alert</label>
+                                        <input 
+                                            type="number" 
+                                            className="modal-input text-right font-mono" 
+                                            value={itemForm.minStock} 
+                                            onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
+                                        />
+                                    </div>
+                                    {!editingItem && (
+                                        <div className="col-span-4 space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Stok Awal</label>
+                                            <input 
+                                                type="number" 
+                                                className="modal-input text-right font-mono text-spectra bg-spectra/10 border-spectra/50" 
+                                                value={itemForm.initialStock} 
+                                                onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Section 3: Multi-Unit Conversion (Table Style) */}
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center pb-1 border-b border-spectra/50">
+                                    <div className="flex items-center gap-2">
+                                        <LayoutGrid size={14} className="text-amber-600"/>
+                                        <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Konversi Satuan</h4>
                                     </div>
                                     <button 
                                         onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
-                                        className="px-4 py-1.5 bg-daintree hover:bg-slate-200 text-slate-300 text-[10px] font-bold uppercase rounded-lg border border-spectra flex items-center gap-2 transition-all"
+                                        className="text-[10px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded transition-colors flex items-center gap-1"
                                     >
-                                        <Plus size={14}/> Tambah Level
+                                        <Plus size={12}/> Tambah
                                     </button>
                                 </div>
                                 
-                                <div className="space-y-4">
-                                    {itemForm.conversions?.map((c, i) => (
-                                        <div key={i} className="flex flex-col gap-4 bg-daintree/30 p-5 rounded-2xl border border-spectra">
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-5 h-5 rounded-full bg-spectra/30 text-spectra flex items-center justify-center text-[10px] font-bold">{i+1}</span>
-                                                    <h5 className="text-[10px] font-bold uppercase text-cutty">Level {i+1}</h5>
-                                                </div>
-                                                <button 
-                                                    onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
-                                                    className="p-1.5 text-red-400 hover:bg-red-900/30 rounded-lg transition-all"
-                                                >
-                                                    <Trash2 size={14}/>
-                                                </button>
-                                            </div>
-
-                                            <div className="grid grid-cols-12 gap-4 items-end">
-                                                <div className="col-span-4 space-y-1">
-                                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Nama Satuan</label>
-                                                    <input 
-                                                        type="text" 
-                                                        className="w-full bg-gable p-2.5 rounded-xl border border-spectra text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-spectra" 
-                                                        placeholder="BOX / DUS" 
-                                                        value={c.name} 
-                                                        onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
-                                                    />
-                                                </div>
-
-                                                <div className="col-span-3 space-y-1">
-                                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Operator</label>
-                                                    <select 
-                                                        className="w-full bg-gable p-2.5 rounded-xl border border-spectra text-xs font-bold outline-none"
-                                                        value={c.operator}
-                                                        onChange={e => updateConversion(i, { operator: e.target.value as any })}
-                                                    >
-                                                        <option value="*">KALI (*)</option>
-                                                        <option value="/">BAGI (/)</option>
-                                                    </select>
-                                                </div>
-
-                                                <div className="col-span-5 space-y-1">
-                                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider ml-1">Rasio ke {itemForm.baseUnit}</label>
-                                                    <input 
-                                                        type="number" 
-                                                        className="w-full bg-gable p-2.5 rounded-xl border border-spectra text-xs font-bold text-right outline-none focus:ring-2 focus:ring-spectra" 
-                                                        value={c.ratio} 
-                                                        onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!itemForm.conversions || itemForm.conversions.length === 0) && (
-                                        <div className="bg-daintree/30 border border-dashed border-spectra rounded-xl p-6 text-center">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                                                <Info size={14}/> Tidak ada konversi bertingkat
-                                            </p>
-                                        </div>
-                                    )}
+                                {/* TABLE WRAPPER (ROUNDED & DENSE) */}
+                                <div className="rounded-xl border border-spectra overflow-hidden bg-daintree/10 shadow-sm">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
+                                            <tr>
+                                                <th className="px-3 py-2 w-10 text-center border-b border-spectra">#</th>
+                                                <th className="px-3 py-2 border-b border-spectra">Nama Satuan</th>
+                                                <th className="px-3 py-2 w-24 border-b border-spectra">Operator</th>
+                                                <th className="px-3 py-2 w-32 text-right border-b border-spectra">Rasio ({itemForm.baseUnit})</th>
+                                                <th className="px-3 py-2 w-10 border-b border-spectra"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-spectra/20 text-xs">
+                                            {(itemForm.conversions || []).length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={5} className="p-4 text-center text-[10px] text-slate-500 italic">
+                                                        Belum ada satuan konversi
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                itemForm.conversions?.map((c, i) => (
+                                                    <tr key={i} className="hover:bg-daintree/30 transition-colors group">
+                                                        <td className="px-3 py-1.5 text-center text-[10px] text-slate-500 font-bold">{i+1}</td>
+                                                        <td className="px-3 py-1.5">
+                                                            <input 
+                                                                type="text" 
+                                                                className="w-full bg-transparent text-white font-bold outline-none placeholder:text-slate-600 text-xs uppercase" 
+                                                                placeholder="BOX"
+                                                                value={c.name} 
+                                                                onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-1.5">
+                                                            <select 
+                                                                className="w-full bg-transparent text-slate-300 font-bold outline-none text-[10px] appearance-none cursor-pointer"
+                                                                value={c.operator}
+                                                                onChange={e => updateConversion(i, { operator: e.target.value as any })}
+                                                            >
+                                                                <option value="*">KALI (*)</option>
+                                                                <option value="/">BAGI (/)</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-3 py-1.5">
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-full bg-transparent text-right text-white font-mono font-bold outline-none placeholder:text-slate-600 text-xs" 
+                                                                value={c.ratio} 
+                                                                onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-1.5 text-center">
+                                                            <button 
+                                                                onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
+                                                                className="text-slate-600 hover:text-red-400 transition-colors"
+                                                            >
+                                                                <Trash2 size={12}/>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="bg-daintree p-6 border-t border-spectra flex justify-end gap-4 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
-                            <button onClick={() => setShowItemModal(false)} className="px-6 py-3 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors uppercase tracking-widest">Batal</button>
+                        <div className="bg-daintree p-4 border-t border-spectra flex justify-end gap-3 shrink-0">
+                            <button onClick={() => setShowItemModal(false)} className="px-5 py-2.5 text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest rounded-xl hover:bg-white/5">Batal</button>
                             <button 
                                 onClick={handleSaveItem} 
                                 disabled={isLoading} 
-                                className="px-10 py-3 bg-daintree hover:bg-gable text-white rounded-xl font-bold text-xs shadow-lg shadow-black/20 flex items-center gap-3 active:scale-95 transition-all disabled:opacity-50"
+                                className="px-8 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl font-black text-xs shadow-lg shadow-black/20 flex items-center gap-2 active:scale-95 transition-all disabled:opacity-50 border border-spectra"
                             >
-                                {isLoading ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>}
+                                {isLoading ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
                                 {editingItem ? 'SIMPAN PERUBAHAN' : 'SIMPAN DATA'}
                             </button>
                         </div>
@@ -506,10 +515,10 @@ export const InventoryView: React.FC = () => {
             )}
 
             <style>{`
-                .accurate-input { 
-                    @apply w-full border border-spectra bg-daintree text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-spectra/20 focus:border-spectra transition-all shadow-sm placeholder:text-slate-400; 
+                .modal-input { 
+                    @apply w-full h-9 bg-daintree border border-spectra rounded-lg px-3 text-xs text-white outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-sm placeholder:text-slate-600; 
                 }
-                .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+                .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
             `}</style>
         </div>
