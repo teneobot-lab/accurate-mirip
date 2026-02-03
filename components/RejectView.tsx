@@ -45,9 +45,9 @@ export const RejectView: React.FC = () => {
         setIsLoading(true);
         try {
             const [rmits, ols, bts] = await Promise.all([
-                StorageService.fetchRejectMasterItems().catch(() => []),
-                StorageService.fetchRejectOutlets().catch(() => []),
-                StorageService.fetchRejectBatches().catch(() => [])
+                StorageService.fetchRejectMasterItems().catch(() => [] as Item[]),
+                StorageService.fetchRejectOutlets().catch(() => [] as string[]),
+                StorageService.fetchRejectBatches().catch(() => [] as RejectBatch[])
             ]);
             setRejectMasterItems(Array.isArray(rmits) ? rmits : []);
             setOutlets(Array.isArray(ols) ? ols : []);

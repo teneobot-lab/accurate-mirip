@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -432,18 +432,18 @@ export const InventoryView: React.FC = () => {
                                 </div>
                                 
                                 {/* TABLE WRAPPER (ROUNDED & DENSE) */}
-                                <div className="rounded-xl border border-spectra overflow-hidden bg-daintree/10 shadow-sm">
+                                <div className="rounded-xl border border-spectra overflow-hidden bg-daintree/20 shadow-inner ring-1 ring-white/5">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
                                             <tr>
-                                                <th className="px-3 py-2 w-10 text-center border-b border-spectra">#</th>
-                                                <th className="px-3 py-2 border-b border-spectra">Nama Satuan</th>
-                                                <th className="px-3 py-2 w-24 border-b border-spectra">Operator</th>
-                                                <th className="px-3 py-2 w-32 text-right border-b border-spectra">Rasio ({itemForm.baseUnit})</th>
-                                                <th className="px-3 py-2 w-10 border-b border-spectra"></th>
+                                                <th className="px-3 py-2.5 w-10 text-center border-b border-spectra">#</th>
+                                                <th className="px-3 py-2.5 border-b border-spectra">Nama Satuan</th>
+                                                <th className="px-3 py-2.5 w-32 border-b border-spectra">Operator</th>
+                                                <th className="px-3 py-2.5 w-32 text-right border-b border-spectra">Rasio ({itemForm.baseUnit})</th>
+                                                <th className="px-3 py-2.5 w-10 border-b border-spectra"></th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-spectra/20 text-xs">
+                                        <tbody className="divide-y divide-spectra/20 text-xs bg-gable/30">
                                             {(itemForm.conversions || []).length === 0 ? (
                                                 <tr>
                                                     <td colSpan={5} className="p-4 text-center text-[10px] text-slate-500 italic">
@@ -452,41 +452,44 @@ export const InventoryView: React.FC = () => {
                                                 </tr>
                                             ) : (
                                                 itemForm.conversions?.map((c, i) => (
-                                                    <tr key={i} className="hover:bg-daintree/30 transition-colors group">
-                                                        <td className="px-3 py-1.5 text-center text-[10px] text-slate-500 font-bold">{i+1}</td>
-                                                        <td className="px-3 py-1.5">
+                                                    <tr key={i} className="hover:bg-daintree/50 transition-colors group">
+                                                        <td className="px-3 py-2 text-center text-[10px] text-slate-500 font-bold align-middle">{i+1}</td>
+                                                        <td className="px-3 py-2 align-middle">
                                                             <input 
                                                                 type="text" 
-                                                                className="w-full bg-transparent text-white font-bold outline-none placeholder:text-slate-600 text-xs uppercase" 
+                                                                className="table-input" 
                                                                 placeholder="BOX"
                                                                 value={c.name} 
                                                                 onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-1.5">
-                                                            <select 
-                                                                className="w-full bg-transparent text-slate-300 font-bold outline-none text-[10px] appearance-none cursor-pointer"
-                                                                value={c.operator}
-                                                                onChange={e => updateConversion(i, { operator: e.target.value as any })}
-                                                            >
-                                                                <option value="*">KALI (*)</option>
-                                                                <option value="/">BAGI (/)</option>
-                                                            </select>
+                                                        <td className="px-3 py-2 align-middle">
+                                                            <div className="relative">
+                                                                <select 
+                                                                    className="table-input appearance-none pr-8 cursor-pointer"
+                                                                    value={c.operator}
+                                                                    onChange={e => updateConversion(i, { operator: e.target.value as any })}
+                                                                >
+                                                                    <option value="*">KALI (*)</option>
+                                                                    <option value="/">BAGI (/)</option>
+                                                                </select>
+                                                                <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                                            </div>
                                                         </td>
-                                                        <td className="px-3 py-1.5">
+                                                        <td className="px-3 py-2 align-middle">
                                                             <input 
                                                                 type="number" 
-                                                                className="w-full bg-transparent text-right text-white font-mono font-bold outline-none placeholder:text-slate-600 text-xs" 
+                                                                className="table-input text-right font-mono" 
                                                                 value={c.ratio} 
                                                                 onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
                                                             />
                                                         </td>
-                                                        <td className="px-3 py-1.5 text-center">
+                                                        <td className="px-3 py-2 text-center align-middle">
                                                             <button 
                                                                 onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
-                                                                className="text-slate-600 hover:text-red-400 transition-colors"
+                                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
                                                             >
-                                                                <Trash2 size={12}/>
+                                                                <Trash2 size={14}/>
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -517,6 +520,9 @@ export const InventoryView: React.FC = () => {
             <style>{`
                 .modal-input { 
                     @apply w-full h-9 bg-daintree border border-spectra rounded-lg px-3 text-xs text-white outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-sm placeholder:text-slate-600; 
+                }
+                .table-input {
+                    @apply w-full bg-daintree border border-spectra rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-inner placeholder:text-cutty;
                 }
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
