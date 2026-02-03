@@ -38,12 +38,28 @@ const MusicPlayer: React.FC = () => {
   const activePlaylist = playlists.find(p => p.id === activePlaylistId);
   const currentSong = activePlaylist?.songs[currentSongIndex];
 
-  // UPDATED: Robust Regex untuk menangkap ID dari link biasa, share, shorts, mobile, dll.
+  // UPDATED: Regex lebih robust (Support Music, Live, Shorts, Mobile, & Raw ID)
   const getYoutubeId = (url: string) => {
     if (!url) return null;
-    const regExp = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/;
-    const match = url.match(regExp);
-    return match ? match[1] : null;
+    const cleanUrl = url.trim();
+
+    // 1. Cek Regex URL lengkap
+    // Support: 
+    // - www.youtube.com/watch?v=ID
+    // - music.youtube.com/watch?v=ID
+    // - m.youtube.com/watch?v=ID
+    // - youtu.be/ID
+    // - youtube.com/embed/ID
+    // - youtube.com/shorts/ID
+    // - youtube.com/live/ID
+    const regExp = /(?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/;
+    const match = cleanUrl.match(regExp);
+    if (match) return match[1];
+
+    // 2. Fallback: Jika user input Raw ID (11 karakter)
+    if (/^[\w-]{11}$/.test(cleanUrl)) return cleanUrl;
+
+    return null;
   };
 
   const handleCreatePlaylist = async () => {
@@ -73,10 +89,11 @@ const MusicPlayer: React.FC = () => {
   const handleAddSong = async (playlistId: string) => {
     if (!newSongTitle.trim() || !newSongUrl.trim()) return;
     const ytId = getYoutubeId(newSongUrl);
-    if (!ytId) return showToast('Link YouTube tidak dikenali (Gunakan link Share/Browser)', 'error');
+    if (!ytId) return showToast('Link/ID YouTube tidak valid', 'error');
 
     try {
-      await StorageService.addSongToPlaylist(playlistId, newSongTitle, newSongUrl);
+      // Simpan URL/ID asli, nanti diparse saat render
+      await StorageService.addSongToPlaylist(playlistId, newSongTitle, newSongUrl.trim());
       setNewSongTitle('');
       setNewSongUrl('');
       showToast("Lagu ditambahkan ke MySQL", "success");
@@ -146,7 +163,10 @@ const MusicPlayer: React.FC = () => {
                       className="absolute inset-0"
                     ></iframe>
                 ) : (
-                    <div className="flex items-center justify-center h-full text-xs text-red-400">Invalid YouTube ID</div>
+                    <div className="flex flex-col items-center justify-center h-full text-xs text-red-400 gap-1 p-4 text-center">
+                        <span className="font-bold">Invalid YouTube ID</span>
+                        <span className="text-[10px] text-slate-500">URL: {currentSong.youtubeUrl}</span>
+                    </div>
                 )}
               </div>
               <div className="flex justify-center items-center gap-4 py-1">
@@ -201,7 +221,7 @@ const MusicPlayer: React.FC = () => {
                           className="w-full text-xs p-2 border border-spectra rounded mb-2 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
                         />
                         <input 
-                          type="text" placeholder="Paste YouTube Link Here..." 
+                          type="text" placeholder="Paste YouTube Link or ID..." 
                           value={newSongUrl} onChange={e => setNewSongUrl(e.target.value)}
                           className="w-full text-xs p-2 border border-spectra rounded mb-3 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
                         />
