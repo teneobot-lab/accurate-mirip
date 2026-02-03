@@ -178,7 +178,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
       <div className="bg-gable rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
         
-        {/* Title Bar - Dense */}
+        {/* Title Bar */}
         <div className="bg-daintree px-5 py-3 flex justify-between items-center border-b border-spectra">
             <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl border shadow-inner ${type === 'IN' ? 'bg-emerald-900/20 border-emerald-900/50 text-emerald-400' : 'bg-red-900/20 border-red-900/50 text-red-400'}`}>
@@ -196,59 +196,79 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </button>
         </div>
 
-        {/* Header Form - Dense & Compact & Roundy */}
+        {/* Header Form - Table Layout (Consistent Rounded Wrapper) */}
         <div className="p-4 bg-gable border-b border-spectra shadow-sm">
-            <div className="grid grid-cols-12 gap-3">
-                {/* Main Inputs (Left & Center) */}
-                <div className="col-span-9 grid grid-cols-12 gap-3">
-                    {/* Row 1 */}
-                    <div className="col-span-4">
-                        <label className="form-label">{type === 'IN' ? 'Supplier / Vendor' : 'Customer / Tujuan'}</label>
-                        <div className="relative">
-                            <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <select className="form-input pl-9 pr-8" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
-                                <option value="">-- Pilih Partner --</option>
-                                {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                        </div>
-                    </div>
-                    <div className="col-span-4">
-                        <label className="form-label">Gudang {type === 'IN' ? 'Penerima' : 'Asal'}</label>
-                        <div className="relative">
-                            <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <select className="form-input pl-9 pr-8" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
-                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                        </div>
-                    </div>
-                    <div className="col-span-4">
-                        <label className="form-label">Tanggal Transaksi</label>
-                        <div className="relative">
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="form-input pl-9" />
-                            <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
-                        </div>
-                    </div>
-
-                    {/* Row 2 */}
-                    <div className="col-span-4">
-                         <label className="form-label">No. Referensi</label>
-                         <div className="relative">
-                            <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="form-input pl-9 font-mono uppercase text-emerald-400" />
-                        </div>
-                    </div>
-                    <div className="col-span-8">
-                         <label className="form-label">Catatan / Keterangan</label>
-                         <div className="relative">
-                            <StickyNote size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                            <input type="text" placeholder="Isi keterangan transaksi..." value={notes} onChange={e => setNotes(e.target.value)} className="form-input pl-9" />
-                         </div>
+            <div className="grid grid-cols-12 gap-4">
+                
+                {/* Main Inputs as Table (Rounded) */}
+                <div className="col-span-9">
+                    <div className="rounded-xl border border-spectra overflow-hidden shadow-sm bg-daintree/10">
+                        <table className="w-full text-left text-xs border-collapse">
+                            <tbody>
+                                <tr>
+                                    <td className="w-32 bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
+                                        {type === 'IN' ? 'Supplier / Vendor' : 'Customer'}
+                                    </td>
+                                    <td className="p-1 border-r border-b border-spectra bg-gable relative">
+                                        <div className="relative h-full">
+                                            <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 pr-8 py-1.5 appearance-none focus:bg-daintree/50 transition-colors rounded-lg border-none" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
+                                                <option value="">-- Pilih Partner --</option>
+                                                {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                        </div>
+                                    </td>
+                                    <td className="w-32 bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
+                                        Gudang {type === 'IN' ? 'Tujuan' : 'Asal'}
+                                    </td>
+                                    <td className="p-1 border-b border-spectra bg-gable relative">
+                                        <div className="relative h-full">
+                                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 pr-8 py-1.5 appearance-none focus:bg-daintree/50 transition-colors rounded-lg border-none" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
+                                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
+                                        Tanggal
+                                    </td>
+                                    <td className="p-1 border-r border-b border-spectra bg-gable relative">
+                                        <div className="relative h-full">
+                                            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 py-1.5 focus:bg-daintree/50 transition-colors rounded-lg border-none" />
+                                        </div>
+                                    </td>
+                                    <td className="bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
+                                        No. Referensi
+                                    </td>
+                                    <td className="p-1 border-b border-spectra bg-gable relative">
+                                        <div className="relative h-full">
+                                            <Hash size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full bg-transparent font-mono text-emerald-400 text-xs font-bold outline-none pl-8 py-1.5 uppercase focus:bg-daintree/50 transition-colors rounded-lg border-none" />
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-spectra">
+                                        Catatan
+                                    </td>
+                                    <td colSpan={3} className="p-1 bg-gable relative">
+                                        <div className="relative h-full">
+                                            <StickyNote size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <input type="text" placeholder="Keterangan transaksi..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 py-1.5 focus:bg-daintree/50 transition-colors rounded-lg border-none" />
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
-                 {/* Right Column (Summary Box - Condensed) */}
+                 {/* Right Column (Summary Box - Consistent Rounded) */}
                 <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-center">
                     <div className="bg-daintree rounded-xl border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
                         <div className="flex justify-between items-center text-[10px] font-bold text-cutty uppercase">
@@ -265,7 +285,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </div>
         </div>
 
-        {/* Transaction Grid Table - Standardized */}
+        {/* Transaction Grid Table */}
         <div className="flex-1 bg-gable p-4 overflow-hidden flex flex-col">
             <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-spectra bg-daintree/30 shadow-inner">
                 <table className="w-full text-left border-separate border-spacing-0">
@@ -280,7 +300,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         </tr>
                     </thead>
                     <tbody className="text-xs text-slate-200">
-                        {/* Entry Row - Sticky below Header */}
+                        {/* Entry Row */}
                         <tr className="bg-daintree/50 border-b border-spectra sticky top-[33px] z-10 shadow-sm backdrop-blur-sm">
                             <td className="p-2 border-b border-spectra text-center"><Plus size={14} className="text-spectra mx-auto"/></td>
                             <td className="p-2 border-b border-spectra relative">
@@ -410,12 +430,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
       </div>
       <style>{`
-        .form-input { 
-            @apply w-full bg-daintree border border-spectra rounded-xl px-2.5 py-1.5 text-xs font-bold text-white focus:ring-1 focus:ring-spectra outline-none transition-all shadow-inner placeholder:text-cutty appearance-none; 
-        }
-        .form-label {
-            @apply block text-[10px] font-bold uppercase text-cutty mb-1 tracking-wide ml-1 truncate;
-        }
+        /* Local Override to ensure inputs inside table blend in */
+        input, select { background-color: transparent !important; border-color: transparent !important; }
+        /* Re-apply colors for inputs not in the header table if needed, but here we want transparency in header cells */
+        /* Force specific background for dropdown options */
+        option { background-color: #193338 !important; }
       `}</style>
     </div>
   );
