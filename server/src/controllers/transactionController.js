@@ -9,13 +9,11 @@ exports.createTransaction = async (req, res, next) => {
     try {
         const { type, items, referenceNo, sourceWarehouseId } = req.body;
         
-        // Normalisasi User
         const user = req.user || { 
             id: '00000000-0000-0000-0000-000000000000', 
             name: 'System Admin' 
         };
 
-        // Validasi Dasar
         if (!referenceNo || referenceNo.trim() === "") {
             return res.status(400).json({ success: false, message: 'Nomor referensi wajib diisi' });
         }
@@ -38,28 +36,7 @@ exports.createTransaction = async (req, res, next) => {
         return res.status(201).json({ success: true, data: result });
 
     } catch (error) {
-        console.error('[TX_CONTROLLER] Error:', error);
-
-        // Handle MySQL Duplicate Entry (Error 1062)
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(409).json({
-                success: false,
-                message: 'Gagal: Nomor referensi sudah terdaftar di sistem.'
-            });
-        }
-
-        // Handle Insufficient Stock
-        if (error.code === 'INSUFFICIENT_STOCK') {
-            return res.status(409).json({
-                success: false,
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: error.message || 'Terjadi kesalahan sistem saat menyimpan transaksi.'
-        });
+        next(error); // Biarkan global error handler yang mencatat logs
     }
 };
 
@@ -71,6 +48,8 @@ exports.updateTransaction = async (req, res, next) => {
         const { id } = req.params;
         const user = req.user || { id: '00000000-0000-0000-0000-000000000000', name: 'System Admin' };
 
+        console.log(`[TX_CONTROLLER] Updating transaction: ${id}`);
+
         if (!req.body.items || !Array.isArray(req.body.items) || req.body.items.length === 0) {
             return res.status(400).json({ success: false, message: 'Item transaksi tidak boleh kosong' });
         }
@@ -79,23 +58,13 @@ exports.updateTransaction = async (req, res, next) => {
         return res.json({ success: true, ...result });
 
     } catch (error) {
-        console.error('[TX_CONTROLLER] Update Error:', error);
-        
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ success: false, message: 'Nomor referensi sudah digunakan' });
         }
-
         if (error.code === 'INSUFFICIENT_STOCK') {
-            return res.status(409).json({
-                success: false,
-                message: `Update Gagal: ${error.message}`
-            });
+            return res.status(409).json({ success: false, message: `Update Gagal: ${error.message}` });
         }
-
-        return res.status(500).json({
-            success: false,
-            message: error.message || 'Gagal memperbarui transaksi'
-        });
+        next(error);
     }
 };
 
@@ -103,21 +72,23 @@ exports.updateTransaction = async (req, res, next) => {
  * DELETE TRANSACTION
  */
 exports.deleteTransaction = async (req, res, next) => {
+    const { id } = req.params;
+    console.log(`[TX_CONTROLLER] ATTEMPT DELETE: ${id}`);
+    
     try {
-        const { id } = req.params;
         await inventoryService.deleteTransaction(id);
+        console.log(`[TX_CONTROLLER] DELETE SUCCESS: ${id}`);
         return res.json({ success: true, message: 'Transaksi berhasil dihapus' });
     } catch (error) {
-        console.error('[TX_CONTROLLER] Delete Error:', error);
-
+        console.error(`[TX_CONTROLLER] DELETE FAILED: ${id}`, error.message);
+        
         if (error.code === 'INSUFFICIENT_STOCK') {
             return res.status(409).json({
                 success: false,
-                message: `Hapus Gagal: Stok tidak cukup untuk mengembalikan (Revert) transaksi ini. ${error.message}`
+                message: `Hapus Gagal: Stok tidak cukup untuk mengembalikan (revert) barang. ${error.message}`
             });
         }
-
-        return res.status(500).json({ success: false, message: 'Gagal menghapus transaksi' });
+        next(error);
     }
 };
 
@@ -165,7 +136,6 @@ exports.getTransactions = async (req, res, next) => {
                 code: it.code
             }));
 
-            // Normalize for frontend
             tx.sourceWarehouseId = tx.source_warehouse_id;
             tx.referenceNo = tx.reference_no;
             tx.partnerName = tx.partner_name;
@@ -174,7 +144,6 @@ exports.getTransactions = async (req, res, next) => {
 
         return res.json(txs);
     } catch (error) {
-        console.error('[TX_CONTROLLER] Get Error:', error);
-        return res.status(500).json({ success: false, message: 'Gagal mengambil data transaksi' });
+        next(error);
     }
 };
