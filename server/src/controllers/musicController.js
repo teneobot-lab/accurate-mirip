@@ -10,7 +10,14 @@ exports.getPlaylists = async (req, res, next) => {
         const result = playlists.map(p => ({
             id: p.id,
             name: p.name,
-            songs: songs.filter(s => s.playlist_id === p.id)
+            songs: songs
+                .filter(s => s.playlist_id === p.id)
+                .map(s => ({
+                    id: s.id,
+                    title: s.title,
+                    youtubeUrl: s.youtube_url, // FIX: Map DB column to Frontend Prop
+                    addedAt: s.added_at
+                }))
         }));
 
         res.json(result);

@@ -62,6 +62,8 @@ const MusicPlayer: React.FC = () => {
     return null;
   };
 
+  const videoId = currentSong ? getYoutubeId(currentSong.youtubeUrl) : null;
+
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) return;
     try {
@@ -151,11 +153,12 @@ const MusicPlayer: React.FC = () => {
                 <button onClick={() => setActivePlaylistId(null)} className="text-slate-400 hover:text-white"><X size={14}/></button>
               </div>
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-spectra/30 relative group">
-                {getYoutubeId(currentSong.youtubeUrl) ? (
+                {videoId ? (
                     <iframe 
+                      key={videoId} // CRITICAL FIX: Force remount iframe on song change
                       width="100%" 
                       height="100%" 
-                      src={`https://www.youtube.com/embed/${getYoutubeId(currentSong.youtubeUrl)}?autoplay=1&controls=1&modestbranding=1&rel=0&origin=${window.location.origin}`}
+                      src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}`}
                       title="YouTube player" 
                       frameBorder="0" 
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
