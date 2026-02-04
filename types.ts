@@ -29,6 +29,7 @@ export interface Warehouse {
   location: string;
   phone?: string;
   pic?: string;
+  isActive: boolean; // Added Status
 }
 
 export interface Partner {

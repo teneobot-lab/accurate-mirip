@@ -143,20 +143,27 @@ router.post('/items/bulk-delete', async (req, res, next) => {
 // --- WAREHOUSES ---
 router.get('/warehouses', async (req, res, next) => {
     try {
-        const [wh] = await db.query('SELECT * FROM warehouses');
-        res.json(wh);
+        const [whs] = await db.query('SELECT * FROM warehouses');
+        const mappedWhs = whs.map(w => ({
+            ...w,
+            isActive: !!w.is_active // Map from DB to Frontend
+        }));
+        res.json(mappedWhs);
     } catch(e) { next(e); }
 });
 
 router.post('/warehouses', async (req, res, next) => {
     try {
-        const { id, name, location, phone, pic } = req.body;
+        const { id, name, location, phone, pic, isActive } = req.body;
         const whId = id || uuidv4();
+        
+        const isActiveVal = (isActive === undefined || isActive === true) ? 1 : 0;
+
         await db.query(
-            `INSERT INTO warehouses (id, name, location, phone, pic) 
-             VALUES (?, ?, ?, ?, ?) 
-             ON DUPLICATE KEY UPDATE name=VALUES(name), location=VALUES(location), phone=VALUES(phone), pic=VALUES(pic)`,
-            [whId, name, location, phone, pic]
+            `INSERT INTO warehouses (id, name, location, phone, pic, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE name=VALUES(name), location=VALUES(location), phone=VALUES(phone), pic=VALUES(pic), is_active=VALUES(is_active)`,
+            [whId, name, location, phone, pic, isActiveVal]
         );
         res.status(201).json({ status: 'success', id: whId });
     } catch(e) { next(e); }
@@ -219,21 +226,39 @@ router.post('/users', async (req, res, next) => {
         const { id, username, password, name, role, status } = req.body;
         const userId = id || uuidv4();
         
+        // Ensure status is valid
+        const userStatus = (status === 'INACTIVE') ? 'INACTIVE' : 'ACTIVE';
+
         if (password) {
             const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
             await db.query(
                 `INSERT INTO users (id, username, password_hash, full_name, role, status) 
                  VALUES (?, ?, ?, ?, ?, ?) 
                  ON DUPLICATE KEY UPDATE username=VALUES(username), password_hash=VALUES(password_hash), full_name=VALUES(full_name), role=VALUES(role), status=VALUES(status)`,
-                [userId, username, hashedPassword, name, role || 'STAFF', status || 'ACTIVE']
+                [userId, username, hashedPassword, name, role || 'STAFF', userStatus]
             );
         } else {
-            await db.query(
-                `INSERT INTO users (id, username, full_name, role, status, password_hash) 
-                 VALUES (?, ?, ?, ?, ?, 'TEMP') 
-                 ON DUPLICATE KEY UPDATE username=VALUES(username), full_name=VALUES(full_name), role=VALUES(role), status=VALUES(status)`,
-                [userId, username, name, role || 'STAFF', status || 'ACTIVE']
-            );
+            // IF creating new user without password, set a default
+            // IF updating existing user without password, DO NOT CHANGE password_hash
+            
+            // Check if user exists
+            const [existing] = await db.query('SELECT id FROM users WHERE id = ?', [userId]);
+            
+            if (existing.length === 0) {
+                 // New user without password -> set default "123456"
+                 const defaultHash = crypto.createHash('sha256').update('123456').digest('hex');
+                 await db.query(
+                    `INSERT INTO users (id, username, full_name, role, status, password_hash) 
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [userId, username, name, role || 'STAFF', userStatus, defaultHash]
+                );
+            } else {
+                // Update without changing password
+                await db.query(
+                    `UPDATE users SET username=?, full_name=?, role=?, status=? WHERE id=?`,
+                    [username, name, role || 'STAFF', userStatus, userId]
+                );
+            }
         }
         res.status(201).json({ status: 'success', id: userId });
     } catch(e) { next(e); }

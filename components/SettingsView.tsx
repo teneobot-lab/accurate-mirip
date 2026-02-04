@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Warehouse, Partner, AppUser } from '../types';
-import { Plus, Edit3, Trash2, Search, Building2, UserCircle, Save, X, Phone, Loader2, Share2, FileSpreadsheet, Calendar, Link as LinkIcon, Code, Copy, Check, Users, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Edit3, Trash2, Search, Building2, UserCircle, Save, X, Phone, Loader2, Share2, FileSpreadsheet, Calendar, Link as LinkIcon, Code, Copy, Check, Users, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
 import { useToast } from './Toast';
 
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS' | 'EXTERNAL_SYNC';
@@ -37,25 +37,48 @@ export const SettingsView: React.FC = () => {
     const [copied, setCopied] = useState(false);
 
     const GS_CODE_BOILERPLATE = `/**
- * GudangPro - Google Sheets Connector v1.0
+ * GudangPro - Google Sheets Connector v2.0
+ * Updated: Supports Auto-Date Formatting & Status Checks
  */
 function doPost(e) {
-  var contents = JSON.parse(e.postData.contents);
-  if (contents.action === "APPEND_ROWS") {
-    var sheet = setupSheet();
-    contents.rows.forEach(function(row) { sheet.appendRow(row); });
-    return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
+  try {
+    var contents = JSON.parse(e.postData.contents);
+    if (contents.action === "APPEND_ROWS") {
+      var sheet = setupSheet();
+      var rows = contents.rows;
+      
+      // Batch processing for speed
+      if (rows.length > 0) {
+        // Append rows to the end of the sheet
+        sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({status: "success", count: rows.length}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid action"}))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 function setupSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var name = "Mutasi GudangPro";
-  var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
-  if (sheet.getLastRow() === 0) {
+  var sheet = ss.getSheetByName(name);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    // Header Row
     var h = ["Tanggal", "Ref No", "Tipe", "Kode", "Nama", "Qty", "Satuan", "Ket"];
     sheet.appendRow(h);
-    sheet.getRange(1, 1, 1, h.length).setBackground("#1e293b").setFontColor("#fff").setFontWeight("bold");
+    
+    // Styling
+    var range = sheet.getRange(1, 1, 1, h.length);
+    range.setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -69,9 +92,16 @@ function setupSheet() {
                 StorageService.fetchPartners().catch(() => []),
                 StorageService.fetchUsers().catch(() => [])
             ]);
+            
+            // Ensure consistency in frontend state
+            const mappedUsers = (Array.isArray(usrs) ? usrs : []).map((u: any) => ({
+                ...u,
+                isActive: u.status === 'ACTIVE' // Normalize for UI toggle
+            }));
+
             setWarehouses(Array.isArray(whs) ? whs : []);
             setPartners(Array.isArray(pts) ? pts : []);
-            setUsers(Array.isArray(usrs) ? usrs : []);
+            setUsers(mappedUsers);
         } catch (e) {
             console.error("Fetch Settings Error", e);
         } finally {
@@ -96,9 +126,21 @@ function setupSheet() {
         try {
             const payload = { ...data, id: data.id || crypto.randomUUID() };
             
-            if (activeTab === 'WAREHOUSE') await StorageService.saveWarehouse(payload);
-            else if (activeTab === 'USERS') await StorageService.saveUser({ ...payload, status: 'ACTIVE' });
-            else await StorageService.savePartner({ ...payload, type: activeTab as any, isActive: data.isActive === undefined ? true : data.isActive });
+            // Handling Status & Password logic based on Type
+            if (activeTab === 'USERS') {
+                payload.status = data.isActive ? 'ACTIVE' : 'INACTIVE';
+                // Password sent automatically if present in 'data'
+                await StorageService.saveUser(payload);
+            } 
+            else if (activeTab === 'WAREHOUSE') {
+                payload.isActive = data.isActive === undefined ? true : data.isActive;
+                await StorageService.saveWarehouse(payload);
+            }
+            else {
+                // Partners
+                payload.isActive = data.isActive === undefined ? true : data.isActive;
+                await StorageService.savePartner({ ...payload, type: activeTab as any });
+            }
             
             showToast("Tersimpan ke MySQL Database", "success");
             setShowModal(false); 
@@ -116,6 +158,8 @@ function setupSheet() {
     };
 
     const isPartnerTab = activeTab === 'SUPPLIER' || activeTab === 'CUSTOMER';
+    const isUserTab = activeTab === 'USERS';
+    const isWarehouseTab = activeTab === 'WAREHOUSE';
 
     return (
         <div className="flex h-full bg-daintree transition-colors font-sans">
@@ -159,13 +203,13 @@ function setupSheet() {
                                                 <th className="px-4 py-2.5 w-12 text-center">#</th>
                                                 <th className="px-4 py-2.5">Informasi Master</th>
                                                 <th className="px-4 py-2.5">Kontak / Kredensial</th>
-                                                {isPartnerTab && <th className="px-4 py-2.5 text-center">Status</th>}
+                                                <th className="px-4 py-2.5 text-center">Status</th>
                                                 <th className="px-4 py-2.5 w-24 text-center">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-spectra/30 bg-gable">
                                             {filteredData().map((item: any, idx) => (
-                                                <DenseRow key={item.id} inactive={isPartnerTab && !item.isActive}>
+                                                <DenseRow key={item.id} inactive={!item.isActive}>
                                                     <DenseCell className="text-center font-mono opacity-40">{idx + 1}</DenseCell>
                                                     <DenseCell>
                                                         <div className="font-bold text-white text-sm mb-0.5">{item.name}</div>
@@ -180,14 +224,12 @@ function setupSheet() {
                                                             {item.username && <span className="text-cutty font-mono text-[10px] bg-daintree px-2 py-0.5 rounded w-fit border border-spectra">@{item.username}</span>}
                                                         </div>
                                                     </DenseCell>
-                                                    {isPartnerTab && (
-                                                        <DenseCell className="text-center">
-                                                            {item.isActive ? 
-                                                                <span className="text-[9px] font-black text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded">AKTIF</span> : 
-                                                                <span className="text-[9px] font-black text-slate-500 bg-slate-800 px-2 py-0.5 rounded">NONAKTIF</span>
-                                                            }
-                                                        </DenseCell>
-                                                    )}
+                                                    <DenseCell className="text-center">
+                                                        {item.isActive ? 
+                                                            <span className="text-[9px] font-black text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-900/50">AKTIF</span> : 
+                                                            <span className="text-[9px] font-black text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">NONAKTIF</span>
+                                                        }
+                                                    </DenseCell>
                                                     <DenseCell className="text-center">
                                                         <div className="flex justify-center gap-2">
                                                             <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-colors"><Edit3 size={16}/></button>
@@ -250,37 +292,52 @@ function setupSheet() {
                                 <label className="text-[10px] font-bold text-cutty uppercase ml-1">Nama Lengkap / Instansi</label>
                                 <input required className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree font-bold text-white outline-none focus:ring-2 focus:ring-spectra" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} />
                             </div>
+                            
                             {activeTab === 'USERS' && (
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-bold text-cutty uppercase ml-1">Username Login</label>
-                                    <input required className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree font-mono font-bold text-spectra text-white outline-none focus:ring-2 focus:ring-spectra" value={editData.username || ''} onChange={e => setEditData({...editData, username: e.target.value})} />
-                                </div>
+                                <>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-cutty uppercase ml-1">Username Login</label>
+                                        <input required className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree font-mono font-bold text-spectra text-white outline-none focus:ring-2 focus:ring-spectra" value={editData.username || ''} onChange={e => setEditData({...editData, username: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-cutty uppercase ml-1">Password</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="password" 
+                                                placeholder={editData.id ? "Biarkan kosong jika tidak diubah" : "Password baru"}
+                                                className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree font-bold text-white outline-none focus:ring-2 focus:ring-spectra pl-10" 
+                                                value={editData.password || ''} 
+                                                onChange={e => setEditData({...editData, password: e.target.value})} 
+                                            />
+                                            <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty"/>
+                                        </div>
+                                    </div>
+                                </>
                             )}
+                            
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold text-cutty uppercase ml-1">{activeTab === 'WAREHOUSE' ? 'Lokasi' : 'No. Telepon'}</label>
                                 <input className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree text-white outline-none focus:ring-2 focus:ring-spectra" value={activeTab === 'WAREHOUSE' ? (editData.location || '') : (editData.phone || '')} onChange={e => setEditData({...editData, [activeTab === 'WAREHOUSE' ? 'location' : 'phone']: e.target.value})} />
                             </div>
 
-                            {/* Active Status Toggle for Partners */}
-                            {isPartnerTab && (
-                                <div className="space-y-1.5 pt-2">
-                                    <div className="flex items-center justify-between bg-daintree p-3 rounded-xl border border-spectra">
-                                        <span className="text-[10px] font-bold text-cutty uppercase">Status {activeTab}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-bold uppercase ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                                {editData.isActive !== false ? 'Aktif' : 'Nonaktif'}
-                                            </span>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setEditData({...editData, isActive: !(editData.isActive !== false)})} 
-                                                className={`transition-colors ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}
-                                            >
-                                                {editData.isActive !== false ? <ToggleRight size={24}/> : <ToggleLeft size={24}/>}
-                                            </button>
-                                        </div>
+                            {/* Active Status Toggle for All Entity Types */}
+                            <div className="space-y-1.5 pt-2">
+                                <div className="flex items-center justify-between bg-daintree p-3 rounded-xl border border-spectra">
+                                    <span className="text-[10px] font-bold text-cutty uppercase">Status {activeTab}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] font-bold uppercase ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                            {editData.isActive !== false ? 'Aktif' : 'Nonaktif'}
+                                        </span>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setEditData({...editData, isActive: !(editData.isActive !== false)})} 
+                                            className={`transition-colors ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}
+                                        >
+                                            {editData.isActive !== false ? <ToggleRight size={24}/> : <ToggleLeft size={24}/>}
+                                        </button>
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
                             <div className="flex justify-end gap-3 pt-6 border-t border-spectra mt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="px-5 text-xs font-bold text-slate-400 uppercase hover:text-white">Batal</button>
