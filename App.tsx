@@ -9,9 +9,9 @@ import { SettingsView } from './components/SettingsView';
 import { RejectView } from './components/RejectView';
 import { StockCardModal } from './components/StockCardModal';
 import { ThemeToggle } from './components/ThemeToggle';
-import { ClockWidget } from './components/ClockWidget';
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
+import { GlobalSearch } from './components/GlobalSearch';
 import { ToastProvider } from './components/Toast';
 import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, Smartphone, Monitor } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
@@ -153,8 +153,8 @@ function App() {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden relative">
-            <header className="h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-6 shadow-sm z-20 transition-colors text-slate-200">
-                <div className="flex items-center gap-4">
+            <header className="h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-6 shadow-sm z-20 transition-colors text-slate-200 gap-6">
+                <div className="flex items-center gap-4 flex-shrink-0">
                     <button 
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                         className="p-2 rounded-lg text-slate-400 hover:bg-spectra/50 transition-colors focus:outline-none"
@@ -162,7 +162,7 @@ function App() {
                     >
                         <Menu size={20} />
                     </button>
-                    <div className="flex-shrink-0 flex flex-col">
+                    <div className="flex-shrink-0 flex flex-col hidden lg:flex">
                         <h2 className="text-lg font-bold text-white leading-tight">
                             {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
                             {activeTab === 'INVENTORY' && 'Inventory Master Data'}
@@ -174,9 +174,9 @@ function App() {
                     </div>
                 </div>
                 
-                {/* Center Widgets */}
-                <div className={`flex-1 flex justify-center px-4 ${isMobileMode ? 'hidden' : 'block'}`}>
-                    <ClockWidget />
+                {/* Center Widget: Global Search */}
+                <div className={`flex-1 max-w-xl ${isMobileMode ? 'hidden' : 'block'}`}>
+                    <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">

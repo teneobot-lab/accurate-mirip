@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
-import { X, Package, TrendingUp, History, MapPin, Box } from 'lucide-react';
+import { X, Package, TrendingUp, History, MapPin, Box, Calendar } from 'lucide-react';
 
 interface Props {
   item: Item;
@@ -13,6 +13,14 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  // Date Filter State
+  const [startDate, setStartDate] = useState(() => {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Fetch necessary data on component mount
   useEffect(() => {
@@ -44,15 +52,17 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
     return { total, breakdown };
   }, [item, stocks, warehouses]);
 
-  // Get recent history for this item
+  // Get recent history for this item with Date Filtering
   const history = useMemo(() => {
     const relevantTx = transactions.filter(tx => 
-        tx.items.some(ti => ti.itemId === item.id)
+        tx.items.some(ti => ti.itemId === item.id) &&
+        tx.date >= startDate &&
+        tx.date <= endDate
     );
-    // Sort desc, take top 10
+    
+    // Sort desc
     return relevantTx
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 10)
         .map(tx => {
             const line = tx.items.find(ti => ti.itemId === item.id);
             return {
@@ -64,7 +74,7 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
                 wh: warehouses.find(w => w.id === tx.sourceWarehouseId)?.name
             };
         });
-  }, [item, transactions, warehouses]);
+  }, [item, transactions, warehouses, startDate, endDate]);
 
   return (
     <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
@@ -90,7 +100,7 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
             </button>
         </div>
 
-        <div className="overflow-y-auto p-6 space-y-6 bg-gable scrollbar-thin">
+        <div className="overflow-y-auto p-6 space-y-6 bg-gable scrollbar-thin flex-1">
             
             {/* KPI Section */}
             <div className="grid grid-cols-2 gap-4">
@@ -152,26 +162,45 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
                 </div>
             </div>
 
-            {/* Recent History */}
+            {/* Recent History with Filter */}
             <div>
-                 <h3 className="text-xs font-black text-cutty uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <History size={14} /> Recent Movements (Last 10)
-                </h3>
-                <div className="bg-daintree border border-spectra rounded-xl overflow-hidden">
+                <div className="flex justify-between items-end mb-3">
+                    <h3 className="text-xs font-black text-cutty uppercase tracking-widest flex items-center gap-2">
+                        <History size={14} /> Transaction History
+                    </h3>
+                    <div className="flex items-center gap-2 bg-daintree p-1 rounded-lg border border-spectra/50">
+                        <Calendar size={12} className="text-spectra ml-1"/>
+                        <input 
+                            type="date" 
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="bg-transparent text-[10px] text-white font-bold outline-none border-none w-20 p-0"
+                        />
+                        <span className="text-cutty text-[10px]">-</span>
+                        <input 
+                            type="date" 
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="bg-transparent text-[10px] text-white font-bold outline-none border-none w-20 p-0"
+                        />
+                    </div>
+                </div>
+                
+                <div className="bg-daintree border border-spectra rounded-xl overflow-hidden shadow-inner">
                      <table className="w-full text-xs text-left">
-                        <thead className="bg-gable text-slate-400 uppercase font-bold border-b border-spectra">
+                        <thead className="bg-gable text-slate-400 uppercase font-bold border-b border-spectra sticky top-0">
                             <tr>
-                                <th className="px-4 py-2">Date</th>
-                                <th className="px-4 py-2">Ref</th>
-                                <th className="px-4 py-2">Type</th>
-                                <th className="px-4 py-2 text-right">Qty</th>
-                                <th className="px-4 py-2 text-center">Unit</th>
-                                <th className="px-4 py-2">Source</th>
+                                <th className="px-4 py-2.5">Date</th>
+                                <th className="px-4 py-2.5">Ref</th>
+                                <th className="px-4 py-2.5">Type</th>
+                                <th className="px-4 py-2.5 text-right">Qty</th>
+                                <th className="px-4 py-2.5 text-center">Unit</th>
+                                <th className="px-4 py-2.5">Source</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-spectra/30 text-slate-300">
                             {history.length === 0 ? (
-                                <tr><td colSpan={6} className="p-6 text-center text-slate-500 italic font-bold">No transaction history found.</td></tr>
+                                <tr><td colSpan={6} className="p-8 text-center text-slate-500 italic font-bold">No transactions in selected period.</td></tr>
                             ) : history.map((h, idx) => (
                                 <tr key={idx} className="hover:bg-gable/50 transition-colors">
                                     <td className="px-4 py-2 font-mono text-slate-400">{h.date}</td>
@@ -191,6 +220,9 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+                <div className="text-right text-[9px] text-cutty font-bold mt-2 italic">
+                    Showing {history.length} transactions
                 </div>
             </div>
 
