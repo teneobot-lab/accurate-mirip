@@ -30,6 +30,11 @@ function App() {
     setShowTransactionModal(tx.type);
   };
 
+  const handleNewTransaction = (type: TransactionType) => {
+    setEditingTransaction(null);
+    setShowTransactionModal(type);
+  };
+
   useEffect(() => {
     StorageService.init();
     document.documentElement.classList.add('dark');
@@ -90,14 +95,6 @@ function App() {
           <div className="flex flex-row lg:flex-col items-center justify-around lg:justify-start w-full gap-1 lg:gap-2">
               <NavItem id="DASHBOARD" label="Home" icon={LayoutDashboard} />
               <NavItem id="INVENTORY" label="Stock" icon={Package} />
-              <div className="lg:hidden relative -top-6">
-                  <button 
-                    onClick={() => setShowTransactionModal('IN')}
-                    className="w-14 h-14 bg-spectra text-white rounded-full shadow-2xl border-4 border-daintree flex items-center justify-center active:scale-90 transition-transform"
-                  >
-                      <Plus size={28} />
-                  </button>
-              </div>
               <NavItem id="REPORTS" label="Reports" icon={FileBarChart} />
               <NavItem id="REJECT" label="Reject" icon={AlertOctagon} />
               
@@ -165,7 +162,7 @@ function App() {
           <div className="flex-1 overflow-hidden relative bg-daintree">
               {activeTab === 'DASHBOARD' && <DashboardView />}
               {activeTab === 'INVENTORY' && <InventoryView />}
-              {activeTab === 'REPORTS' && <ReportsView onEditTransaction={handleEditTransaction} />}
+              {activeTab === 'REPORTS' && <ReportsView onEditTransaction={handleEditTransaction} onNewTransaction={handleNewTransaction} />}
               {activeTab === 'SETTINGS' && <SettingsView />}
               {activeTab === 'REJECT' && <RejectView />}
           </div>

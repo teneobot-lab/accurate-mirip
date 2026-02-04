@@ -1,16 +1,17 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
-import { Transaction, Warehouse } from '../types';
-import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal } from 'lucide-react';
+import { Transaction, Warehouse, TransactionType } from '../types';
+import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useToast } from './Toast';
 
 interface Props {
     onEditTransaction: (tx: Transaction) => void;
+    onNewTransaction: (type: TransactionType) => void;
 }
 
-export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
+export const ReportsView: React.FC<Props> = ({ onEditTransaction, onNewTransaction }) => {
     const { showToast } = useToast();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -68,9 +69,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         }
     };
 
-    // --- FITUR BARU: COPY CURL UNTUK MANUAL DELETE DI SERVER ---
     const handleCopyCurl = (id: string) => {
-        // Perintah ini bisa dijalankan user di terminal VPS jika tombol delete UI gagal (502)
         const cmd = `curl -v -X DELETE http://localhost:3000/api/transactions/${id}`;
         navigator.clipboard.writeText(cmd).then(() => {
             showToast("Perintah CURL disalin! Jalankan di Terminal Server.", "info");
@@ -106,43 +105,57 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
 
     return (
         <div className="flex flex-col h-full bg-daintree p-2 gap-2 overflow-hidden font-sans">
-            {/* Header & Filter Bar - Dense Layout */}
-            <div className="bg-gable p-2 rounded-lg border border-spectra flex flex-wrap gap-3 items-end shadow-sm">
-                <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-bold text-cutty uppercase tracking-widest ml-1">Periode</span>
-                    <div className="flex items-center gap-1">
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1 text-[10px] text-white outline-none focus:border-white transition-colors" />
-                        <span className="text-cutty font-bold text-[10px]">-</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1 text-[10px] text-white outline-none focus:border-white transition-colors" />
-                    </div>
+            {/* Action & Filter Toolbar */}
+            <div className="bg-gable p-3 rounded-lg border border-spectra flex flex-col gap-3 shadow-sm">
+                
+                {/* Top Row: Transaction Triggers */}
+                <div className="flex gap-2">
+                    <button onClick={() => onNewTransaction('IN')} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-lg shadow-black/20 transition-all active:scale-95 border border-emerald-400/50">
+                        <ArrowDownLeft size={16} /> Transaksi Masuk
+                    </button>
+                    <button onClick={() => onNewTransaction('OUT')} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-lg shadow-black/20 transition-all active:scale-95 border border-rose-400/50">
+                        <ArrowUpRight size={16} /> Transaksi Keluar
+                    </button>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                    <span className="text-[9px] font-bold text-cutty uppercase tracking-widest ml-1">Filter</span>
-                    <div className="flex gap-1">
-                        <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1 text-[10px] text-white outline-none focus:border-white transition-colors w-32">
-                            <option value="ALL">Semua Gudang</option>
-                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                        </select>
-                        <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1 text-[10px] text-white outline-none focus:border-white transition-colors w-24">
-                            <option value="ALL">Semua Tipe</option>
-                            <option value="IN">Masuk</option>
-                            <option value="OUT">Keluar</option>
-                        </select>
-                    </div>
-                </div>
+                <div className="w-full h-px bg-spectra/30"></div>
 
-                <div className="flex-1 flex flex-col gap-1">
-                    <span className="text-[9px] font-bold text-cutty uppercase tracking-widest ml-1">Pencarian</span>
-                    <div className="relative">
-                        <Search size={12} className="absolute left-2 top-1.5 text-cutty"/>
-                        <input type="text" placeholder="Cari No. Bukti / Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-daintree border border-spectra rounded px-2 py-1 pl-7 text-[10px] text-white outline-none focus:border-white transition-colors placeholder:text-cutty" />
-                    </div>
-                </div>
+                {/* Bottom Row: Filters */}
+                <div className="flex flex-wrap gap-3 items-end justify-between">
+                    <div className="flex gap-3 flex-wrap">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[9px] font-bold text-cutty uppercase tracking-widest ml-1">Periode</span>
+                            <div className="flex items-center gap-1">
+                                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1.5 text-[10px] text-white outline-none focus:border-white transition-colors" />
+                                <span className="text-cutty font-bold text-[10px]">-</span>
+                                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1.5 text-[10px] text-white outline-none focus:border-white transition-colors" />
+                            </div>
+                        </div>
 
-                <div className="flex gap-1">
-                    <button onClick={refreshData} className="p-1.5 bg-daintree border border-spectra rounded text-slate-400 hover:text-white transition-colors"><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/></button>
-                    <button onClick={handleExport} className="px-3 py-1.5 bg-spectra text-white text-[10px] font-bold rounded flex items-center gap-1 hover:bg-white hover:text-spectra transition-colors"><FileSpreadsheet size={12}/> XLS</button>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[9px] font-bold text-cutty uppercase tracking-widest ml-1">Filter</span>
+                            <div className="flex gap-1">
+                                <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1.5 text-[10px] text-white outline-none focus:border-white transition-colors w-32">
+                                    <option value="ALL">Semua Gudang</option>
+                                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </select>
+                                <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-daintree border border-spectra rounded px-2 py-1.5 text-[10px] text-white outline-none focus:border-white transition-colors w-24">
+                                    <option value="ALL">Semua Tipe</option>
+                                    <option value="IN">Masuk</option>
+                                    <option value="OUT">Keluar</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2 flex-1 sm:flex-none w-full sm:w-auto">
+                        <div className="relative flex-1 sm:w-48">
+                            <Search size={12} className="absolute left-2 top-2 text-cutty"/>
+                            <input type="text" placeholder="Cari No. Bukti / Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-daintree border border-spectra rounded px-2 py-1.5 pl-7 text-[10px] text-white outline-none focus:border-white transition-colors placeholder:text-cutty" />
+                        </div>
+                        <button onClick={refreshData} className="p-1.5 bg-daintree border border-spectra rounded text-slate-400 hover:text-white transition-colors"><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/></button>
+                        <button onClick={handleExport} className="px-3 py-1.5 bg-spectra text-white text-[10px] font-bold rounded flex items-center gap-1 hover:bg-white hover:text-spectra transition-colors"><FileSpreadsheet size={12}/> XLS</button>
+                    </div>
                 </div>
             </div>
 
