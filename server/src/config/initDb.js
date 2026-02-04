@@ -2,18 +2,47 @@
 const db = require('./database');
 
 const initSchema = async () => {
-    console.log("🛠️  Memulai Sinkronisasi Struktur Database...");
+    console.log("🛠️  Initializing Database Schema...");
     let conn;
     
     try {
         conn = await db.getConnection();
     } catch (err) {
-        console.error("🔥 GAGAL TOTAL: Aplikasi tidak bisa lanjut karena masalah database.");
+        console.error("🔥 CRITICAL: Failed to get database connection during init.");
+        if (err.errno === 1698 || err.code === 'ER_ACCESS_DENIED_ERROR') {
+            console.error("\n============================================================");
+            console.error("⚠️  KESALAHAN IZIN AKSES MYSQL (Access Denied)");
+            console.error("Aplikasi tidak bisa login ke MySQL sebagai 'root'@'localhost'.");
+            console.error("Hal ini biasanya karena MySQL di VPS menggunakan plugin 'auth_socket'.");
+            console.error("\nSOLUSI (Jalankan di terminal VPS):");
+            console.error("1. Masuk ke mysql: sudo mysql");
+            console.error("2. Jalankan perintah ini:");
+            console.error("   ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'PASSWORD_BARU';");
+            console.error("   FLUSH PRIVILEGES;");
+            console.error("3. Update file .env Anda dengan DB_PASSWORD=PASSWORD_BARU");
+            console.error("============================================================\n");
+        }
         throw err;
     }
 
+    // Helper: Safely add column if it doesn't exist (Migration)
+    const addColumnSafe = async (tableName, columnName, columnDefinition) => {
+        try {
+            const [tables] = await conn.query(`SHOW TABLES LIKE '${tableName}'`);
+            if (tables.length === 0) return;
+
+            const [cols] = await conn.query(`SHOW COLUMNS FROM ${tableName} LIKE ?`, [columnName]);
+            if (cols.length === 0) {
+                console.log(`🔸 Migrating: Adding column '${columnName}' to table '${tableName}'...`);
+                await conn.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
+            }
+        } catch (err) {
+            console.warn(`⚠️ Migration warning for ${tableName}.${columnName}:`, err.message);
+        }
+    };
+
     try {
-        // Master Tables
+        // Core Master Tables
         await conn.query(`
             CREATE TABLE IF NOT EXISTS warehouses (
                 id CHAR(36) PRIMARY KEY,
@@ -126,7 +155,44 @@ const initSchema = async () => {
         `);
 
         await conn.query(`
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS reject_master_units (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                item_id CHAR(36) NOT NULL,
+                unit_name VARCHAR(20) NOT NULL,
+                conversion_ratio DECIMAL(10, 4) NOT NULL,
+                operator ENUM('*', '/') DEFAULT '*',
+                FOREIGN KEY (item_id) REFERENCES reject_master_items(id) ON DELETE CASCADE,
+                UNIQUE(item_id, unit_name)
+            ) ENGINE=InnoDB;
+        `);
+
+        await conn.query(`
+            CREATE TABLE IF NOT EXISTS reject_batches (
+                id CHAR(36) PRIMARY KEY,
+                date DATE NOT NULL,
+                outlet VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;
+        `);
+
+        await conn.query(`
+            CREATE TABLE IF NOT EXISTS reject_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                batch_id CHAR(36) NOT NULL,
+                item_id CHAR(36) NOT NULL,
+                sku VARCHAR(50),
+                name VARCHAR(150),
+                qty DECIMAL(15, 4) NOT NULL,
+                unit VARCHAR(20) NOT NULL,
+                base_qty DECIMAL(15, 4) NOT NULL,
+                reason VARCHAR(255),
+                FOREIGN KEY (batch_id) REFERENCES reject_batches(id) ON DELETE CASCADE,
+                FOREIGN KEY (item_id) REFERENCES reject_master_items(id)
+            ) ENGINE=InnoDB;
+        `);
+
+        await conn.query(`
+             CREATE TABLE IF NOT EXISTS users (
                 id CHAR(36) PRIMARY KEY,
                 username VARCHAR(50) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
@@ -156,9 +222,13 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
-        console.log("✅ Struktur Database Siap");
+        await addColumnSafe('transaction_items', 'base_qty', 'DECIMAL(15, 4) NOT NULL DEFAULT 0');
+        await addColumnSafe('transaction_items', 'conversion_ratio', 'DECIMAL(10, 4) DEFAULT 1');
+        await addColumnSafe('transactions', 'created_by', 'CHAR(36)');
+
+        console.log("✅ Database Schema Synced & Validated");
     } catch (error) {
-        console.error("❌ Database Init Error:", error);
+        console.error("❌ Database Initialization Error:", error);
         throw error;
     } finally {
         if (conn) conn.release();

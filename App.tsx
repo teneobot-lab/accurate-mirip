@@ -8,36 +8,40 @@ import { DashboardView } from './components/DashboardView';
 import { SettingsView } from './components/SettingsView';
 import { RejectView } from './components/RejectView';
 import { StockCardModal } from './components/StockCardModal';
+import { ThemeToggle } from './components/ThemeToggle';
 import { ClockWidget } from './components/ClockWidget';
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { ToastProvider } from './components/Toast';
-import { LayoutDashboard, Package, FileBarChart, Warehouse as WhIcon, Settings, AlertOctagon, Plus, LogOut, User as UserIcon, X, Menu, List } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, Smartphone, Monitor } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
+  // Auth State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // View Mode State
+  const [isMobileMode, setIsMobileMode] = useState(false);
+  
+  // Transaction Modal State
   const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  // Stock Card Modal State
   const [viewingItem, setViewingItem] = useState<Item | null>(null);
-
-  const handleEditTransaction = (tx: Transaction) => {
-    setEditingTransaction(tx);
-    setShowTransactionModal(tx.type);
-  };
-
-  const handleNewTransaction = (type: TransactionType) => {
-    setEditingTransaction(null);
-    setShowTransactionModal(type);
-  };
 
   useEffect(() => {
     StorageService.init();
+    
+    // Force dark mode class for custom palette consistency
     document.documentElement.classList.add('dark');
+
+    // Restore Session
     const savedSession = StorageService.getSession();
     if (savedSession) {
         setCurrentUser(savedSession);
@@ -46,138 +50,199 @@ function App() {
     setIsLoadingSession(false);
   }, []);
 
+  // Auto-close sidebar when switching to mobile mode
+  useEffect(() => {
+    if (isMobileMode) setIsSidebarOpen(false);
+    else setIsSidebarOpen(true);
+  }, [isMobileMode]);
+
+  const handleLogin = (user: any) => {
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      StorageService.saveSession(user);
+  };
+
   const handleLogout = () => {
-      if(confirm('Keluar dari sistem?')) {
-          setIsLoggedIn(false);
-          setCurrentUser(null);
-          setActiveTab('DASHBOARD');
-          StorageService.clearSession();
-      }
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+      setActiveTab('DASHBOARD');
+      StorageService.clearSession();
   };
 
-  const NavItem = ({ id, label, icon: Icon }: any) => {
-    const isActive = activeTab === id;
-    return (
-      <button
-        onClick={() => setActiveTab(id)}
-        className={`flex flex-col lg:flex-row items-center justify-center lg:justify-start w-full lg:p-3 p-2 transition-all group ${
-          isActive 
-          ? 'text-white lg:bg-spectra lg:rounded-xl lg:shadow-lg lg:shadow-black/20' 
-          : 'text-slate-400 hover:text-slate-100 lg:hover:bg-spectra/30 lg:rounded-xl'
-        }`}
-      >
-        <Icon size={20} className={`${isActive ? 'text-emerald-400 lg:text-white' : 'group-hover:text-white'} lg:mr-3 mb-1 lg:mb-0 transition-colors`} />
-        <span className={`text-[10px] lg:text-sm font-bold whitespace-nowrap ${isActive ? 'opacity-100' : 'opacity-60 lg:opacity-100'}`}>{label}</span>
-        {isActive && <div className="absolute top-0 h-1 w-8 bg-emerald-500 rounded-b-full lg:hidden"></div>}
-      </button>
-    );
+  const handleEditTransaction = (tx: Transaction) => {
+      setEditingTransaction(tx);
+      setShowTransactionModal(tx.type);
   };
 
+  const NavItem = ({ id, label, icon: Icon }: any) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all ${
+        activeTab === id 
+        ? 'bg-spectra text-white shadow-lg shadow-black/20 border border-cutty/30' 
+        : 'text-slate-400 hover:bg-spectra/50 hover:text-slate-100'
+      }`}
+    >
+      <Icon size={18} className="mr-3 flex-shrink-0" />
+      <span className="whitespace-nowrap">{label}</span>
+      {activeTab === id && <ChevronRight size={16} className="ml-auto opacity-50" />}
+    </button>
+  );
+
+  // Don't render until we check session
   if (isLoadingSession) return <div className="min-h-screen bg-daintree"></div>;
-  if (!isLoggedIn) return <LoginPage onLogin={(user) => { setCurrentUser(user); setIsLoggedIn(true); StorageService.saveSession(user); }} />;
+
+  // --- RENDER LOGIN PAGE IF NOT LOGGED IN ---
+  if (!isLoggedIn) {
+      return <LoginPage onLogin={handleLogin} />;
+  }
 
   return (
     <ToastProvider>
-      <div className="flex flex-col lg:flex-row h-screen bg-daintree font-sans text-slate-200 overflow-hidden relative">
+      {/* Container Wrapper for View Mode Simulation */}
+      <div className={`min-h-screen transition-colors duration-500 ease-in-out ${isMobileMode ? 'bg-slate-950 flex items-center justify-center p-8' : 'bg-daintree'}`}>
         
-        {/* DESKTOP SIDEBAR / MOBILE BOTTOM NAV */}
-        <nav className={`
-          fixed lg:relative z-[70] bg-gable border-spectra/30 transition-all duration-300 flex
-          bottom-0 left-0 w-full h-16 border-t flex-row justify-around items-center px-2
-          lg:top-0 lg:h-full lg:w-64 lg:border-t-0 lg:border-r lg:flex-col lg:justify-start lg:px-4 lg:py-6
+        {/* Main Application Frame */}
+        <div className={`flex bg-daintree font-sans text-slate-200 transition-all duration-500 ease-in-out shadow-2xl overflow-hidden
+            ${isMobileMode 
+                ? 'w-[414px] h-[896px] rounded-[45px] border-[12px] border-slate-900 relative' 
+                : 'w-full h-screen'
+            }
         `}>
-          {/* Logo - Desktop Only */}
-          <div className="hidden lg:flex items-center mb-8 px-2">
-              <span className="text-white font-black text-2xl tracking-tighter">ware</span>
-              <span className="text-cutty font-black text-2xl tracking-tighter">SIX</span>
-          </div>
+            {/* Sidebar */}
+            <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} bg-gable flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30 transition-all duration-300 ease-in-out overflow-hidden border-r border-spectra/30`}>
+            <div className="h-20 flex flex-col justify-center px-6 border-b border-spectra/30 whitespace-nowrap bg-daintree">
+                <div className="flex items-center leading-none">
+                    <span className="text-white font-black text-2xl tracking-tighter">ware</span>
+                    <span className="text-cutty font-black text-2xl tracking-tighter">SIX</span>
+                </div>
+                <div className="text-[10px] font-bold text-slate-500 tracking-[0.3em] mt-1">MANAGEMENT</div>
+            </div>
 
-          <div className="flex flex-row lg:flex-col items-center justify-around lg:justify-start w-full gap-1 lg:gap-2">
-              <NavItem id="DASHBOARD" label="Home" icon={LayoutDashboard} />
-              <NavItem id="INVENTORY" label="Stock" icon={Package} />
-              <NavItem id="REPORTS" label="Reports" icon={FileBarChart} />
-              <NavItem id="REJECT" label="Reject" icon={AlertOctagon} />
-              
-              {/* Desktop Settings & Logout */}
-              <div className="hidden lg:flex flex-col w-full mt-auto pt-4 border-t border-spectra/30 gap-2">
-                  <NavItem id="SETTINGS" label="Settings" icon={Settings} />
-                  <button onClick={handleLogout} className="flex items-center w-full p-3 text-sm font-bold text-red-400 hover:bg-red-900/20 rounded-xl transition-colors">
-                      <LogOut size={18} className="mr-3" /> <span>Log Out</span>
-                  </button>
-              </div>
+            <div className="p-4 flex-1 overflow-y-auto whitespace-nowrap scrollbar-hide">
+                <div className="text-xs font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest">Main Menu</div>
+                <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
+                <NavItem id="INVENTORY" label="Stock Inventory" icon={Package} />
+                <NavItem id="REPORTS" label="Mutation Reports" icon={FileBarChart} />
+                <NavItem id="REJECT" label="Reject / Afkir" icon={AlertOctagon} />
+                
+                <div className="mt-8 text-xs font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest">Quick Actions</div>
+                <div className="space-y-2">
+                    <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors whitespace-nowrap">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3 flex-shrink-0"></div> Inbound
+                    </button>
+                    <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors whitespace-nowrap">
+                    <div className="w-2 h-2 rounded-full bg-red-500 mr-3 flex-shrink-0"></div> Outbound
+                    </button>
+                </div>
+                
+                <div className="mt-8 border-t border-spectra/30 pt-4">
+                    <NavItem id="SETTINGS" label="Settings" icon={Settings} />
+                    <button onClick={handleLogout} className="flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all text-red-400 hover:bg-red-900/20 hover:text-red-300 mt-2">
+                        <LogOut size={18} className="mr-3 flex-shrink-0" />
+                        <span className="whitespace-nowrap">Log Out</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div className="p-4 border-t border-spectra/30 bg-daintree text-xs text-slate-500 flex justify-between items-center whitespace-nowrap">
+                <span>v1.2.0 &copy; 2024</span>
+                <span className="font-bold text-cutty">Premium</span>
+            </div>
+            </aside>
 
-              {/* Mobile Settings - Shown as icon */}
-              <button 
-                onClick={() => setActiveTab('SETTINGS')}
-                className={`lg:hidden flex flex-col items-center justify-center p-2 ${activeTab === 'SETTINGS' ? 'text-white' : 'text-slate-400'}`}
-              >
-                <Settings size={20} className={activeTab === 'SETTINGS' ? 'text-emerald-400' : ''} />
-                <span className="text-[10px] font-bold mt-1">Settings</span>
-              </button>
-          </div>
-        </nav>
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col overflow-hidden relative">
+            <header className="h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-6 shadow-sm z-20 transition-colors text-slate-200">
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className="p-2 rounded-lg text-slate-400 hover:bg-spectra/50 transition-colors focus:outline-none"
+                        title="Toggle Sidebar"
+                    >
+                        <Menu size={20} />
+                    </button>
+                    <div className="flex-shrink-0 flex flex-col">
+                        <h2 className="text-lg font-bold text-white leading-tight">
+                            {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
+                            {activeTab === 'INVENTORY' && 'Inventory Master Data'}
+                            {activeTab === 'REPORTS' && 'Stock Mutation Reports'}
+                            {activeTab === 'SETTINGS' && 'System Configuration'}
+                            {activeTab === 'REJECT' && 'Reject / Afkir Management'}
+                        </h2>
+                        <div className="text-[10px] text-cutty font-bold uppercase tracking-wider">Warehouse Management System</div>
+                    </div>
+                </div>
+                
+                {/* Center Widgets */}
+                <div className={`flex-1 flex justify-center px-4 ${isMobileMode ? 'hidden' : 'block'}`}>
+                    <ClockWidget />
+                </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative mb-16 lg:mb-0">
-          <header className="h-14 lg:h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-4 lg:px-6 shadow-sm z-20 shrink-0">
-              <div className="flex items-center gap-3">
-                  <div className="lg:hidden flex items-center leading-none mr-2">
-                      <span className="text-white font-black text-lg tracking-tighter">w</span>
-                      <span className="text-cutty font-black text-lg tracking-tighter">6</span>
-                  </div>
-                  <div className="flex flex-col">
-                      <h2 className="text-sm lg:text-lg font-bold text-white leading-tight">
-                          {activeTab === 'DASHBOARD' && 'Dashboard Overview'}
-                          {activeTab === 'INVENTORY' && 'Master Inventory'}
-                          {activeTab === 'REPORTS' && 'Mutation Reports'}
-                          {activeTab === 'SETTINGS' && 'System Settings'}
-                          {activeTab === 'REJECT' && 'Reject Management'}
-                      </h2>
-                      <div className="text-[9px] text-cutty font-bold uppercase tracking-widest hidden sm:block">Waresix Warehouse System</div>
-                  </div>
-              </div>
-              
-              <div className="hidden md:flex flex-1 justify-center px-4">
-                  <ClockWidget />
-              </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* View Toggle Button */}
+                    <button
+                        onClick={() => setIsMobileMode(!isMobileMode)}
+                        className={`p-2.5 rounded-xl border transition-all ${isMobileMode ? 'bg-spectra text-white border-spectra' : 'border-transparent text-slate-400 hover:bg-spectra/20'}`}
+                        title={isMobileMode ? "Switch to Desktop View" : "Switch to Mobile View"}
+                    >
+                        {isMobileMode ? <Monitor size={18} /> : <Smartphone size={18} />}
+                    </button>
 
-              <div className="flex items-center gap-3">
-                  <div className="hidden sm:block">
-                      <MusicPlayer />
-                  </div>
-                  <div className="h-8 w-px bg-spectra mx-1 hidden lg:block"></div>
-                  <div className="flex items-center gap-2">
-                      <div className="text-right hidden xl:block">
-                          <div className="text-[10px] font-bold text-slate-200">{currentUser?.name}</div>
-                          <div className="text-[8px] text-cutty uppercase font-black">{currentUser?.role}</div>
-                      </div>
-                      <div className="w-8 h-8 rounded-lg bg-spectra border border-white/10 flex items-center justify-center text-white font-bold shadow-md text-[10px]">
-                          {currentUser?.name.substring(0,2).toUpperCase() || 'AD'}
-                      </div>
-                      <button onClick={handleLogout} className="lg:hidden p-2 text-red-400"><LogOut size={18}/></button>
-                  </div>
-              </div>
-          </header>
+                    <MusicPlayer />
+                    <div className="h-8 w-px bg-spectra mx-1 hidden sm:block"></div>
+                    <div className="hidden sm:block">
+                        <ThemeToggle />
+                    </div>
+                    
+                    <div className="flex items-center gap-3 pl-3 border-l border-spectra">
+                        <div className="text-right hidden md:block">
+                            <div className="text-xs font-bold text-slate-200">{currentUser?.name}</div>
+                            <div className="text-[10px] text-cutty uppercase font-bold">{currentUser?.role}</div>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-spectra to-daintree flex items-center justify-center text-white font-bold border border-cutty shadow-md">
+                            {currentUser?.name.substring(0,2).toUpperCase() || 'AD'}
+                        </div>
+                    </div>
+                </div>
+            </header>
 
-          <div className="flex-1 overflow-hidden relative bg-daintree">
-              {activeTab === 'DASHBOARD' && <DashboardView />}
-              {activeTab === 'INVENTORY' && <InventoryView />}
-              {activeTab === 'REPORTS' && <ReportsView onEditTransaction={handleEditTransaction} onNewTransaction={handleNewTransaction} />}
-              {activeTab === 'SETTINGS' && <SettingsView />}
-              {activeTab === 'REJECT' && <RejectView />}
-          </div>
+            <div className="flex-1 overflow-hidden relative bg-daintree transition-colors">
+                {activeTab === 'DASHBOARD' && <DashboardView />}
+                {activeTab === 'INVENTORY' && <InventoryView />}
+                {activeTab === 'REPORTS' && <ReportsView onEditTransaction={handleEditTransaction} />}
+                {activeTab === 'SETTINGS' && <SettingsView />}
+                {activeTab === 'REJECT' && <RejectView />}
+            </div>
 
-          {showTransactionModal && (
-              <TransactionForm 
-                  type={showTransactionModal} 
-                  initialData={editingTransaction}
-                  onClose={() => { setShowTransactionModal(null); setEditingTransaction(null); }} 
-                  onSuccess={() => { setShowTransactionModal(null); setEditingTransaction(null); setActiveTab('REPORTS'); }}
-              />
-          )}
+            {/* Transaction Modal Overlay */}
+            {showTransactionModal && (
+                <TransactionForm 
+                    type={showTransactionModal} 
+                    initialData={editingTransaction}
+                    onClose={() => {
+                        setShowTransactionModal(null);
+                        setEditingTransaction(null);
+                    }} 
+                    onSuccess={() => {
+                        setShowTransactionModal(null);
+                        setEditingTransaction(null);
+                        const current = activeTab;
+                        setActiveTab('DASHBOARD');
+                        setTimeout(() => setActiveTab(current), 50);
+                    }}
+                />
+            )}
 
-          {viewingItem && <StockCardModal item={viewingItem} onClose={() => setViewingItem(null)} />}
-        </main>
+            {/* Stock Card Modal */}
+            {viewingItem && (
+                <StockCardModal 
+                    item={viewingItem} 
+                    onClose={() => setViewingItem(null)} 
+                />
+            )}
+            </main>
+        </div>
       </div>
     </ToastProvider>
   );
