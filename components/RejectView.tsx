@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
-import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Upload, Download, Tag, Edit3, Equal, Info, Box, ClipboardCopy, FileSpreadsheet, Share2 } from 'lucide-react';
+import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Upload, Download, Tag, Edit3, Equal, Info, Box, ClipboardCopy, FileSpreadsheet, Share2, ChevronDown, Check } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -29,11 +29,24 @@ export const RejectView: React.FC = () => {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedOutlet, setSelectedOutlet] = useState('');
     const [rejectLines, setRejectLines] = useState<RejectItem[]>([]);
+    
+    // --- Autocomplete & Input Refs ---
+    const itemInputRef = useRef<HTMLInputElement>(null);
+    const qtyInputRef = useRef<HTMLInputElement>(null);
+    const reasonInputRef = useRef<HTMLInputElement>(null);
+
     const [query, setQuery] = useState('');
+    const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+    const [selectedIndex, setSelectedIndex] = useState(0);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     const [pendingItem, setPendingItem] = useState<Item | null>(null);
     const [pendingUnit, setPendingUnit] = useState('');
-    const [pendingQty, setPendingQty] = useState<number | ''>('');
+    const [pendingQty, setPendingQty] = useState<string>(''); // Change to string to handle empty state better
     const [pendingReason, setPendingReason] = useState('');
+    
+    // Session Memory for Unit Habit
+    const [unitPrefs, setUnitPrefs] = useState<Record<string, string>>({});
 
     // --- History & Export State ---
     const [batches, setBatches] = useState<RejectBatch[]>([]);
@@ -61,6 +74,57 @@ export const RejectView: React.FC = () => {
     };
 
     useEffect(() => { loadData(); }, []);
+
+    // --- Fuzzy Search Logic ---
+    useEffect(() => {
+        if (!query || pendingItem) {
+            setFilteredItems([]);
+            setIsDropdownOpen(false);
+            return;
+        }
+        const lower = query.toLowerCase();
+        const results = rejectMasterItems.filter(it => 
+            it.code.toLowerCase().includes(lower) || 
+            it.name.toLowerCase().includes(lower)
+        ).slice(0, 8);
+        
+        setFilteredItems(results);
+        setIsDropdownOpen(results.length > 0);
+        setSelectedIndex(0);
+    }, [query, rejectMasterItems, pendingItem]);
+
+    const selectItem = (item: Item) => {
+        setPendingItem(item);
+        setQuery(item.name);
+        
+        // Auto-fill Unit based on Habit or Base Unit
+        const preferredUnit = unitPrefs[item.id] || item.baseUnit;
+        setPendingUnit(preferredUnit);
+        
+        setIsDropdownOpen(false);
+        // Auto focus to Qty
+        setTimeout(() => qtyInputRef.current?.focus(), 10);
+    };
+
+    const handleItemKeyDown = (e: React.KeyboardEvent) => {
+        if (isDropdownOpen && filteredItems.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedIndex(prev => (prev + 1) % filteredItems.length);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                selectItem(filteredItems[selectedIndex]);
+            } else if (e.key === 'Escape') {
+                setIsDropdownOpen(false);
+            }
+        } else if (e.key === 'Enter' && pendingItem) {
+             e.preventDefault();
+             qtyInputRef.current?.focus();
+        }
+    };
 
     // --- Actions ---
     const handleCopyToClipboard = (batch: RejectBatch) => {
@@ -115,9 +179,14 @@ export const RejectView: React.FC = () => {
     };
 
     const handleAddLine = () => {
-        if (!pendingItem || !pendingQty) return showToast("Pilih item & isi Qty", "warning");
+        if (!pendingItem) return showToast("Pilih item terlebih dahulu", "warning");
+        if (!pendingQty || Number(pendingQty) <= 0) return showToast("Isi Qty Valid", "warning");
         
         const unit = pendingUnit || pendingItem.baseUnit;
+        
+        // Save Unit Habit
+        setUnitPrefs(prev => ({...prev, [pendingItem.id]: unit}));
+
         let ratio = 1;
         if (unit !== pendingItem.baseUnit) {
             const conv = pendingItem.conversions?.find(c => c.name === unit);
@@ -131,10 +200,18 @@ export const RejectView: React.FC = () => {
             qty: Number(pendingQty),
             unit: unit,
             baseQty: Number(pendingQty) * ratio,
-            reason: pendingReason || 'Afkir Reguler'
+            reason: pendingReason || '-'
         };
         setRejectLines([...rejectLines, newLine]);
-        setQuery(''); setPendingItem(null); setPendingQty(''); setPendingReason(''); setPendingUnit('');
+        
+        // Reset and Focus back to Item Input for Rapid Entry
+        setQuery(''); 
+        setPendingItem(null); 
+        setPendingQty(''); 
+        setPendingReason(''); 
+        setPendingUnit('');
+        
+        setTimeout(() => itemInputRef.current?.focus(), 10);
     };
 
     const handleSaveBatch = async () => {
@@ -306,19 +383,58 @@ export const RejectView: React.FC = () => {
                                             <td className="px-4 py-2 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16}/></button></td>
                                         </tr>
                                     ))}
-                                    {/* Input Row */}
+                                    {/* Input Row with Fuzzy Search & Navigation */}
                                     <tr className="bg-daintree/30 border-t border-spectra/50">
-                                        <td className="p-2">
-                                            <input list="reject-master-list" placeholder="Cari Master Reject..." value={query} onChange={e => {
-                                                setQuery(e.target.value);
-                                                const it = rejectMasterItems.find(i => i.name === e.target.value || i.code === e.target.value);
-                                                if(it) { setPendingItem(it); setPendingUnit(it.baseUnit); }
-                                            }} className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" />
-                                            <datalist id="reject-master-list">{rejectMasterItems.map(it => <option key={it.id} value={it.name}>{it.code}</option>)}</datalist>
+                                        <td className="p-2 relative">
+                                            <input 
+                                                ref={itemInputRef}
+                                                type="text"
+                                                placeholder="Cari Master Reject..." 
+                                                value={query} 
+                                                onChange={e => {
+                                                    setQuery(e.target.value);
+                                                    if(pendingItem) setPendingItem(null);
+                                                }} 
+                                                onKeyDown={handleItemKeyDown}
+                                                onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                                                onFocus={() => { if(query && !pendingItem) setIsDropdownOpen(true); }}
+                                                className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty uppercase font-bold" 
+                                            />
+                                            {isDropdownOpen && (
+                                                <div className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
+                                                    {filteredItems.map((it, idx) => (
+                                                        <div 
+                                                            key={it.id}
+                                                            className={`px-3 py-2 cursor-pointer border-b border-spectra/30 text-xs flex justify-between items-center ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'}`}
+                                                            onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
+                                                        >
+                                                            <div>
+                                                                <div className="font-bold">{it.code}</div>
+                                                                <div className="text-[10px] text-slate-400">{it.name}</div>
+                                                            </div>
+                                                            <span className="text-[9px] font-bold bg-daintree px-2 py-0.5 rounded border border-spectra">{it.baseUnit}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </td>
-                                        <td className="p-2"><input type="number" placeholder="Qty" value={pendingQty} onChange={e => setPendingQty(Number(e.target.value))} className="w-full p-2 bg-gable border border-spectra rounded-lg text-right text-sm text-white font-black outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" /></td>
+                                        <td className="p-2">
+                                            <input 
+                                                ref={qtyInputRef}
+                                                type="number" 
+                                                placeholder="Qty" 
+                                                value={pendingQty} 
+                                                onChange={e => setPendingQty(e.target.value)} 
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); reasonInputRef.current?.focus(); } }}
+                                                className="w-full p-2 bg-gable border border-spectra rounded-lg text-right text-sm text-white font-black outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
+                                            />
+                                        </td>
                                         <td className="p-2 text-center">
-                                            <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full p-2 bg-gable border border-spectra rounded-lg text-[10px] font-black text-white outline-none">
+                                            <select 
+                                                value={pendingUnit} 
+                                                onChange={e => setPendingUnit(e.target.value)} 
+                                                className="w-full p-2 bg-gable border border-spectra rounded-lg text-[10px] font-black text-white outline-none"
+                                            >
                                                 {pendingItem ? (
                                                     <>
                                                         <option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>
@@ -327,8 +443,20 @@ export const RejectView: React.FC = () => {
                                                 ) : <option value="">-</option>}
                                             </select>
                                         </td>
-                                        <td className="p-2"><input type="text" placeholder="Catatan alasan..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none placeholder:text-cutty" /></td>
-                                        <td className="p-2 text-center"><button onClick={handleAddLine} className="p-2 bg-spectra text-white rounded-lg shadow-lg hover:bg-white hover:text-spectra transition-all border border-transparent"><Plus size={16}/></button></td>
+                                        <td className="p-2">
+                                            <input 
+                                                ref={reasonInputRef}
+                                                type="text" 
+                                                placeholder="Catatan..." 
+                                                value={pendingReason} 
+                                                onChange={e => setPendingReason(e.target.value)} 
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
+                                                className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none placeholder:text-cutty" 
+                                            />
+                                        </td>
+                                        <td className="p-2 text-center">
+                                            <button onClick={handleAddLine} disabled={!pendingItem} className="p-2 bg-spectra text-white rounded-lg shadow-lg hover:bg-white hover:text-spectra transition-all border border-transparent disabled:opacity-50"><Plus size={16}/></button>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -350,21 +478,27 @@ export const RejectView: React.FC = () => {
                 </div>
             ) : activeTab === 'HISTORY' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-                    <div className="bg-gable p-4 rounded-xl shadow-sm border border-spectra flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
+                    <div className="bg-gable p-4 rounded-xl shadow-sm border border-spectra flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex flex-col md:flex-row items-end gap-4">
                             <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-black text-cutty uppercase">Export Range Start</label>
-                                <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="p-2 bg-daintree border border-spectra rounded-lg text-xs font-bold outline-none text-white" />
+                                <label className="text-[10px] font-black text-cutty uppercase tracking-widest">Dari Tanggal</label>
+                                <div className="flex items-center gap-2 bg-daintree px-3 py-2 rounded-xl border border-spectra">
+                                    <Calendar size={14} className="text-spectra"/>
+                                    <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-transparent border-none outline-none text-xs font-bold text-white uppercase" />
+                                </div>
                             </div>
                             <div className="flex flex-col gap-1">
-                                <label className="text-[10px] font-black text-cutty uppercase">Export Range End</label>
-                                <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="p-2 bg-daintree border border-spectra rounded-lg text-xs font-bold outline-none text-white" />
+                                <label className="text-[10px] font-black text-cutty uppercase tracking-widest">Sampai Tanggal</label>
+                                <div className="flex items-center gap-2 bg-daintree px-3 py-2 rounded-xl border border-spectra">
+                                    <Calendar size={14} className="text-spectra"/>
+                                    <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="bg-transparent border-none outline-none text-xs font-bold text-white uppercase" />
+                                </div>
                             </div>
-                            <button onClick={handleExportFlattened} className="mt-4 px-4 py-2 bg-emerald-900/20 text-emerald-400 border border-emerald-900 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-emerald-900/40">
-                                <FileSpreadsheet size={16}/> Export Flattened Matrix
+                            <button onClick={handleExportFlattened} className="px-5 py-2.5 bg-emerald-900/20 text-emerald-400 border border-emerald-900/50 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-emerald-900/40 h-[38px]">
+                                <FileSpreadsheet size={16}/> Export Matrix Report
                             </button>
                         </div>
-                        <button onClick={loadData} className="p-3 text-cutty hover:bg-spectra/20 hover:text-white rounded-full transition-colors"><History size={20}/></button>
+                        <button onClick={loadData} className="p-3 text-cutty hover:bg-spectra/20 hover:text-white rounded-full transition-colors border border-transparent hover:border-spectra"><History size={20}/></button>
                     </div>
 
                     <div className="flex-1 bg-gable rounded-xl border border-spectra overflow-auto shadow-sm">
@@ -603,6 +737,7 @@ export const RejectView: React.FC = () => {
                 .rej-input { @apply w-full bg-daintree border border-spectra rounded-xl px-4 py-3 text-xs outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-inner text-white placeholder:text-cutty; }
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
+                input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
             `}</style>
         </div>
     );
