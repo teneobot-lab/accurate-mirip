@@ -116,33 +116,39 @@ function setupSheet() {
     };
 
     return (
-        <div className="flex h-full bg-daintree transition-colors font-sans">
-            {/* Sidebar Tab */}
-            <div className="w-60 bg-gable border-r border-spectra flex flex-col p-3 gap-1 shadow-lg z-10">
-                <div className="p-3 text-[10px] font-black text-cutty uppercase tracking-widest border-b border-spectra mb-3">Konfigurasi Sistem</div>
-                <TabBtn active={activeTab === 'WAREHOUSE'} onClick={() => setActiveTab('WAREHOUSE')} icon={<Building2 size={16}/>} label="Warehouses" />
-                <TabBtn active={activeTab === 'SUPPLIER'} onClick={() => setActiveTab('SUPPLIER')} icon={<Users size={16}/>} label="Suppliers" />
-                <TabBtn active={activeTab === 'CUSTOMER'} onClick={() => setActiveTab('CUSTOMER')} icon={<Users size={16}/>} label="Customers" />
-                <TabBtn active={activeTab === 'USERS'} onClick={() => setActiveTab('USERS')} icon={<UserCircle size={16}/>} label="User Access" />
-                <div className="mt-6 p-3 text-[10px] font-black text-cutty uppercase tracking-widest border-b border-spectra mb-2">Eksternal</div>
-                <TabBtn active={activeTab === 'EXTERNAL_SYNC'} onClick={() => setActiveTab('EXTERNAL_SYNC')} icon={<Share2 size={16}/>} label="Google Sync" />
+        <div className="flex flex-col lg:flex-row h-full bg-daintree transition-colors font-sans">
+            {/* Sidebar Tab (Top on mobile, Left on desktop) */}
+            <div className="w-full lg:w-60 bg-gable border-b lg:border-b-0 lg:border-r border-spectra flex lg:flex-col shadow-lg z-10 shrink-0 overflow-x-auto lg:overflow-visible">
+                <div className="p-3 text-[10px] font-black text-cutty uppercase tracking-widest border-b border-spectra/50 lg:border-spectra hidden lg:block mb-3">Konfigurasi</div>
+                
+                <div className="flex lg:flex-col gap-1 p-2 lg:p-3 min-w-max">
+                    <TabBtn active={activeTab === 'WAREHOUSE'} onClick={() => setActiveTab('WAREHOUSE')} icon={<Building2 size={16}/>} label="Warehouses" />
+                    <TabBtn active={activeTab === 'SUPPLIER'} onClick={() => setActiveTab('SUPPLIER')} icon={<Users size={16}/>} label="Suppliers" />
+                    <TabBtn active={activeTab === 'CUSTOMER'} onClick={() => setActiveTab('CUSTOMER')} icon={<Users size={16}/>} label="Customers" />
+                    <TabBtn active={activeTab === 'USERS'} onClick={() => setActiveTab('USERS')} icon={<UserCircle size={16}/>} label="User Access" />
+                    
+                    <div className="lg:mt-6 lg:p-3 text-[10px] font-black text-cutty uppercase tracking-widest lg:border-b lg:border-spectra lg:mb-2 hidden lg:block">Eksternal</div>
+                    <div className="w-px h-6 bg-spectra mx-2 lg:hidden self-center"></div>
+                    
+                    <TabBtn active={activeTab === 'EXTERNAL_SYNC'} onClick={() => setActiveTab('EXTERNAL_SYNC')} icon={<Share2 size={16}/>} label="Google Sync" />
+                </div>
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden bg-daintree">
                 {activeTab !== 'EXTERNAL_SYNC' ? (
-                    <div className="p-6 h-full flex flex-col">
-                        <div className="bg-gable p-4 rounded-xl border border-spectra flex justify-between items-center shadow-sm mb-6">
-                            <div className="relative">
+                    <div className="p-4 lg:p-6 h-full flex flex-col">
+                        <div className="bg-gable p-4 rounded-xl border border-spectra flex flex-col sm:flex-row justify-between items-center shadow-sm mb-4 lg:mb-6 gap-3">
+                            <div className="relative w-full sm:w-auto">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty" size={16} />
                                 <input 
                                     type="text" 
                                     placeholder="Cari data..." 
                                     value={searchTerm} 
                                     onChange={e => setSearchTerm(e.target.value)} 
-                                    className="pl-10 pr-4 py-2.5 bg-daintree border border-spectra rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-spectra w-72 transition-all placeholder:text-slate-500 text-white" 
+                                    className="pl-10 pr-4 py-2.5 bg-daintree border border-spectra rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-spectra w-full sm:w-72 transition-all placeholder:text-slate-500 text-white" 
                                 />
                             </div>
-                            <button onClick={() => { setEditData({}); setShowModal(true); }} className="px-6 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-black/20 transition-all active:scale-95 border border-spectra">
+                            <button onClick={() => { setEditData({}); setShowModal(true); }} className="w-full sm:w-auto px-6 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-black/20 transition-all active:scale-95 border border-spectra">
                                 <Plus size={18}/> Tambah Baru
                             </button>
                         </div>
@@ -151,51 +157,53 @@ function setupSheet() {
                                 <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold tracking-[0.2em] animate-pulse"><Loader2 className="animate-spin mr-2"/> Sinkronisasi MySQL...</div>
                             ) : (
                                 <div className="bg-gable border border-spectra rounded-xl overflow-hidden shadow-sm">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="bg-daintree text-[10px] font-black uppercase text-cutty border-b border-spectra tracking-wider sticky top-0 z-10">
-                                            <tr>
-                                                <th className="px-4 py-2.5 w-12 text-center">#</th>
-                                                <th className="px-4 py-2.5">Informasi Master</th>
-                                                <th className="px-4 py-2.5">Kontak / Kredensial</th>
-                                                <th className="px-4 py-2.5 w-24 text-center">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-spectra/30 bg-gable">
-                                            {filteredData().map((item: any, idx) => (
-                                                <DenseRow key={item.id}>
-                                                    <DenseCell className="text-center font-mono opacity-40">{idx + 1}</DenseCell>
-                                                    <DenseCell>
-                                                        <div className="font-bold text-white text-sm mb-0.5">{item.name}</div>
-                                                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight flex items-center gap-1.5">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-cutty"></div>
-                                                            {item.location || item.role || item.address || 'No Location Set'}
-                                                        </div>
-                                                    </DenseCell>
-                                                    <DenseCell>
-                                                        <div className="flex flex-col gap-1">
-                                                            {item.phone && <span className="flex items-center gap-2 font-medium text-slate-400"><Phone size={12} className="text-spectra"/> {item.phone}</span>}
-                                                            {item.username && <span className="text-cutty font-mono text-[10px] bg-daintree px-2 py-0.5 rounded w-fit border border-spectra">@{item.username}</span>}
-                                                        </div>
-                                                    </DenseCell>
-                                                    <DenseCell className="text-center">
-                                                        <div className="flex justify-center gap-2">
-                                                            <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-colors"><Edit3 size={16}/></button>
-                                                            <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 size={16}/></button>
-                                                        </div>
-                                                    </DenseCell>
-                                                </DenseRow>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse min-w-[600px]">
+                                            <thead className="bg-daintree text-[10px] font-black uppercase text-cutty border-b border-spectra tracking-wider sticky top-0 z-10">
+                                                <tr>
+                                                    <th className="px-4 py-2.5 w-12 text-center">#</th>
+                                                    <th className="px-4 py-2.5">Informasi Master</th>
+                                                    <th className="px-4 py-2.5">Kontak / Kredensial</th>
+                                                    <th className="px-4 py-2.5 w-24 text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-spectra/30 bg-gable">
+                                                {filteredData().map((item: any, idx) => (
+                                                    <DenseRow key={item.id}>
+                                                        <DenseCell className="text-center font-mono opacity-40">{idx + 1}</DenseCell>
+                                                        <DenseCell>
+                                                            <div className="font-bold text-white text-sm mb-0.5">{item.name}</div>
+                                                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-tight flex items-center gap-1.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-cutty"></div>
+                                                                {item.location || item.role || item.address || 'No Location Set'}
+                                                            </div>
+                                                        </DenseCell>
+                                                        <DenseCell>
+                                                            <div className="flex flex-col gap-1">
+                                                                {item.phone && <span className="flex items-center gap-2 font-medium text-slate-400"><Phone size={12} className="text-spectra"/> {item.phone}</span>}
+                                                                {item.username && <span className="text-cutty font-mono text-[10px] bg-daintree px-2 py-0.5 rounded w-fit border border-spectra">@{item.username}</span>}
+                                                            </div>
+                                                        </DenseCell>
+                                                        <DenseCell className="text-center">
+                                                            <div className="flex justify-center gap-2">
+                                                                <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-colors"><Edit3 size={16}/></button>
+                                                                <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                                                            </div>
+                                                        </DenseCell>
+                                                    </DenseRow>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </div>
                 ) : (
                     /* EXTERNAL SYNC VIEW */
-                    <div className="flex-1 overflow-auto p-8 bg-daintree">
+                    <div className="flex-1 overflow-auto p-4 lg:p-8 bg-daintree">
                          <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div className="bg-gable p-8 rounded-[24px] shadow-sm border border-spectra space-y-6">
+                            <div className="bg-gable p-6 lg:p-8 rounded-[24px] shadow-sm border border-spectra space-y-6">
                                 <div className="flex items-center gap-5 mb-4">
                                     <div className="p-4 bg-emerald-900/30 rounded-2xl text-emerald-400 shadow-inner border border-emerald-900"><FileSpreadsheet size={32}/></div>
                                     <div><h3 className="text-xl font-black text-white">Google Sync</h3><p className="text-xs text-cutty font-bold uppercase tracking-wider">Tabular Row Export</p></div>
@@ -210,7 +218,7 @@ function setupSheet() {
                                     </button>
                                 </div>
                             </div>
-                            <div className="bg-daintree rounded-[24px] border border-spectra flex flex-col h-[500px] shadow-2xl overflow-hidden">
+                            <div className="bg-daintree rounded-[24px] border border-spectra flex flex-col h-[400px] lg:h-[500px] shadow-2xl overflow-hidden">
                                 <div className="p-4 bg-gable flex justify-between items-center border-b border-spectra">
                                     <span className="text-[10px] font-black text-cutty uppercase tracking-widest">Google Apps Script Snippet</span>
                                     <button onClick={() => { navigator.clipboard.writeText(GS_CODE_BOILERPLATE); setCopied(true); setTimeout(()=>setCopied(false),2000); }} className="px-4 py-1.5 bg-spectra/20 hover:bg-spectra/50 rounded-lg text-[10px] font-black text-white flex items-center gap-2 border border-spectra transition-colors">
@@ -262,7 +270,7 @@ function setupSheet() {
 };
 
 const TabBtn = ({ active, onClick, icon, label }: any) => (
-    <button onClick={onClick} className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${active ? 'bg-spectra text-white shadow-lg shadow-black/20 translate-x-1 border border-spectra/50' : 'text-slate-400 hover:bg-daintree hover:text-white border border-transparent'}`}>
-        {icon} {label}
+    <button onClick={onClick} className={`text-left px-4 py-2 lg:py-3 rounded-xl text-xs font-bold flex items-center gap-2 lg:gap-3 transition-all whitespace-nowrap ${active ? 'bg-spectra text-white shadow-lg shadow-black/20 lg:translate-x-1 border border-spectra/50' : 'text-slate-400 hover:bg-daintree hover:text-white border border-transparent'}`}>
+        {icon} <span className="hidden lg:inline">{label}</span>
     </button>
 );

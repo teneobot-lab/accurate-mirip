@@ -179,9 +179,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
         {/* Entry Row & Table */}
         <div className="flex-1 flex flex-col overflow-hidden p-4 gap-4">
-            {/* Quick Add Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 bg-daintree/50 p-3 rounded-xl border border-spectra">
-                <div className="sm:col-span-5 relative">
+            {/* Quick Add Row - Optimized for Mobile (2 Rows Grid) */}
+            <div className="grid grid-cols-12 gap-2 bg-daintree/50 p-3 rounded-xl border border-spectra">
+                {/* Item Search: Full width on mobile, 5 cols on desktop */}
+                <div className="col-span-12 sm:col-span-5 relative">
                     <input ref={itemInputRef} type="text" className="row-input" placeholder="Cari SKU/Nama..." value={query} onChange={e => { setQuery(e.target.value); if(pendingItem) setPendingItem(null); }} onFocus={() => query && setIsDropdownOpen(true)} />
                     {isDropdownOpen && (
                         <div className="absolute top-full left-0 right-0 mt-1 bg-gable border border-spectra rounded-xl shadow-2xl z-[110] max-h-48 overflow-y-auto">
@@ -194,10 +195,14 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         </div>
                     )}
                 </div>
-                <div className="sm:col-span-3">
-                    <input ref={qtyInputRef} type="number" className="row-input text-right" placeholder="0" value={pendingQty} onChange={e => setPendingQty(e.target.value)} />
+                
+                {/* Qty: 4 cols on mobile, 3 on desktop */}
+                <div className="col-span-4 sm:col-span-3">
+                    <input ref={qtyInputRef} type="number" className="row-input text-right" placeholder="Qty" value={pendingQty} onChange={e => setPendingQty(e.target.value)} />
                 </div>
-                <div className="sm:col-span-3">
+                
+                {/* Unit: 5 cols on mobile, 3 on desktop */}
+                <div className="col-span-5 sm:col-span-3">
                     <select className="row-input" value={pendingUnit} onChange={e => setPendingUnit(e.target.value)}>
                         {pendingItem ? (
                             <>
@@ -207,8 +212,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         ) : <option value="">- Unit -</option>}
                     </select>
                 </div>
-                <div className="sm:col-span-1">
-                    <button onClick={handleAddLine} className="w-full h-10 flex items-center justify-center bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra transition-all"><CornerDownLeft size={18}/></button>
+                
+                {/* Button: 3 cols on mobile, 1 on desktop */}
+                <div className="col-span-3 sm:col-span-1">
+                    <button onClick={handleAddLine} className="w-full h-10 flex items-center justify-center bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra transition-all shadow-md"><CornerDownLeft size={18}/></button>
                 </div>
             </div>
 
