@@ -11,42 +11,56 @@ const initDb = require('./config/initDb');
 
 const app = express();
 
-// --- 1. DEBUG LOGGER (TOP PRIORITY) ---
+// --- 1. DEBUG LOGGER ---
 app.use((req, res, next) => {
     console.log(`[REQ] ${new Date().toISOString()} | ${req.method} ${req.url} | IP: ${req.ip}`);
     next();
 });
 
-// Security & Utility Middlewares
-// UPDATE: Konfigurasi CSP Khusus untuk mengizinkan YouTube Iframe & Tailwind CDN
+// 2. CORS (Diletakkan di atas helmet agar pre-flight OPTIONS tidak terblokir)
+app.use(cors());
+
+// 3. HELMET CONFIGURATION (Tuned for SPA & ESM)
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.tailwindcss.com"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "blob:"],
-            frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"], // IZINKAN YOUTUBE
+            // IZINKAN ESM.SH karena index.html menggunakan importmap dari sana
+            scriptSrc: [
+                "'self'", 
+                "'unsafe-inline'", 
+                "'unsafe-eval'", 
+                "https://cdn.tailwindcss.com", 
+                "https://esm.sh"
+            ],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
+            imgSrc: ["'self'", "data:", "blob:", "https://*"],
+            // IZINKAN YOUTUBE untuk Music Player
+            frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"],
+            // IZINKAN KONEKSI API (Connect-src * membolehkan panggil API dari domain manapun saat dev)
             connectSrc: ["'self'", "*"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [], // Matikan auto-upgrade ke HTTPS jika server masih HTTP (Common issue on VPS)
         },
     },
+    // Matikan proteksi yang sering mengganggu loading resource cross-origin
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: false,
 }));
 
-app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(morgan('dev'));
 
-// 2. Health Check
+// 4. Health Check
 app.get('/ping', (req, res) => {
     res.json({ status: 'OK', service: 'waresix-acc', timestamp: new Date() });
 });
 
-// 3. Rute API
+// 5. Rute API
 app.use('/api', routes);
 
-// 4. 404 Handler
+// 6. 404 Handler
 app.use((req, res, next) => {
     res.status(404).json({
         status: 'error',
@@ -54,7 +68,7 @@ app.use((req, res, next) => {
     });
 });
 
-// 5. Global Error Handler
+// 7. Global Error Handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
