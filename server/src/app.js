@@ -11,51 +11,49 @@ const initDb = require('./config/initDb');
 
 const app = express();
 
-// --- 1. PROXY TRUST (CRITICAL FOR CLOUDFLARE) ---
-// Agar Express membaca IP asli dari header X-Forwarded-For
-app.set('trust proxy', 1);
+// --- 1. PROXY TRUST ---
+// Penting untuk Cloudflare agar IP user terbaca benar
+app.set('trust proxy', true);
 
-// --- 2. CORS CONFIGURATION (MUST BE FIRST) ---
-// Mengizinkan Frontend mengakses method PUT/DELETE/PATCH tanpa blokir
+// --- 2. CORS CONFIGURATION (PRIORITY HIGH) ---
+// Wajib paling atas. Izinkan semua origin (*) dan method lengkap.
+// Credentials false agar kompatibel dengan wildcard origin.
 app.use(cors({
-    origin: true, // Allow all origins (reflects request origin)
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    credentials: true,
-    preflightContinue: false,
-    optionsSuccessStatus: 204
+    credentials: false
 }));
 
-// Handle Global OPTIONS (Preflight) untuk mencegah 502/404 pada method non-GET
+// Handle Preflight Request secara global untuk semua route
 app.options('*', cors());
 
-// --- 3. HELMET (PERMISSIVE MODE) ---
-// Mematikan policy yang sering memblokir SPA/Cloudflare
+// --- 3. HELMET (PERMISSIVE) ---
+// Matikan policy ketat yang bisa memblokir aset/request via tunnel
 app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: false,
     referrerPolicy: false,
     dnsPrefetchControl: false
 }));
 
-// --- 4. REQUEST PARSERS ---
+// --- 4. BODY PARSER ---
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // --- 5. LOGGING ---
 app.use(morgan('dev'));
 app.use((req, res, next) => {
-    // Log manual untuk debugging traffic via Proxy
-    console.log(`[PROXY] ${new Date().toISOString()} | ${req.method} ${req.originalUrl} | IP: ${req.ip}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} | IP: ${req.ip}`);
     next();
 });
 
-// --- 6. TIMEOUT PROTECTION ---
-// Mencegah request hang selamanya
+// --- 6. TIMEOUT HANDLING ---
+// Mencegah request hang (30 detik timeout internal)
 app.use((req, res, next) => {
-    res.setTimeout(30000, () => { // 30 detik timeout
-        console.error(`[TIMEOUT] Request took too long: ${req.method} ${req.originalUrl}`);
+    res.setTimeout(30000, () => {
+        console.error(`[TIMEOUT] Request cancelled: ${req.method} ${req.originalUrl}`);
         if (!res.headersSent) {
             res.status(503).send('Service Unavailable: Request Timeout');
         }
@@ -63,46 +61,34 @@ app.use((req, res, next) => {
     next();
 });
 
-// --- 7. HEALTH CHECK ---
-app.get('/ping', (req, res) => {
-    res.json({ status: 'OK', service: 'waresix-backend', timestamp: new Date() });
-});
-
-// --- 8. ROUTES ---
+// --- 7. ROUTES ---
+app.get('/ping', (req, res) => res.json({ status: 'OK', timestamp: new Date() }));
 app.use('/api', routes);
 
-// --- 9. ERROR HANDLING ---
+// --- 8. ERROR HANDLER ---
 app.use((req, res, next) => {
-    res.status(404).json({
-        status: 'error',
-        message: `Route ${req.originalUrl} not found on this server.`
-    });
+    res.status(404).json({ status: 'error', message: `Route ${req.originalUrl} not found.` });
 });
-
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
-// Initialize Database then Start Server
 const startServer = async () => {
     try {
         console.log("🚀 Starting Waresix Server...");
         await initDb();
         
         const server = app.listen(PORT, () => {
-            console.log(`✅ Server running successfully on port ${PORT}`);
-            console.log(`👉 Health Check: http://localhost:${PORT}/ping`);
+            console.log(`✅ Server running on port ${PORT}`);
         });
 
-        // --- CRITICAL FIX FOR 502 BAD GATEWAY ON CLOUDFLARE ---
-        // Ensure Node timeout > Cloudflare/LB timeout (usually 60s)
-        // Jika Node menutup koneksi lebih cepat dari Cloudflare, user mendapat 502.
-        server.keepAliveTimeout = 65000; // 65 seconds
-        server.headersTimeout = 66000;   // 66 seconds
+        // --- CLOUDFLARE 502 FIX ---
+        // Node Keep-Alive harus > Cloudflare/Nginx Timeout (60s)
+        server.keepAliveTimeout = 65000; // 65 detik
+        server.headersTimeout = 66000;   // 66 detik
 
     } catch (error) {
-        console.error("🔥 CRITICAL FAILURE: Could not start server due to DB Error.");
-        console.error(error);
+        console.error("🔥 Server start failed:", error);
         process.exit(1);
     }
 };
