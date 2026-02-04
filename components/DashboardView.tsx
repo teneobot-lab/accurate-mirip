@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, Transaction } from '../types';
-import { Calendar, Filter, TrendingUp, Package, Activity, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Filter, TrendingUp, Package, Activity, Loader2, AlertCircle, RefreshCw, BarChart3 } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
@@ -53,23 +53,48 @@ export const DashboardView: React.FC = () => {
         
         let totalIn = 0;
         let totalOut = 0;
+        const outItemMap = new Map<string, number>();
 
         filteredTx.forEach(tx => {
             if (!tx.items) return;
-            let qty = 0;
+            
             tx.items.forEach(line => { 
-                qty += Number((line.qty || 0) * (line.ratio || 1)); 
+                const qty = Number((line.qty || 0) * (line.ratio || 1));
+                
+                if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') {
+                    totalIn += qty;
+                }
+                
+                if (tx.type === 'OUT') {
+                    totalOut += qty;
+                    // Aggregate for Top 5 Chart
+                    const currentVal = outItemMap.get(line.itemId) || 0;
+                    outItemMap.set(line.itemId, currentVal + qty);
+                }
             });
-            if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') totalIn += qty;
-            if (tx.type === 'OUT') totalOut += qty;
         });
+
+        // Calculate Top 5 Outbound Items
+        const topOutboundItems = Array.from(outItemMap.entries())
+            .sort((a, b) => b[1] - a[1]) // Sort Descending
+            .slice(0, 5) // Take Top 5
+            .map(([id, val]) => {
+                const itemMaster = safeItems.find(i => i.id === id);
+                return {
+                    name: itemMaster?.name || 'Unknown Item',
+                    code: itemMaster?.code || '???',
+                    unit: itemMaster?.baseUnit || 'Unit',
+                    value: val
+                };
+            });
 
         return { 
             totalStockCount, 
             activeItems: safeItems.length,
             totalIn,
             totalOut,
-            txCount: filteredTx.length
+            txCount: filteredTx.length,
+            topOutboundItems
         };
     }, [items, stocks, transactions, startDate, endDate]);
 
@@ -116,11 +141,72 @@ export const DashboardView: React.FC = () => {
                 <StatCard title="Total Item Unik" value={stats.activeItems} icon={<Package/>} color="bg-daintree border-spectra text-cutty" iconColor="text-cutty" />
             </div>
 
+            {/* --- CUSTOM CHART INFOGRAPHIC (TOP 5 OUTBOUND) --- */}
+            <div className="mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8 items-center bg-gable/30 p-6 rounded-[32px] border border-spectra/30 relative overflow-hidden">
+                    {/* Background decoration */}
+                    <div className="absolute -left-20 -top-20 w-64 h-64 bg-spectra/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    {/* Left Circle (Title) */}
+                    <div className="lg:col-span-4 flex justify-center lg:justify-end pr-0 lg:pr-8 mb-8 lg:mb-0 relative z-10">
+                        <div className="w-56 h-56 rounded-full bg-daintree border-[6px] border-l-spectra border-t-gable border-r-daintree border-b-cutty shadow-2xl flex flex-col items-center justify-center text-center relative group hover:scale-105 transition-transform duration-500">
+                            <div className="absolute inset-0 rounded-full border border-white/5 animate-spin-slow"></div>
+                            <h3 className="text-3xl font-black text-white tracking-widest drop-shadow-lg">TOP 5</h3>
+                            <p className="text-xs font-bold text-spectra uppercase tracking-[0.2em] mt-1 mb-2">Outbound</p>
+                            <div className="h-px w-16 bg-white/20 mb-2"></div>
+                            <p className="text-[9px] text-slate-400 max-w-[120px] leading-tight">
+                                Barang paling sering keluar periode ini
+                            </p>
+                            <BarChart3 size={24} className="text-emerald-500 mt-4 opacity-50 group-hover:opacity-100 transition-opacity"/>
+                        </div>
+                    </div>
+
+                    {/* Right Bars (Chart) */}
+                    <div className="lg:col-span-8 flex flex-col gap-3 relative z-10 pl-4 lg:pl-0">
+                        {stats.topOutboundItems.length === 0 ? (
+                            <div className="text-center py-10 text-slate-500 text-sm font-bold italic border-l-2 border-spectra/30 pl-4">
+                                Belum ada data transaksi keluar pada periode ini.
+                            </div>
+                        ) : (
+                            stats.topOutboundItems.map((item, idx) => (
+                                <div key={idx} className="relative h-14 w-full flex items-center group">
+                                    {/* The Gradient Bar */}
+                                    <div 
+                                        className={`absolute left-0 top-0 bottom-0 rounded-r-full shadow-[4px_4px_10px_rgba(0,0,0,0.3)] transition-all duration-700 ease-out flex items-center px-6 gap-6 border-t border-b border-r border-white/5 hover:brightness-110 hover:translate-x-2
+                                            ${idx === 0 ? 'bg-[#0a181a] w-[100%] z-50' : ''} 
+                                            ${idx === 1 ? 'bg-[#13282b] w-[95%] z-40' : ''} 
+                                            ${idx === 2 ? 'bg-[#1c383d] w-[90%] z-30' : ''} 
+                                            ${idx === 3 ? 'bg-[#26494f] w-[85%] z-20' : ''} 
+                                            ${idx === 4 ? 'bg-[#2f5a61] w-[80%] z-10' : ''} 
+                                        `}
+                                    >
+                                        {/* Index Number */}
+                                        <span className="text-3xl font-black text-white/10 font-mono tracking-tighter group-hover:text-white/30 transition-colors">0{idx + 1}</span>
+                                        
+                                        {/* Label */}
+                                        <div className="flex flex-col leading-none min-w-0 flex-1">
+                                            <span className="text-sm font-bold text-slate-100 truncate pr-4 drop-shadow-md">{item.name}</span>
+                                            <span className="text-[10px] text-emerald-500/70 font-mono mt-1 font-bold tracking-wider">{item.code}</span>
+                                        </div>
+                                        
+                                        {/* Value Badge */}
+                                        <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-inner">
+                                            <span className="text-sm font-mono font-black text-white">{item.value.toLocaleString()}</span>
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+
              {/* Placeholder for Chart/Details - Empty State styled to match */}
-            <div className="bg-gable rounded-2xl border border-spectra p-8 flex flex-col items-center justify-center text-center opacity-50 min-h-[200px]">
-                <Activity size={48} className="text-spectra mb-4" />
-                <h3 className="text-slate-400 font-bold text-sm uppercase tracking-widest">Analitik Lanjutan Segera Hadir</h3>
-                <p className="text-xs text-slate-600 mt-2">Modul grafik dan prediksi stok sedang dalam pengembangan.</p>
+            <div className="bg-gable rounded-2xl border border-spectra p-8 flex flex-col items-center justify-center text-center opacity-50 min-h-[150px]">
+                <Activity size={32} className="text-spectra mb-3" />
+                <h3 className="text-slate-400 font-bold text-xs uppercase tracking-widest">Analitik Lanjutan</h3>
+                <p className="text-[10px] text-slate-600 mt-1">Prediksi stok & tren musiman segera hadir.</p>
             </div>
         </div>
     );
