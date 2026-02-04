@@ -2,13 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Warehouse, Partner, AppUser } from '../types';
-import { Plus, Edit3, Trash2, Search, Building2, UserCircle, Save, X, Phone, Loader2, Share2, FileSpreadsheet, Calendar, Link as LinkIcon, Code, Copy, Check, Users } from 'lucide-react';
+import { Plus, Edit3, Trash2, Search, Building2, UserCircle, Save, X, Phone, Loader2, Share2, FileSpreadsheet, Calendar, Link as LinkIcon, Code, Copy, Check, Users, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useToast } from './Toast';
 
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS' | 'EXTERNAL_SYNC';
 
-const DenseRow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <tr className="hover:bg-spectra/20 transition-colors border-b border-spectra/30 group">
+const DenseRow: React.FC<{ children: React.ReactNode; inactive?: boolean }> = ({ children, inactive }) => (
+  <tr className={`hover:bg-spectra/20 transition-colors border-b border-spectra/30 group ${inactive ? 'opacity-50' : ''}`}>
     {children}
   </tr>
 );
@@ -98,7 +98,7 @@ function setupSheet() {
             
             if (activeTab === 'WAREHOUSE') await StorageService.saveWarehouse(payload);
             else if (activeTab === 'USERS') await StorageService.saveUser({ ...payload, status: 'ACTIVE' });
-            else await StorageService.savePartner({ ...payload, type: activeTab as any });
+            else await StorageService.savePartner({ ...payload, type: activeTab as any, isActive: data.isActive === undefined ? true : data.isActive });
             
             showToast("Tersimpan ke MySQL Database", "success");
             setShowModal(false); 
@@ -114,6 +114,8 @@ function setupSheet() {
         if (activeTab === 'USERS') return users.filter(u => u.name.toLowerCase().includes(lower));
         return [];
     };
+
+    const isPartnerTab = activeTab === 'SUPPLIER' || activeTab === 'CUSTOMER';
 
     return (
         <div className="flex h-full bg-daintree transition-colors font-sans">
@@ -142,7 +144,7 @@ function setupSheet() {
                                     className="pl-10 pr-4 py-2.5 bg-daintree border border-spectra rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-spectra w-72 transition-all placeholder:text-slate-500 text-white" 
                                 />
                             </div>
-                            <button onClick={() => { setEditData({}); setShowModal(true); }} className="px-6 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-black/20 transition-all active:scale-95 border border-spectra">
+                            <button onClick={() => { setEditData({ isActive: true }); setShowModal(true); }} className="px-6 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-black/20 transition-all active:scale-95 border border-spectra">
                                 <Plus size={18}/> Tambah Baru
                             </button>
                         </div>
@@ -157,12 +159,13 @@ function setupSheet() {
                                                 <th className="px-4 py-2.5 w-12 text-center">#</th>
                                                 <th className="px-4 py-2.5">Informasi Master</th>
                                                 <th className="px-4 py-2.5">Kontak / Kredensial</th>
+                                                {isPartnerTab && <th className="px-4 py-2.5 text-center">Status</th>}
                                                 <th className="px-4 py-2.5 w-24 text-center">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-spectra/30 bg-gable">
                                             {filteredData().map((item: any, idx) => (
-                                                <DenseRow key={item.id}>
+                                                <DenseRow key={item.id} inactive={isPartnerTab && !item.isActive}>
                                                     <DenseCell className="text-center font-mono opacity-40">{idx + 1}</DenseCell>
                                                     <DenseCell>
                                                         <div className="font-bold text-white text-sm mb-0.5">{item.name}</div>
@@ -177,6 +180,14 @@ function setupSheet() {
                                                             {item.username && <span className="text-cutty font-mono text-[10px] bg-daintree px-2 py-0.5 rounded w-fit border border-spectra">@{item.username}</span>}
                                                         </div>
                                                     </DenseCell>
+                                                    {isPartnerTab && (
+                                                        <DenseCell className="text-center">
+                                                            {item.isActive ? 
+                                                                <span className="text-[9px] font-black text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded">AKTIF</span> : 
+                                                                <span className="text-[9px] font-black text-slate-500 bg-slate-800 px-2 py-0.5 rounded">NONAKTIF</span>
+                                                            }
+                                                        </DenseCell>
+                                                    )}
                                                     <DenseCell className="text-center">
                                                         <div className="flex justify-center gap-2">
                                                             <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-colors"><Edit3 size={16}/></button>
@@ -249,6 +260,28 @@ function setupSheet() {
                                 <label className="text-[10px] font-bold text-cutty uppercase ml-1">{activeTab === 'WAREHOUSE' ? 'Lokasi' : 'No. Telepon'}</label>
                                 <input className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree text-white outline-none focus:ring-2 focus:ring-spectra" value={activeTab === 'WAREHOUSE' ? (editData.location || '') : (editData.phone || '')} onChange={e => setEditData({...editData, [activeTab === 'WAREHOUSE' ? 'location' : 'phone']: e.target.value})} />
                             </div>
+
+                            {/* Active Status Toggle for Partners */}
+                            {isPartnerTab && (
+                                <div className="space-y-1.5 pt-2">
+                                    <div className="flex items-center justify-between bg-daintree p-3 rounded-xl border border-spectra">
+                                        <span className="text-[10px] font-bold text-cutty uppercase">Status {activeTab}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-bold uppercase ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                                {editData.isActive !== false ? 'Aktif' : 'Nonaktif'}
+                                            </span>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setEditData({...editData, isActive: !(editData.isActive !== false)})} 
+                                                className={`transition-colors ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}
+                                            >
+                                                {editData.isActive !== false ? <ToggleRight size={24}/> : <ToggleLeft size={24}/>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex justify-end gap-3 pt-6 border-t border-spectra mt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="px-5 text-xs font-bold text-slate-400 uppercase hover:text-white">Batal</button>
                                 <button type="submit" className="px-8 py-2.5 bg-spectra hover:bg-daintree text-white rounded-xl text-xs font-bold shadow-lg shadow-black/20 uppercase tracking-widest active:scale-95 transition-all border border-spectra">Simpan Data</button>

@@ -224,7 +224,8 @@ export const RejectView: React.FC = () => {
                         category: String(row.Kategori || 'General').trim(),
                         baseUnit: String(row.Satuan_Dasar || 'Pcs').trim(),
                         conversions,
-                        minStock: 0
+                        minStock: 0,
+                        isActive: true
                     };
                 }).filter(it => it.code && it.name);
 

@@ -13,6 +13,7 @@ router.get('/items', async (req, res, next) => {
             item.conversions = units || [];
             item.baseUnit = item.base_unit; 
             item.minStock = item.min_stock;
+            item.isActive = !!item.is_active; // Map DB column to API property
         }
         res.json(items);
     } catch(e) { 
@@ -26,17 +27,20 @@ router.post('/items', async (req, res, next) => {
         conn = await db.getConnection();
         await conn.beginTransaction();
 
-        const { id, code, name, category, baseUnit, minStock, initialStock, conversions } = req.body;
+        const { id, code, name, category, baseUnit, minStock, initialStock, conversions, isActive } = req.body;
         const itemId = id || uuidv4();
         
+        // Convert boolean/undefined to 1 or 0
+        const isActiveVal = (isActive === undefined || isActive === true) ? 1 : 0;
+
         // 1. Save Header
         await conn.query(
-            `INSERT INTO items (id, code, name, category, base_unit, min_stock) 
-             VALUES (?, ?, ?, ?, ?, ?) 
+            `INSERT INTO items (id, code, name, category, base_unit, min_stock, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?, ?) 
              ON DUPLICATE KEY UPDATE 
                 code=VALUES(code), name=VALUES(name), category=VALUES(category), 
-                base_unit=VALUES(base_unit), min_stock=VALUES(min_stock)`,
-            [itemId, code, name, category, baseUnit, minStock || 0]
+                base_unit=VALUES(base_unit), min_stock=VALUES(min_stock), is_active=VALUES(is_active)`,
+            [itemId, code, name, category, baseUnit, minStock || 0, isActiveVal]
         );
 
         // 2. Clear & Save Units
@@ -84,13 +88,15 @@ router.post('/items/bulk-upsert', async (req, res, next) => {
 
         for (const item of items) {
             const itemId = item.id || uuidv4();
+            const isActiveVal = 1; // Bulk insert defaults to active
+
             await conn.query(
-                `INSERT INTO items (id, code, name, category, base_unit, min_stock) 
-                 VALUES (?, ?, ?, ?, ?, ?) 
+                `INSERT INTO items (id, code, name, category, base_unit, min_stock, is_active) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?) 
                  ON DUPLICATE KEY UPDATE 
                     name=VALUES(name), category=VALUES(category), 
                     base_unit=VALUES(base_unit), min_stock=VALUES(min_stock)`,
-                [itemId, item.code, item.name, item.category, item.baseUnit, item.minStock || 0]
+                [itemId, item.code, item.name, item.category, item.baseUnit, item.minStock || 0, isActiveVal]
             );
         }
 
@@ -166,20 +172,28 @@ router.delete('/warehouses/:id', async (req, res, next) => {
 // --- PARTNERS ---
 router.get('/partners', async (req, res, next) => {
     try {
-        const [pt] = await db.query('SELECT * FROM partners');
-        res.json(pt);
+        const [partners] = await db.query('SELECT * FROM partners');
+        // Map snake_case db column to camelCase API property
+        const mappedPartners = partners.map(p => ({
+            ...p,
+            isActive: !!p.is_active
+        }));
+        res.json(mappedPartners);
     } catch(e) { next(e); }
 });
 
 router.post('/partners', async (req, res, next) => {
     try {
-        const { id, type, name, phone, email, address, npwp, term } = req.body;
+        const { id, type, name, phone, email, address, npwp, term, isActive } = req.body;
         const ptId = id || uuidv4();
+        
+        const isActiveVal = (isActive === undefined || isActive === true) ? 1 : 0;
+
         await db.query(
-            `INSERT INTO partners (id, type, name, phone, email, address, npwp, term_days) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
-             ON DUPLICATE KEY UPDATE type=VALUES(type), name=VALUES(name), phone=VALUES(phone), email=VALUES(email), address=VALUES(address), npwp=VALUES(npwp), term_days=VALUES(term_days)`,
-            [ptId, type, name, phone, email, address, npwp, term || 0]
+            `INSERT INTO partners (id, type, name, phone, email, address, npwp, term_days, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
+             ON DUPLICATE KEY UPDATE type=VALUES(type), name=VALUES(name), phone=VALUES(phone), email=VALUES(email), address=VALUES(address), npwp=VALUES(npwp), term_days=VALUES(term_days), is_active=VALUES(is_active)`,
+            [ptId, type, name, phone, email, address, npwp, term || 0, isActiveVal]
         );
         res.status(201).json({ status: 'success', id: ptId });
     } catch(e) { next(e); }

@@ -58,7 +58,14 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             setItems(its || []);
             setWarehouses(whs || []);
             setStocks(stks || []);
-            setPartners(pts.filter(p => type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER') || []);
+            
+            // Filter Partners: Must match Type AND be Active
+            const filteredPartners = pts.filter(p => 
+                (type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER') && 
+                (p.isActive === true || p.id === initialData?.partnerId) // Allow currently selected if inactive
+            );
+            setPartners(filteredPartners || []);
+
             if (whs && whs.length > 0 && !initialData) setSelectedWh(whs[0].id);
         } catch (e) {
             console.error("Load failed", e);
@@ -67,7 +74,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     load();
   }, [type, initialData]);
 
-  // Fuzzy Search Logic
+  // Fuzzy Search Logic (Filtered by Active)
   useEffect(() => {
     if (!query || pendingItem) {
         setFilteredItems([]);
@@ -75,7 +82,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         return;
     }
     const lowerQuery = query.toLowerCase();
-    const results = items.filter(it => 
+    
+    // Only show Active Items in search results
+    const activeItems = items.filter(it => it.isActive === true);
+
+    const results = activeItems.filter(it => 
         it.name.toLowerCase().includes(lowerQuery) || 
         it.code.toLowerCase().includes(lowerQuery)
     ).slice(0, 10); // Limit results
@@ -208,7 +219,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                           category: 'Uncategorized',
                           baseUnit: unit,
                           conversions: [],
-                          minStock: 0
+                          minStock: 0,
+                          isActive: true
                       };
                       // Save to DB immediately
                       await StorageService.saveItem(newItem);
@@ -340,7 +352,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                         <div className="relative h-full">
                                             <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
                                             <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 pr-8 py-1.5 appearance-none focus:bg-daintree/50 transition-colors rounded-lg border-none" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
-                                                <option value="">-- Pilih Partner --</option>
+                                                <option value="">-- Pilih Partner (Active Only) --</option>
                                                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                             </select>
                                             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
@@ -440,7 +452,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     ref={itemInputRef}
                                     type="text"
                                     className="w-full bg-gable border border-spectra rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
-                                    placeholder="Cari Barang (Kode/Nama)..."
+                                    placeholder="Cari Barang Aktif..."
                                     value={query}
                                     onChange={e => {
                                         setQuery(e.target.value);

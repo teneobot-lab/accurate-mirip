@@ -1,5 +1,4 @@
 
-
 export interface UnitConversion {
   name: string;
   ratio: number;
@@ -14,7 +13,8 @@ export interface Item {
   baseUnit: string;
   conversions: UnitConversion[];
   minStock: number;
-  initialStock?: number; // Ditambahkan sebagai dasar perhitungan
+  initialStock?: number;
+  isActive: boolean; // Added Status
 }
 
 export interface Stock {
@@ -40,14 +40,15 @@ export interface Partner {
   address: string;
   npwp?: string;
   term?: number;
+  isActive: boolean; // Added Status
 }
 
 export interface AppUser {
   id: string;
   name: string;
-  username: string; // Changed/Added for login
-  password?: string; // Added for login validation
-  email?: string; // Optional now
+  username: string; 
+  password?: string; 
+  email?: string; 
   role: 'ADMIN' | 'MANAGER' | 'STAFF';
   status: 'ACTIVE' | 'INACTIVE';
 }
@@ -60,12 +61,10 @@ export interface TransactionItem {
   qty: number;
   ratio: number;
   note?: string;
-  // Added optional name and code to resolve type errors in TransactionForm and support display in ReportsView
   name?: string;
   code?: string;
 }
 
-// Fixed: Added partnerId and partnerName to Transaction interface to resolve missing property errors in TransactionForm and ReportsView
 export interface Transaction {
   id: string;
   date: string;

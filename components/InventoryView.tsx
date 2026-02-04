@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown, Barcode, Package, Ruler, AlertTriangle } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, ArrowRight, Loader2, CheckSquare, Square, Filter, Columns, List, Edit3, Save, Layers, FileSpreadsheet, Info, AlertCircle, LayoutGrid, Database, Tag, ShieldCheck, Equal, ChevronDown, Barcode, Package, Ruler, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -19,7 +19,7 @@ export const InventoryView: React.FC = () => {
 
     // UI States
     const [isZebra, setIsZebra] = useState(true);
-    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['code', 'name', 'category', 'total', 'unit', 'actions']));
+    const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(['code', 'name', 'category', 'total', 'unit', 'status', 'actions']));
     const [showColumnFilter, setShowColumnFilter] = useState(false);
 
     // Modal States
@@ -32,6 +32,7 @@ export const InventoryView: React.FC = () => {
         baseUnit: 'Pcs',
         minStock: 10,
         initialStock: 0,
+        isActive: true, // Default active
         conversions: []
     });
 
@@ -104,6 +105,7 @@ export const InventoryView: React.FC = () => {
                     category: String(row.Kategori || row.category || 'Umum').trim(),
                     baseUnit: String(row.Satuan_Dasar || row.baseUnit || 'Pcs').trim(),
                     minStock: Number(row.Stok_Minimum || row.minStock || 0),
+                    isActive: true,
                     conversions: []
                 })).filter(it => it.code && it.name);
 
@@ -127,6 +129,7 @@ export const InventoryView: React.FC = () => {
             const payload = {
                 ...itemForm,
                 id: editingItem?.id || crypto.randomUUID(),
+                isActive: itemForm.isActive === undefined ? true : itemForm.isActive,
                 conversions: (itemForm.conversions || []).filter(c => c.name && c.ratio > 0).map(c => ({
                     ...c,
                     operator: c.operator || '*'
@@ -148,6 +151,7 @@ export const InventoryView: React.FC = () => {
         setItemForm({ 
             ...item, 
             initialStock: 0,
+            isActive: item.isActive,
             conversions: item.conversions ? [...item.conversions] : []
         }); 
         setShowItemModal(true);
@@ -210,7 +214,7 @@ export const InventoryView: React.FC = () => {
                             <div className="absolute top-full left-0 mt-2 w-56 bg-gable border border-spectra rounded-xl shadow-xl z-50 p-3 animate-in fade-in slide-in-from-top-2">
                                 <p className="text-[10px] font-bold uppercase text-slate-400 mb-3 px-1 flex items-center gap-2"><Filter size={12}/> Visibilitas Kolom</p>
                                 <div className="space-y-1">
-                                    {['code', 'name', 'category', 'total', 'unit'].map(c => (
+                                    {['code', 'name', 'category', 'total', 'unit', 'status'].map(c => (
                                         <label key={c} className="flex items-center gap-3 p-2 hover:bg-spectra/20 rounded-lg cursor-pointer text-xs transition-colors select-none">
                                             <input type="checkbox" className="rounded text-spectra focus:ring-spectra" checked={visibleColumns.has(c)} onChange={() => {
                                                 const next = new Set(visibleColumns);
@@ -244,7 +248,7 @@ export const InventoryView: React.FC = () => {
                         {isImporting ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16}/>} 
                         Import
                     </button>
-                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0, conversions: [] }); setShowItemModal(true); }} className="flex items-center gap-2 px-6 py-2.5 bg-daintree text-white rounded-xl text-xs font-bold shadow-lg shadow-black/20 hover:bg-spectra active:scale-95 transition-all">
+                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, initialStock: 0, isActive: true, conversions: [] }); setShowItemModal(true); }} className="flex items-center gap-2 px-6 py-2.5 bg-daintree text-white rounded-xl text-xs font-bold shadow-lg shadow-black/20 hover:bg-spectra active:scale-95 transition-all">
                         <Plus size={18}/> Item Baru
                     </button>
                     <button onClick={loadData} className="p-2.5 text-slate-400 hover:bg-spectra/20 rounded-xl border border-transparent hover:border-spectra"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
@@ -270,6 +274,7 @@ export const InventoryView: React.FC = () => {
                                 ))}
                                 {visibleColumns.has('total') && <th className="px-4 py-2.5 w-28 text-right bg-spectra/10 text-cutty border-l border-white/10 dark:border-spectra">Total Stok</th>}
                                 {visibleColumns.has('unit') && <th className="px-4 py-2.5 w-24 text-center border-l border-white/10 dark:border-spectra">Unit</th>}
+                                {visibleColumns.has('status') && <th className="px-4 py-2.5 w-24 text-center border-l border-white/10 dark:border-spectra">Status</th>}
                                 {visibleColumns.has('actions') && <th className="px-4 py-2.5 w-20 text-center border-l border-white/10 dark:border-spectra">Aksi</th>}
                             </tr>
                         </thead>
@@ -284,7 +289,7 @@ export const InventoryView: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : inventoryData.map((item, idx) => (
-                                <tr key={item.id} className={`group transition-colors ${selectedIds.has(item.id) ? 'bg-spectra/20' : (isZebra && idx % 2 !== 0 ? 'bg-daintree/30' : 'hover:bg-spectra/20')}`}>
+                                <tr key={item.id} className={`group transition-colors ${selectedIds.has(item.id) ? 'bg-spectra/20' : (isZebra && idx % 2 !== 0 ? 'bg-daintree/30' : 'hover:bg-spectra/20')} ${!item.isActive ? 'opacity-60 grayscale' : ''}`}>
                                     <td className="px-4 py-2 text-center">
                                         <button onClick={() => handleToggleSelect(item.id)} className="transition-transform active:scale-90">
                                             {selectedIds.has(item.id) ? <CheckSquare size={18} className="text-spectra"/> : <Square size={18} className="text-slate-300 dark:text-spectra/50 group-hover:text-slate-400"/>}
@@ -298,6 +303,14 @@ export const InventoryView: React.FC = () => {
                                     ))}
                                     {visibleColumns.has('total') && <td className="px-4 py-2 text-right font-black font-mono text-cutty border-l border-spectra/30 group-hover:border-transparent text-[13px]">{item.totalStock.toLocaleString()}</td>}
                                     {visibleColumns.has('unit') && <td className="px-4 py-2 text-center border-l border-transparent"><span className="px-2 py-0.5 rounded bg-daintree text-[10px] font-bold uppercase text-slate-400 border border-spectra">{item.baseUnit}</span></td>}
+                                    {visibleColumns.has('status') && (
+                                        <td className="px-4 py-2 text-center border-l border-transparent">
+                                            {item.isActive ? 
+                                                <span className="text-[9px] font-black uppercase text-emerald-400 bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-900">Aktif</span> : 
+                                                <span className="text-[9px] font-black uppercase text-slate-500 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">Nonaktif</span>
+                                            }
+                                        </td>
+                                    )}
                                     {visibleColumns.has('actions') && (
                                         <td className="px-4 py-2 text-center border-l border-transparent">
                                             <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-spectra hover:bg-spectra/10 rounded-lg transition-all"><Edit3 size={16}/></button>
@@ -338,9 +351,17 @@ export const InventoryView: React.FC = () => {
                             
                             {/* Section 1: Identitas Produk (Card Style) */}
                             <div className="bg-daintree/30 p-5 rounded-2xl border border-spectra/30 space-y-4 shadow-sm">
-                                <div className="flex items-center gap-2 pb-2 border-b border-spectra/50">
-                                    <Tag size={14} className="text-spectra"/>
-                                    <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
+                                <div className="flex items-center justify-between pb-2 border-b border-spectra/50">
+                                    <div className="flex items-center gap-2">
+                                        <Tag size={14} className="text-spectra"/>
+                                        <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest">Identitas Produk</h4>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-[10px] font-bold uppercase ${itemForm.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>{itemForm.isActive ? 'Item Aktif' : 'Nonaktif'}</span>
+                                        <button onClick={() => setItemForm({...itemForm, isActive: !itemForm.isActive})} className={`transition-colors ${itemForm.isActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                            {itemForm.isActive ? <ToggleRight size={28}/> : <ToggleLeft size={28}/>}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-12 gap-5">
                                     <div className="col-span-3 space-y-2 group">

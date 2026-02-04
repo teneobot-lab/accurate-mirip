@@ -13,7 +13,6 @@ const initSchema = async () => {
             console.error("\n============================================================");
             console.error("⚠️  KESALAHAN IZIN AKSES MYSQL (Access Denied)");
             console.error("Aplikasi tidak bisa login ke MySQL sebagai 'root'@'localhost'.");
-            console.error("Hal ini biasanya karena MySQL di VPS menggunakan plugin 'auth_socket'.");
             console.error("\nSOLUSI (Jalankan di terminal VPS):");
             console.error("1. Masuk ke mysql: sudo mysql");
             console.error("2. Jalankan perintah ini:");
@@ -62,6 +61,7 @@ const initSchema = async () => {
                 category VARCHAR(50),
                 base_unit VARCHAR(20) NOT NULL,
                 min_stock INT DEFAULT 0,
+                is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB;
         `);
@@ -87,10 +87,12 @@ const initSchema = async () => {
                 email VARCHAR(100),
                 address TEXT,
                 npwp VARCHAR(50),
-                term_days INT DEFAULT 0
+                term_days INT DEFAULT 0,
+                is_active BOOLEAN DEFAULT TRUE
             ) ENGINE=InnoDB;
         `);
 
+        // ... existing tables (stock, transactions, etc) ...
         await conn.query(`
             CREATE TABLE IF NOT EXISTS stock (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -222,9 +224,14 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // --- MIGRATIONS ---
         await addColumnSafe('transaction_items', 'base_qty', 'DECIMAL(15, 4) NOT NULL DEFAULT 0');
         await addColumnSafe('transaction_items', 'conversion_ratio', 'DECIMAL(10, 4) DEFAULT 1');
         await addColumnSafe('transactions', 'created_by', 'CHAR(36)');
+        
+        // --- NEW STATUS COLUMNS ---
+        await addColumnSafe('items', 'is_active', 'BOOLEAN DEFAULT TRUE');
+        await addColumnSafe('partners', 'is_active', 'BOOLEAN DEFAULT TRUE');
 
         console.log("✅ Database Schema Synced & Validated");
     } catch (error) {
