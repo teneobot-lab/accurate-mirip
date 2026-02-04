@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2, Youtube } from 'lucide-react';
+import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2, Youtube, BarChart3, Pause } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { Playlist } from '../types';
 import { useToast } from './Toast';
@@ -38,27 +38,14 @@ const MusicPlayer: React.FC = () => {
   const activePlaylist = playlists.find(p => p.id === activePlaylistId);
   const currentSong = activePlaylist?.songs[currentSongIndex];
 
-  // UPDATED: Regex lebih robust (Support Music, Live, Shorts, Mobile, & Raw ID)
+  // Regex robust untuk YouTube ID
   const getYoutubeId = (url: string) => {
     if (!url) return null;
     const cleanUrl = url.trim();
-
-    // 1. Cek Regex URL lengkap
-    // Support: 
-    // - www.youtube.com/watch?v=ID
-    // - music.youtube.com/watch?v=ID
-    // - m.youtube.com/watch?v=ID
-    // - youtu.be/ID
-    // - youtube.com/embed/ID
-    // - youtube.com/shorts/ID
-    // - youtube.com/live/ID
     const regExp = /(?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/;
     const match = cleanUrl.match(regExp);
     if (match) return match[1];
-
-    // 2. Fallback: Jika user input Raw ID (11 karakter)
     if (/^[\w-]{11}$/.test(cleanUrl)) return cleanUrl;
-
     return null;
   };
 
@@ -94,7 +81,6 @@ const MusicPlayer: React.FC = () => {
     if (!ytId) return showToast('Link/ID YouTube tidak valid', 'error');
 
     try {
-      // Simpan URL/ID asli, nanti diparse saat render
       await StorageService.addSongToPlaylist(playlistId, newSongTitle, newSongUrl.trim());
       setNewSongTitle('');
       setNewSongUrl('');
@@ -120,42 +106,64 @@ const MusicPlayer: React.FC = () => {
 
   return (
     <div className="relative">
+      {/* TRIGGER BUTTON / MINI PLAYER */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`p-2.5 rounded-xl border flex items-center gap-2 transition-all shadow-sm ${
-          isOpen ? 'bg-spectra text-white border-spectra' : 'bg-gable text-slate-400 border-spectra hover:bg-spectra/20'
+        className={`relative p-2 rounded-xl border flex items-center gap-3 transition-all shadow-sm overflow-hidden ${
+          currentSong 
+            ? 'bg-gable border-spectra pr-4' // Tampilan Mini Player (Lebih Lebar)
+            : isOpen ? 'bg-spectra text-white border-spectra' : 'bg-gable text-slate-400 border-spectra hover:bg-spectra/20'
         }`}
+        style={{ minWidth: currentSong ? '220px' : 'auto' }}
       >
-        <Music size={18} />
-        {!isOpen && currentSong && activePlaylistId && (
-            <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-spectra opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-        )}
-        <span className="text-xs font-bold hidden sm:inline">Music Player</span>
+        <div className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg ${currentSong ? 'bg-daintree text-emerald-400' : ''}`}>
+           {currentSong ? <Music size={16} className="animate-pulse"/> : <Music size={18} />}
+        </div>
+        
+        <div className="flex flex-col text-left overflow-hidden min-w-0 flex-1">
+            {currentSong ? (
+                <>
+                  <div className="flex justify-between items-center w-full">
+                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Now Playing</span>
+                     {/* Mini Visualizer Animation */}
+                     <div className="flex gap-0.5 h-2 items-end">
+                        <span className="w-0.5 bg-emerald-500 animate-[bounce_1s_infinite] h-full"></span>
+                        <span className="w-0.5 bg-emerald-500 animate-[bounce_1.2s_infinite] h-2/3"></span>
+                        <span className="w-0.5 bg-emerald-500 animate-[bounce_0.8s_infinite] h-1/2"></span>
+                     </div>
+                  </div>
+                  <span className="text-xs font-bold text-white truncate w-full" title={currentSong.title}>{currentSong.title}</span>
+                </>
+            ) : (
+                <span className="text-xs font-bold hidden sm:inline mr-2">Music Player</span>
+            )}
+        </div>
       </button>
 
+      {/* POPUP MODAL */}
+      {/* PENTING: Menggunakan 'opacity-0 pointer-events-none' alih-alih 'hidden/invisible' agar Iframe tetap di-render dan audio terus berputar */}
       <div 
-        className={`absolute right-0 mt-3 w-80 bg-gable rounded-2xl shadow-2xl border border-spectra overflow-hidden z-50 transition-all duration-200 ease-in-out origin-top-right ${
+        className={`absolute right-0 mt-3 w-80 bg-gable rounded-2xl shadow-2xl border border-spectra overflow-hidden z-50 transition-all duration-300 ease-in-out origin-top-right ${
           isOpen 
-            ? 'opacity-100 scale-100 translate-y-0 visible pointer-events-auto' 
-            : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'
+            ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' 
+            : 'opacity-0 scale-95 -translate-y-4 pointer-events-none h-0' // h-0 optional, but careful not to unmount iframe
         }`}
+        style={{ visibility: isOpen ? 'visible' : 'visible' }} // Force visible to keep iframe alive, relying on opacity/pointer-events
       >
-          {currentSong && (
-            <div className="p-3 bg-daintree text-white flex flex-col gap-2 border-b border-spectra">
+          {/* Bagian Player (Hanya muncul jika ada lagu, tapi tetap di DOM) */}
+          <div className={`${!currentSong ? 'hidden' : 'block'} p-3 bg-daintree text-white flex flex-col gap-2 border-b border-spectra`}>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <div className="animate-pulse bg-spectra/50 p-1 rounded-full"><Youtube size={12}/></div>
-                  <div className="truncate text-xs font-bold max-w-[200px]">{currentSong.title}</div>
+                  <div className="truncate text-xs font-bold max-w-[200px]">{currentSong?.title}</div>
                 </div>
-                <button onClick={() => setActivePlaylistId(null)} className="text-slate-400 hover:text-white"><X size={14}/></button>
+                <button onClick={() => { setActivePlaylistId(null); setCurrentSongIndex(0); }} className="text-slate-400 hover:text-white" title="Stop & Close"><X size={14}/></button>
               </div>
+              
               <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-spectra/30 relative group">
                 {videoId ? (
                     <iframe 
-                      key={videoId} // CRITICAL FIX: Force remount iframe on song change
+                      key={videoId} 
                       width="100%" 
                       height="100%" 
                       src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}`}
@@ -168,25 +176,25 @@ const MusicPlayer: React.FC = () => {
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-xs text-red-400 gap-1 p-4 text-center">
                         <span className="font-bold">Invalid YouTube ID</span>
-                        <span className="text-[10px] text-slate-500">URL: {currentSong.youtubeUrl}</span>
+                        <span className="text-[10px] text-slate-500">URL: {currentSong?.youtubeUrl}</span>
                     </div>
                 )}
               </div>
+
               <div className="flex justify-center items-center gap-4 py-1">
                 <button 
                    onClick={() => setCurrentSongIndex(prev => (prev - 1 + activePlaylist!.songs.length) % activePlaylist!.songs.length)}
                    className="hover:scale-110 transition-transform text-slate-300 hover:text-white"
                 ><SkipBack size={18}/></button>
                 <div className="text-[10px] font-mono text-spectra">
-                    {currentSongIndex + 1} / {activePlaylist!.songs.length}
+                    {currentSongIndex + 1} / {activePlaylist?.songs.length || 0}
                 </div>
                 <button 
                   onClick={() => setCurrentSongIndex(prev => (prev + 1) % activePlaylist!.songs.length)}
                   className="hover:scale-110 transition-transform text-slate-300 hover:text-white"
                 ><SkipForward size={18}/></button>
               </div>
-            </div>
-          )}
+          </div>
 
           <div className="flex border-b border-spectra bg-daintree">
             <button 
@@ -203,6 +211,7 @@ const MusicPlayer: React.FC = () => {
             </button>
           </div>
 
+          {/* LIST SECTION */}
           <div className="p-4 max-h-96 overflow-y-auto bg-gable min-h-[200px] scrollbar-thin">
             {isLoading ? (
                 <div className="h-full flex flex-col items-center justify-center text-cutty py-10">
@@ -210,6 +219,7 @@ const MusicPlayer: React.FC = () => {
                     <span className="text-[10px] font-bold">MYSQL SYNC...</span>
                 </div>
             ) : isManaging ? (
+              /* --- MANAGE MODE --- */
               <div className="space-y-4">
                 {editingPlaylist ? (
                   <div className="space-y-3">
@@ -270,6 +280,7 @@ const MusicPlayer: React.FC = () => {
                 )}
               </div>
             ) : (
+              /* --- PLAYLIST SELECTION MODE --- */
               <div className="space-y-2">
                 {playlists.length === 0 && (
                    <div className="text-center py-8 text-cutty text-xs italic">
