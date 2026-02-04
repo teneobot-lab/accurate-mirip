@@ -3,33 +3,14 @@ const db = require('./database');
 
 const initSchema = async () => {
     console.log("🛠️  Initializing Database Schema...");
-    let conn;
-    
-    try {
-        conn = await db.getConnection();
-    } catch (err) {
-        console.error("🔥 CRITICAL: Failed to get database connection during init.");
-        if (err.errno === 1698 || err.code === 'ER_ACCESS_DENIED_ERROR') {
-            console.error("\n============================================================");
-            console.error("⚠️  KESALAHAN IZIN AKSES MYSQL (Access Denied)");
-            console.error("Aplikasi tidak bisa login ke MySQL sebagai 'root'@'localhost'.");
-            console.error("Hal ini biasanya karena MySQL di VPS menggunakan plugin 'auth_socket'.");
-            console.error("\nSOLUSI (Jalankan di terminal VPS):");
-            console.error("1. Masuk ke mysql: sudo mysql");
-            console.error("2. Jalankan perintah ini:");
-            console.error("   ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'PASSWORD_BARU';");
-            console.error("   FLUSH PRIVILEGES;");
-            console.error("3. Update file .env Anda dengan DB_PASSWORD=PASSWORD_BARU");
-            console.error("============================================================\n");
-        }
-        throw err;
-    }
+    const conn = await db.getConnection();
 
     // Helper: Safely add column if it doesn't exist (Migration)
     const addColumnSafe = async (tableName, columnName, columnDefinition) => {
         try {
+            // Check if table exists first to avoid errors
             const [tables] = await conn.query(`SHOW TABLES LIKE '${tableName}'`);
-            if (tables.length === 0) return;
+            if (tables.length === 0) return; // Table doesn't exist yet, CREATE TABLE will handle it
 
             const [cols] = await conn.query(`SHOW COLUMNS FROM ${tableName} LIKE ?`, [columnName]);
             if (cols.length === 0) {
@@ -42,7 +23,7 @@ const initSchema = async () => {
     };
 
     try {
-        // Core Master Tables
+        // 1. Core Master Tables
         await conn.query(`
             CREATE TABLE IF NOT EXISTS warehouses (
                 id CHAR(36) PRIMARY KEY,
@@ -91,6 +72,7 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // 2. Stock Table
         await conn.query(`
             CREATE TABLE IF NOT EXISTS stock (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -104,6 +86,7 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // 3. Transactions
         await conn.query(`
             CREATE TABLE IF NOT EXISTS transactions (
                 id CHAR(36) PRIMARY KEY,
@@ -136,6 +119,7 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // 4. Reject Module Tables
         await conn.query(`
             CREATE TABLE IF NOT EXISTS reject_outlets (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -191,6 +175,7 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // 5. User & Auth
         await conn.query(`
              CREATE TABLE IF NOT EXISTS users (
                 id CHAR(36) PRIMARY KEY,
@@ -203,6 +188,7 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // 6. Music Module
         await conn.query(`
              CREATE TABLE IF NOT EXISTS playlists (
                 id CHAR(36) PRIMARY KEY,
@@ -222,16 +208,19 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // --- AUTO MIGRATION (Fix Missing Columns in Existing DB) ---
         await addColumnSafe('transaction_items', 'base_qty', 'DECIMAL(15, 4) NOT NULL DEFAULT 0');
         await addColumnSafe('transaction_items', 'conversion_ratio', 'DECIMAL(10, 4) DEFAULT 1');
         await addColumnSafe('transactions', 'created_by', 'CHAR(36)');
+        await addColumnSafe('users', 'role', "VARCHAR(20) DEFAULT 'STAFF'");
+        await addColumnSafe('users', 'status', "ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE'");
 
         console.log("✅ Database Schema Synced & Validated");
     } catch (error) {
         console.error("❌ Database Initialization Error:", error);
         throw error;
     } finally {
-        if (conn) conn.release();
+        conn.release();
     }
 };
 
