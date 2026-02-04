@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
 import { InventoryView } from './components/InventoryView';
@@ -7,12 +8,11 @@ import { DashboardView } from './components/DashboardView';
 import { SettingsView } from './components/SettingsView';
 import { RejectView } from './components/RejectView';
 import { StockCardModal } from './components/StockCardModal';
-import { ThemeToggle } from './components/ThemeToggle';
 import { ClockWidget } from './components/ClockWidget';
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { ToastProvider } from './components/Toast';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, Smartphone, Monitor, X } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, Warehouse as WhIcon, Settings, AlertOctagon, Plus, LogOut, User as UserIcon, X, Menu, List } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
@@ -21,12 +21,10 @@ function App() {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [viewingItem, setViewingItem] = useState<Item | null>(null);
 
-  // Fix: Added handleEditTransaction to manage the state when editing a transaction from ReportsView
   const handleEditTransaction = (tx: Transaction) => {
     setEditingTransaction(tx);
     setShowTransactionModal(tx.type);
@@ -41,107 +39,104 @@ function App() {
         setIsLoggedIn(true);
     }
     setIsLoadingSession(false);
-
-    const handleResize = () => {
-      if (window.innerWidth < 1024) setIsSidebarOpen(false);
-      else setIsSidebarOpen(true);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const handleLogout = () => {
-      setIsLoggedIn(false);
-      setCurrentUser(null);
-      setActiveTab('DASHBOARD');
-      StorageService.clearSession();
+      if(confirm('Keluar dari sistem?')) {
+          setIsLoggedIn(false);
+          setCurrentUser(null);
+          setActiveTab('DASHBOARD');
+          StorageService.clearSession();
+      }
   };
 
-  const NavItem = ({ id, label, icon: Icon }: any) => (
-    <button
-      onClick={() => {
-        setActiveTab(id);
-        if (window.innerWidth < 1024) setIsSidebarOpen(false);
-      }}
-      className={`flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all ${
-        activeTab === id 
-        ? 'bg-spectra text-white shadow-lg shadow-black/20 border border-cutty/30' 
-        : 'text-slate-400 hover:bg-spectra/50 hover:text-slate-100'
-      }`}
-    >
-      <Icon size={18} className="mr-3 flex-shrink-0" />
-      <span className="whitespace-nowrap">{label}</span>
-      {activeTab === id && <ChevronRight size={16} className="ml-auto opacity-50" />}
-    </button>
-  );
+  const NavItem = ({ id, label, icon: Icon }: any) => {
+    const isActive = activeTab === id;
+    return (
+      <button
+        onClick={() => setActiveTab(id)}
+        className={`flex flex-col lg:flex-row items-center justify-center lg:justify-start w-full lg:p-3 p-2 transition-all group ${
+          isActive 
+          ? 'text-white lg:bg-spectra lg:rounded-xl lg:shadow-lg lg:shadow-black/20' 
+          : 'text-slate-400 hover:text-slate-100 lg:hover:bg-spectra/30 lg:rounded-xl'
+        }`}
+      >
+        <Icon size={20} className={`${isActive ? 'text-emerald-400 lg:text-white' : 'group-hover:text-white'} lg:mr-3 mb-1 lg:mb-0 transition-colors`} />
+        <span className={`text-[10px] lg:text-sm font-bold whitespace-nowrap ${isActive ? 'opacity-100' : 'opacity-60 lg:opacity-100'}`}>{label}</span>
+        {isActive && <div className="absolute top-0 h-1 w-8 bg-emerald-500 rounded-b-full lg:hidden"></div>}
+      </button>
+    );
+  };
 
   if (isLoadingSession) return <div className="min-h-screen bg-daintree"></div>;
   if (!isLoggedIn) return <LoginPage onLogin={(user) => { setCurrentUser(user); setIsLoggedIn(true); StorageService.saveSession(user); }} />;
 
   return (
     <ToastProvider>
-      <div className="flex h-screen bg-daintree font-sans text-slate-200 overflow-hidden relative">
+      <div className="flex flex-col lg:flex-row h-screen bg-daintree font-sans text-slate-200 overflow-hidden relative">
         
-        {/* Sidebar Overlay for Mobile */}
-        {isSidebarOpen && window.innerWidth < 1024 && (
-          <div className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm lg:hidden" onClick={() => setIsSidebarOpen(false)}></div>
-        )}
-
-        {/* Sidebar */}
-        <aside className={`
-          fixed lg:relative z-[70] h-full bg-gable shadow-2xl transition-all duration-300 ease-in-out border-r border-spectra/30 flex flex-col
-          ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 lg:w-0 -translate-x-full lg:-translate-x-0'}
+        {/* DESKTOP SIDEBAR / MOBILE BOTTOM NAV */}
+        <nav className={`
+          fixed lg:relative z-[70] bg-gable border-spectra/30 transition-all duration-300 flex
+          bottom-0 left-0 w-full h-16 border-t flex-row justify-around items-center px-2
+          lg:top-0 lg:h-full lg:w-64 lg:border-t-0 lg:border-r lg:flex-col lg:justify-start lg:px-4 lg:py-6
         `}>
-          <div className="h-16 flex items-center justify-between px-6 bg-daintree border-b border-spectra/30 shrink-0">
-              <div className="flex items-center leading-none">
-                  <span className="text-white font-black text-xl tracking-tighter">ware</span>
-                  <span className="text-cutty font-black text-xl tracking-tighter">SIX</span>
-              </div>
-              <button className="lg:hidden text-slate-400 p-1" onClick={() => setIsSidebarOpen(false)}><X size={20}/></button>
+          {/* Logo - Desktop Only */}
+          <div className="hidden lg:flex items-center mb-8 px-2">
+              <span className="text-white font-black text-2xl tracking-tighter">ware</span>
+              <span className="text-cutty font-black text-2xl tracking-tighter">SIX</span>
           </div>
 
-          <div className="p-4 flex-1 overflow-y-auto whitespace-nowrap scrollbar-hide">
-              <div className="text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest opacity-60">Main Menu</div>
-              <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
-              <NavItem id="INVENTORY" label="Stock Inventory" icon={Package} />
-              <NavItem id="REPORTS" label="Reports" icon={FileBarChart} />
-              <NavItem id="REJECT" label="Reject / Afkir" icon={AlertOctagon} />
-              
-              <div className="mt-8 text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-widest opacity-60">Quick Actions</div>
-              <div className="space-y-2">
-                  <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></div> Inbound
-                  </button>
-                  <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors">
-                    <div className="w-2 h-2 rounded-full bg-red-500 mr-3"></div> Outbound
+          <div className="flex flex-row lg:flex-col items-center justify-around lg:justify-start w-full gap-1 lg:gap-2">
+              <NavItem id="DASHBOARD" label="Home" icon={LayoutDashboard} />
+              <NavItem id="INVENTORY" label="Stock" icon={Package} />
+              <div className="lg:hidden relative -top-6">
+                  <button 
+                    onClick={() => setShowTransactionModal('IN')}
+                    className="w-14 h-14 bg-spectra text-white rounded-full shadow-2xl border-4 border-daintree flex items-center justify-center active:scale-90 transition-transform"
+                  >
+                      <Plus size={28} />
                   </button>
               </div>
+              <NavItem id="REPORTS" label="Reports" icon={FileBarChart} />
+              <NavItem id="REJECT" label="Reject" icon={AlertOctagon} />
               
-              <div className="mt-auto border-t border-spectra/30 pt-4">
+              {/* Desktop Settings & Logout */}
+              <div className="hidden lg:flex flex-col w-full mt-auto pt-4 border-t border-spectra/30 gap-2">
                   <NavItem id="SETTINGS" label="Settings" icon={Settings} />
-                  <button onClick={handleLogout} className="flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg text-red-400 hover:bg-red-900/20 mt-2">
+                  <button onClick={handleLogout} className="flex items-center w-full p-3 text-sm font-bold text-red-400 hover:bg-red-900/20 rounded-xl transition-colors">
                       <LogOut size={18} className="mr-3" /> <span>Log Out</span>
                   </button>
               </div>
+
+              {/* Mobile Settings - Shown as icon */}
+              <button 
+                onClick={() => setActiveTab('SETTINGS')}
+                className={`lg:hidden flex flex-col items-center justify-center p-2 ${activeTab === 'SETTINGS' ? 'text-white' : 'text-slate-400'}`}
+              >
+                <Settings size={20} className={activeTab === 'SETTINGS' ? 'text-emerald-400' : ''} />
+                <span className="text-[10px] font-bold mt-1">Settings</span>
+              </button>
           </div>
-        </aside>
+        </nav>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          <header className="h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-4 lg:px-6 shadow-sm z-20 shrink-0">
-              <div className="flex items-center gap-4 min-w-0">
-                  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg text-slate-400 hover:bg-spectra/50 transition-colors">
-                      <Menu size={20} />
-                  </button>
-                  <div className="flex flex-col truncate">
-                      <h2 className="text-sm lg:text-lg font-bold text-white leading-tight truncate">
-                          {activeTab === 'DASHBOARD' && 'Dashboard'}
-                          {activeTab === 'INVENTORY' && 'Inventory'}
-                          {activeTab === 'REPORTS' && 'Reports'}
-                          {activeTab === 'SETTINGS' && 'Settings'}
-                          {activeTab === 'REJECT' && 'Reject'}
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative mb-16 lg:mb-0">
+          <header className="h-14 lg:h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-4 lg:px-6 shadow-sm z-20 shrink-0">
+              <div className="flex items-center gap-3">
+                  <div className="lg:hidden flex items-center leading-none mr-2">
+                      <span className="text-white font-black text-lg tracking-tighter">w</span>
+                      <span className="text-cutty font-black text-lg tracking-tighter">6</span>
+                  </div>
+                  <div className="flex flex-col">
+                      <h2 className="text-sm lg:text-lg font-bold text-white leading-tight">
+                          {activeTab === 'DASHBOARD' && 'Dashboard Overview'}
+                          {activeTab === 'INVENTORY' && 'Master Inventory'}
+                          {activeTab === 'REPORTS' && 'Mutation Reports'}
+                          {activeTab === 'SETTINGS' && 'System Settings'}
+                          {activeTab === 'REJECT' && 'Reject Management'}
                       </h2>
-                      <div className="text-[9px] text-cutty font-bold uppercase tracking-wider truncate">Waresix Warehouse System</div>
+                      <div className="text-[9px] text-cutty font-bold uppercase tracking-widest hidden sm:block">Waresix Warehouse System</div>
                   </div>
               </div>
               
@@ -149,19 +144,20 @@ function App() {
                   <ClockWidget />
               </div>
 
-              <div className="flex items-center gap-2 lg:gap-3 shrink-0">
-                  <MusicPlayer />
-                  <div className="h-8 w-px bg-spectra mx-1 hidden lg:block"></div>
+              <div className="flex items-center gap-3">
                   <div className="hidden sm:block">
-                      <div className="flex items-center gap-3 pl-3 border-l border-spectra">
-                          <div className="text-right hidden xl:block">
-                              <div className="text-xs font-bold text-slate-200">{currentUser?.name}</div>
-                              <div className="text-[9px] text-cutty uppercase font-bold">{currentUser?.role}</div>
-                          </div>
-                          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-spectra flex items-center justify-center text-white font-bold shadow-md text-xs">
-                              {currentUser?.name.substring(0,2).toUpperCase() || 'AD'}
-                          </div>
+                      <MusicPlayer />
+                  </div>
+                  <div className="h-8 w-px bg-spectra mx-1 hidden lg:block"></div>
+                  <div className="flex items-center gap-2">
+                      <div className="text-right hidden xl:block">
+                          <div className="text-[10px] font-bold text-slate-200">{currentUser?.name}</div>
+                          <div className="text-[8px] text-cutty uppercase font-black">{currentUser?.role}</div>
                       </div>
+                      <div className="w-8 h-8 rounded-lg bg-spectra border border-white/10 flex items-center justify-center text-white font-bold shadow-md text-[10px]">
+                          {currentUser?.name.substring(0,2).toUpperCase() || 'AD'}
+                      </div>
+                      <button onClick={handleLogout} className="lg:hidden p-2 text-red-400"><LogOut size={18}/></button>
                   </div>
               </div>
           </header>
