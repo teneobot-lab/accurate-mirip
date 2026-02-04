@@ -2,28 +2,18 @@
 const db = require('./database');
 
 const initSchema = async () => {
-    console.log("🛠️  Initializing Database Schema...");
-    const conn = await db.getConnection();
-
-    // Helper: Safely add column if it doesn't exist (Migration)
-    const addColumnSafe = async (tableName, columnName, columnDefinition) => {
-        try {
-            // Check if table exists first to avoid errors
-            const [tables] = await conn.query(`SHOW TABLES LIKE '${tableName}'`);
-            if (tables.length === 0) return; // Table doesn't exist yet, CREATE TABLE will handle it
-
-            const [cols] = await conn.query(`SHOW COLUMNS FROM ${tableName} LIKE ?`, [columnName]);
-            if (cols.length === 0) {
-                console.log(`🔸 Migrating: Adding column '${columnName}' to table '${tableName}'...`);
-                await conn.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
-            }
-        } catch (err) {
-            console.warn(`⚠️ Migration warning for ${tableName}.${columnName}:`, err.message);
-        }
-    };
+    console.log("🛠️  Memulai Sinkronisasi Struktur Database...");
+    let conn;
+    
+    try {
+        conn = await db.getConnection();
+    } catch (err) {
+        console.error("🔥 GAGAL TOTAL: Aplikasi tidak bisa lanjut karena masalah database.");
+        throw err;
+    }
 
     try {
-        // 1. Core Master Tables
+        // Master Tables
         await conn.query(`
             CREATE TABLE IF NOT EXISTS warehouses (
                 id CHAR(36) PRIMARY KEY,
@@ -72,7 +62,6 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
-        // 2. Stock Table
         await conn.query(`
             CREATE TABLE IF NOT EXISTS stock (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -86,7 +75,6 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
-        // 3. Transactions
         await conn.query(`
             CREATE TABLE IF NOT EXISTS transactions (
                 id CHAR(36) PRIMARY KEY,
@@ -119,7 +107,6 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
-        // 4. Reject Module Tables
         await conn.query(`
             CREATE TABLE IF NOT EXISTS reject_outlets (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -139,45 +126,7 @@ const initSchema = async () => {
         `);
 
         await conn.query(`
-            CREATE TABLE IF NOT EXISTS reject_master_units (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                item_id CHAR(36) NOT NULL,
-                unit_name VARCHAR(20) NOT NULL,
-                conversion_ratio DECIMAL(10, 4) NOT NULL,
-                operator ENUM('*', '/') DEFAULT '*',
-                FOREIGN KEY (item_id) REFERENCES reject_master_items(id) ON DELETE CASCADE,
-                UNIQUE(item_id, unit_name)
-            ) ENGINE=InnoDB;
-        `);
-
-        await conn.query(`
-            CREATE TABLE IF NOT EXISTS reject_batches (
-                id CHAR(36) PRIMARY KEY,
-                date DATE NOT NULL,
-                outlet VARCHAR(100) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB;
-        `);
-
-        await conn.query(`
-            CREATE TABLE IF NOT EXISTS reject_items (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                batch_id CHAR(36) NOT NULL,
-                item_id CHAR(36) NOT NULL,
-                sku VARCHAR(50),
-                name VARCHAR(150),
-                qty DECIMAL(15, 4) NOT NULL,
-                unit VARCHAR(20) NOT NULL,
-                base_qty DECIMAL(15, 4) NOT NULL,
-                reason VARCHAR(255),
-                FOREIGN KEY (batch_id) REFERENCES reject_batches(id) ON DELETE CASCADE,
-                FOREIGN KEY (item_id) REFERENCES reject_master_items(id)
-            ) ENGINE=InnoDB;
-        `);
-
-        // 5. User & Auth
-        await conn.query(`
-             CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS users (
                 id CHAR(36) PRIMARY KEY,
                 username VARCHAR(50) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
@@ -188,7 +137,6 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
-        // 6. Music Module
         await conn.query(`
              CREATE TABLE IF NOT EXISTS playlists (
                 id CHAR(36) PRIMARY KEY,
@@ -208,19 +156,12 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
-        // --- AUTO MIGRATION (Fix Missing Columns in Existing DB) ---
-        await addColumnSafe('transaction_items', 'base_qty', 'DECIMAL(15, 4) NOT NULL DEFAULT 0');
-        await addColumnSafe('transaction_items', 'conversion_ratio', 'DECIMAL(10, 4) DEFAULT 1');
-        await addColumnSafe('transactions', 'created_by', 'CHAR(36)');
-        await addColumnSafe('users', 'role', "VARCHAR(20) DEFAULT 'STAFF'");
-        await addColumnSafe('users', 'status', "ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE'");
-
-        console.log("✅ Database Schema Synced & Validated");
+        console.log("✅ Struktur Database Siap");
     } catch (error) {
-        console.error("❌ Database Initialization Error:", error);
+        console.error("❌ Database Init Error:", error);
         throw error;
     } finally {
-        conn.release();
+        if (conn) conn.release();
     }
 };
 
