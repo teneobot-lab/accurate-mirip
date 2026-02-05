@@ -339,8 +339,8 @@ function processSheet(sheetName, newRows, headers) {
                                         {isSyncing ? 'MENGIRIM DATA...' : 'MULAI SINKRONISASI'}
                                     </button>
                                     <div className="text-[9px] text-center text-slate-500 italic mt-2 space-y-1">
-                                        <p>1. Transaksi (IN/OUT) -> Sheet "Mutasi GudangPro"</p>
-                                        <p>2. Reject (Aggregated) -> Sheet "Laporan Reject"</p>
+                                        <p>1. Transaksi (IN/OUT) &rarr; Sheet "Mutasi GudangPro"</p>
+                                        <p>2. Reject (Aggregated) &rarr; Sheet "Laporan Reject"</p>
                                     </div>
                                 </div>
                             </div>
