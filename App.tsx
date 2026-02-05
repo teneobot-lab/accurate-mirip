@@ -11,6 +11,7 @@ import { StockCardModal } from './components/StockCardModal';
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
+import { LowStockAlert } from './components/LowStockAlert';
 import { ToastProvider } from './components/Toast';
 import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
@@ -165,6 +166,7 @@ function App() {
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">
+                    <LowStockAlert />
                     <MusicPlayer />
                     
                     <div className="flex items-center gap-3 pl-3 border-l border-spectra">
