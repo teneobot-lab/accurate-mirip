@@ -36,53 +36,34 @@ export const SettingsView: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // --- UPDATED GAS CODE FOR IDEMPOTENCY ---
+    // --- UPDATED GAS CODE FOR DUAL SHEET & IDEMPOTENCY ---
     const GS_CODE_BOILERPLATE = `/**
- * GudangPro - Google Sheets Connector v3.0 (Smart Sync)
- * Features: Auto-Date, Deduplication (Idempotency)
+ * GudangPro - Smart Sync v4.0
+ * Supports: Separate Sheets (Mutasi & Reject), Clean Numbers, Idempotency
  */
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
     
-    if (contents.action === "APPEND_ROWS") {
-      var sheet = setupSheet();
-      var newRows = contents.rows; // Data sent from App
-      var addedCount = 0;
+    // Support V2 Payload (Separate Transactions & Rejects)
+    if (contents.action === "SYNC_V2") {
+      var results = [];
       
-      // 1. Get Existing Reference Numbers (Column B) to prevent duplicates
-      var lastRow = sheet.getLastRow();
-      var existingRefs = [];
-      if (lastRow > 1) {
-         // Ambil semua data di kolom ke-2 (Ref No)
-         var refData = sheet.getRange(2, 2, lastRow - 1, 1).getValues(); 
-         existingRefs = refData.flat().map(String); 
+      // 1. Process Transactions (Sheet: Mutasi GudangPro)
+      if (contents.transactions && contents.transactions.length > 0) {
+         results.push(processSheet("Mutasi GudangPro", contents.transactions, ["Tanggal", "Ref No", "Tipe", "Kode", "Nama", "Qty", "Satuan", "Ket"]));
       }
       
-      // 2. Filter Rows: Only add if Ref No (Index 1) is NOT in existingRefs
-      var uniqueRows = [];
-      for (var i = 0; i < newRows.length; i++) {
-         var rowRef = String(newRows[i][1]); // Index 1 is Ref No
-         if (existingRefs.indexOf(rowRef) === -1) {
-            uniqueRows.push(newRows[i]);
-         }
+      // 2. Process Rejects (Sheet: Laporan Reject)
+      if (contents.rejects && contents.rejects.length > 0) {
+         results.push(processSheet("Laporan Reject", contents.rejects, ["Tanggal", "ID Aggregasi", "SKU", "Nama Barang", "Total Base Qty", "Base Unit", "Alasan"]));
       }
       
-      // 3. Batch Append
-      if (uniqueRows.length > 0) {
-        sheet.getRange(lastRow + 1, 1, uniqueRows.length, uniqueRows[0].length).setValues(uniqueRows);
-        addedCount = uniqueRows.length;
-      }
-      
-      return ContentService.createTextOutput(JSON.stringify({
-          status: "success", 
-          total_received: newRows.length,
-          added: addedCount,
-          message: addedCount + " new rows added. " + (newRows.length - addedCount) + " duplicates skipped."
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({status: "success", details: results})).setMimeType(ContentService.MimeType.JSON);
     }
     
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid action"}))
+    // Fallback for old calls
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid action version"}))
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (err) {
@@ -91,23 +72,43 @@ function doPost(e) {
   }
 }
 
-function setupSheet() {
+// Generic Function to Append Data with Deduplication
+function processSheet(sheetName, newRows, headers) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var name = "Mutasi GudangPro";
-  var sheet = ss.getSheetByName(name);
+  var sheet = ss.getSheetByName(sheetName);
   
+  // Create Sheet if not exists
   if (!sheet) {
-    sheet = ss.insertSheet(name);
-    // Header Row
-    var h = ["Tanggal", "Ref No", "Tipe", "Kode", "Nama", "Qty", "Satuan", "Ket"];
-    sheet.appendRow(h);
-    
-    // Styling
-    var range = sheet.getRange(1, 1, 1, h.length);
-    range.setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
+    sheet = ss.insertSheet(sheetName);
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
-  return sheet;
+  
+  var lastRow = sheet.getLastRow();
+  var existingIds = [];
+  
+  // Get existing IDs (Column B is always the unique key: RefNo or AggID)
+  if (lastRow > 1) {
+     var data = sheet.getRange(2, 2, lastRow - 1, 1).getValues(); 
+     existingIds = data.flat().map(String); 
+  }
+  
+  // Filter duplicates
+  var uniqueRows = [];
+  for (var i = 0; i < newRows.length; i++) {
+     var id = String(newRows[i][1]); // Index 1 is the Key
+     if (existingIds.indexOf(id) === -1) {
+        uniqueRows.push(newRows[i]);
+     }
+  }
+  
+  // Append
+  if (uniqueRows.length > 0) {
+    sheet.getRange(lastRow + 1, 1, uniqueRows.length, uniqueRows[0].length).setValues(uniqueRows);
+  }
+  
+  return sheetName + ": Added " + uniqueRows.length + " rows";
 }`;
 
     const refreshData = async () => {
@@ -199,10 +200,10 @@ function setupSheet() {
             await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
             
             await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
-            showToast("Sync Selesai. Cek Spreadsheet Anda.", "success");
+            showToast("Sync Selesai. Cek Sheet 'Mutasi' dan 'Reject'.", "success");
         } catch (e: any) {
             console.error(e);
-            showToast("Gagal Sync. Pastikan URL benar & Deployment mode 'Web App'", "error");
+            showToast("Gagal Sync. Pastikan script V4.0 sudah di-update di Google Script Editor.", "error");
         } finally {
             setIsSyncing(false);
         }
@@ -307,7 +308,7 @@ function setupSheet() {
                             <div className="bg-gable p-8 rounded-[24px] shadow-sm border border-spectra space-y-6">
                                 <div className="flex items-center gap-5 mb-4">
                                     <div className="p-4 bg-emerald-900/30 rounded-2xl text-emerald-400 shadow-inner border border-emerald-900"><FileSpreadsheet size={32}/></div>
-                                    <div><h3 className="text-xl font-black text-white">Google Sync</h3><p className="text-xs text-cutty font-bold uppercase tracking-wider">Tabular Row Export</p></div>
+                                    <div><h3 className="text-xl font-black text-white">Google Sync V4</h3><p className="text-xs text-cutty font-bold uppercase tracking-wider">Multi-Sheet Sync</p></div>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -337,14 +338,15 @@ function setupSheet() {
                                         {isSyncing ? <Loader2 size={20} className="animate-spin"/> : <Share2 size={20} />} 
                                         {isSyncing ? 'MENGIRIM DATA...' : 'MULAI SINKRONISASI'}
                                     </button>
-                                    <p className="text-[10px] text-center text-slate-500 italic mt-2">
-                                        Note: Transaksi & Reject akan digabungkan. Data yang sudah ada (Ref No sama) tidak akan diduplikat.
-                                    </p>
+                                    <div className="text-[9px] text-center text-slate-500 italic mt-2 space-y-1">
+                                        <p>1. Transaksi (IN/OUT) -> Sheet "Mutasi GudangPro"</p>
+                                        <p>2. Reject (Aggregated) -> Sheet "Laporan Reject"</p>
+                                    </div>
                                 </div>
                             </div>
                             <div className="bg-daintree rounded-[24px] border border-spectra flex flex-col h-[500px] shadow-2xl overflow-hidden">
                                 <div className="p-4 bg-gable flex justify-between items-center border-b border-spectra">
-                                    <span className="text-[10px] font-black text-cutty uppercase tracking-widest">Google Apps Script Snippet</span>
+                                    <span className="text-[10px] font-black text-cutty uppercase tracking-widest">Update Google Apps Script (V4.0)</span>
                                     <button onClick={() => { navigator.clipboard.writeText(GS_CODE_BOILERPLATE); setCopied(true); setTimeout(()=>setCopied(false),2000); }} className="px-4 py-1.5 bg-spectra/20 hover:bg-spectra/50 rounded-lg text-[10px] font-black text-white flex items-center gap-2 border border-spectra transition-colors">
                                         {copied ? <Check size={14} className="text-emerald-400"/> : <Copy size={14}/>} {copied ? 'COPIED' : 'COPY CODE'}
                                     </button>

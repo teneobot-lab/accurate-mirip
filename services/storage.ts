@@ -10,6 +10,14 @@ export const API_URL = ''; // Proxy via vercel.json / vite.config.ts
 
 const isBrowser = typeof window !== 'undefined';
 
+// --- HELPER: Clean Number Formatter ---
+// Menghapus trailing zeros yang tidak perlu (3.2000 -> 3.2, 5.0000 -> 5)
+const cleanNum = (val: string | number): number => {
+    const num = Number(val);
+    if (isNaN(num)) return 0;
+    return parseFloat(num.toFixed(4)); 
+};
+
 export const StorageService = {
   init: () => {
     if (!isBrowser) return;
@@ -191,48 +199,95 @@ export const StorageService = {
   saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
 
   async syncToGoogleSheets(scriptUrl: string, startDate: string, endDate: string) {
-    // 1. Fetch Transactions (With Date Filter)
+    // 1. Fetch Data
     const transactions: Transaction[] = await this.fetchTransactions({ start: startDate, end: endDate });
     const items: Item[] = await this.fetchItems();
     
-    // 2. Map Transactions to Rows
+    // --- PROSES TRANSAKSI (IN/OUT) ---
+    // Mapping seperti biasa, gunakan 'cleanNum' untuk qty input user
     const txRows = transactions.flatMap(tx => tx.items.map(line => ([
         tx.date, 
         tx.referenceNo, // Key for deduplication
         tx.type,
         items.find(i => i.id === line.itemId)?.code || '?',
         items.find(i => i.id === line.itemId)?.name || '?',
-        line.qty, 
+        cleanNum(line.qty), // Gunakan input user asli yang dibersihkan (3.2000 -> 3.2)
         line.unit, 
         line.note || tx.notes || '-'
     ])));
 
-    // 3. Fetch Rejects (Filter Client-Side)
+    // --- PROSES REJECT (AGGREGATION TO BASE UNIT) ---
     const rejectBatches: RejectBatch[] = await this.fetchRejectBatches();
+    const rejectMasterItems: Item[] = await this.fetchRejectMasterItems(); // Need master to get Base Unit name
     const filteredRejects = rejectBatches.filter(b => b.date >= startDate && b.date <= endDate);
     
-    // 4. Map Rejects to Rows
-    const rejectRows = filteredRejects.flatMap(batch => batch.items.map(line => ([
-        batch.date,
-        batch.id, // Key for deduplication
-        'REJECT', // Type Explicit
-        line.sku || '?',
-        line.name || '?',
-        line.qty,
-        line.unit,
-        line.reason || batch.outlet || '-'
-    ])));
+    // Map untuk Agregasi: Key = Date + SKU
+    const rejectAggMap = new Map<string, {
+        date: string,
+        sku: string,
+        name: string,
+        baseUnit: string,
+        totalBaseQty: number,
+        reasons: Set<string>
+    }>();
 
-    // 5. Combine All
-    const allRows = [...txRows, ...rejectRows];
+    filteredRejects.forEach(batch => {
+        batch.items.forEach(it => {
+            const master = rejectMasterItems.find(mi => mi.id === it.itemId);
+            const baseUnitName = master ? master.baseUnit : it.unit; // Fallback jika master hilang
+            
+            // Buat Key Unik per Hari + SKU
+            const key = `${batch.date}_${it.sku}`;
+            
+            if (!rejectAggMap.has(key)) {
+                rejectAggMap.set(key, {
+                    date: batch.date,
+                    sku: it.sku,
+                    name: it.name,
+                    baseUnit: baseUnitName,
+                    totalBaseQty: 0,
+                    reasons: new Set()
+                });
+            }
 
-    // 6. Send to Google Apps Script
-    // GAS will handle Idempotency (checking Column B)
+            const record = rejectAggMap.get(key)!;
+            // Penting: Gunakan baseQty (hasil konversi di BE/FE) untuk dijumlahkan
+            record.totalBaseQty += Number(it.baseQty || 0);
+            if (it.reason) record.reasons.add(it.reason);
+        });
+    });
+
+    // Convert Map ke Array Rows untuk Google Sheet
+    const rejectRows = Array.from(rejectAggMap.values()).map(rec => {
+        // ID Unik Buatan untuk mencegah duplikasi di Sheet: "REJ-{Date}-{SKU}"
+        const uniqueId = `REJ-${rec.date.replace(/-/g, '')}-${rec.sku}`;
+        
+        return [
+            rec.date,
+            uniqueId,       // Col B: ID Unik
+            rec.sku,        // Col C
+            rec.name,       // Col D
+            cleanNum(rec.totalBaseQty), // Col E: Total Qty (Base) - Clean format
+            rec.baseUnit,   // Col F: Satuan Utama
+            Array.from(rec.reasons).join(', ') || '-' // Col G: Gabungan alasan
+        ];
+    });
+
+    // --- SEND TO GAS (DUAL PAYLOAD) ---
     await fetch(scriptUrl, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({ action: 'APPEND_ROWS', rows: allRows })
+      body: JSON.stringify({ 
+          action: 'SYNC_V2', // Changed action name to support new logic
+          transactions: txRows,
+          rejects: rejectRows
+      })
     });
-    return { status: 'success', count: allRows.length };
+
+    return { 
+        status: 'success', 
+        txCount: txRows.length,
+        rejectCount: rejectRows.length 
+    };
   }
 };
