@@ -8,12 +8,11 @@ import { DashboardView } from './components/DashboardView';
 import { SettingsView } from './components/SettingsView';
 import { RejectView } from './components/RejectView';
 import { StockCardModal } from './components/StockCardModal';
-import { ThemeToggle } from './components/ThemeToggle';
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { ToastProvider } from './components/Toast';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, Smartphone, Monitor } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
@@ -24,9 +23,6 @@ function App() {
 
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
-  // View Mode State
-  const [isMobileMode, setIsMobileMode] = useState(false);
   
   // Transaction Modal State
   const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
@@ -49,12 +45,6 @@ function App() {
     }
     setIsLoadingSession(false);
   }, []);
-
-  // Auto-close sidebar when switching to mobile mode
-  useEffect(() => {
-    if (isMobileMode) setIsSidebarOpen(false);
-    else setIsSidebarOpen(true);
-  }, [isMobileMode]);
 
   const handleLogin = (user: any) => {
       setCurrentUser(user);
@@ -99,16 +89,11 @@ function App() {
 
   return (
     <ToastProvider>
-      {/* Container Wrapper for View Mode Simulation */}
-      <div className={`min-h-screen transition-colors duration-500 ease-in-out ${isMobileMode ? 'bg-slate-950 flex items-center justify-center p-8' : 'bg-daintree'}`}>
+      {/* Container Wrapper */}
+      <div className="min-h-screen bg-daintree">
         
         {/* Main Application Frame */}
-        <div className={`flex bg-daintree font-sans text-slate-200 transition-all duration-500 ease-in-out shadow-2xl overflow-hidden
-            ${isMobileMode 
-                ? 'w-[414px] h-[896px] rounded-[45px] border-[12px] border-slate-900 relative' 
-                : 'w-full h-screen'
-            }
-        `}>
+        <div className="flex bg-daintree font-sans text-slate-200 shadow-2xl overflow-hidden w-full h-screen">
             {/* Sidebar */}
             <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} bg-gable flex-shrink-0 flex flex-col text-slate-300 shadow-2xl z-30 transition-all duration-300 ease-in-out overflow-hidden border-r border-spectra/30`}>
             <div className="h-20 flex flex-col justify-center px-6 border-b border-spectra/30 whitespace-nowrap bg-daintree">
@@ -175,25 +160,12 @@ function App() {
                 </div>
                 
                 {/* Center Widget: Global Search */}
-                <div className={`flex-1 max-w-xl ${isMobileMode ? 'hidden' : 'block'}`}>
+                <div className="flex-1 max-w-xl">
                     <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
                 </div>
 
                 <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* View Toggle Button */}
-                    <button
-                        onClick={() => setIsMobileMode(!isMobileMode)}
-                        className={`p-2.5 rounded-xl border transition-all ${isMobileMode ? 'bg-spectra text-white border-spectra' : 'border-transparent text-slate-400 hover:bg-spectra/20'}`}
-                        title={isMobileMode ? "Switch to Desktop View" : "Switch to Mobile View"}
-                    >
-                        {isMobileMode ? <Monitor size={18} /> : <Smartphone size={18} />}
-                    </button>
-
                     <MusicPlayer />
-                    <div className="h-8 w-px bg-spectra mx-1 hidden sm:block"></div>
-                    <div className="hidden sm:block">
-                        <ThemeToggle />
-                    </div>
                     
                     <div className="flex items-center gap-3 pl-3 border-l border-spectra">
                         <div className="text-right hidden md:block">
