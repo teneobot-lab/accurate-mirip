@@ -30,32 +30,58 @@ export const SettingsView: React.FC = () => {
     const [showModal, setShowModal] = useState(false);
     const [editData, setEditData] = useState<any>(null);
 
-    const [scriptUrl, setScriptUrl] = useState(() => localStorage.getItem('gp_gsheet_url') || '');
+    const [scriptUrl, setScriptUrl] = useState('');
     const [syncStart, setSyncStart] = useState(new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0]);
     const [syncEnd, setSyncEnd] = useState(new Date().toISOString().split('T')[0]);
     const [isSyncing, setIsSyncing] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    // --- UPDATED GAS CODE FOR IDEMPOTENCY ---
     const GS_CODE_BOILERPLATE = `/**
- * GudangPro - Google Sheets Connector v2.0
- * Updated: Supports Auto-Date Formatting & Status Checks
+ * GudangPro - Google Sheets Connector v3.0 (Smart Sync)
+ * Features: Auto-Date, Deduplication (Idempotency)
  */
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
+    
     if (contents.action === "APPEND_ROWS") {
       var sheet = setupSheet();
-      var rows = contents.rows;
+      var newRows = contents.rows; // Data sent from App
+      var addedCount = 0;
       
-      // Batch processing for speed
-      if (rows.length > 0) {
-        // Append rows to the end of the sheet
-        sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+      // 1. Get Existing Reference Numbers (Column B) to prevent duplicates
+      var lastRow = sheet.getLastRow();
+      var existingRefs = [];
+      if (lastRow > 1) {
+         // Ambil semua data di kolom ke-2 (Ref No)
+         var refData = sheet.getRange(2, 2, lastRow - 1, 1).getValues(); 
+         existingRefs = refData.flat().map(String); 
       }
       
-      return ContentService.createTextOutput(JSON.stringify({status: "success", count: rows.length}))
-        .setMimeType(ContentService.MimeType.JSON);
+      // 2. Filter Rows: Only add if Ref No (Index 1) is NOT in existingRefs
+      var uniqueRows = [];
+      for (var i = 0; i < newRows.length; i++) {
+         var rowRef = String(newRows[i][1]); // Index 1 is Ref No
+         if (existingRefs.indexOf(rowRef) === -1) {
+            uniqueRows.push(newRows[i]);
+         }
+      }
+      
+      // 3. Batch Append
+      if (uniqueRows.length > 0) {
+        sheet.getRange(lastRow + 1, 1, uniqueRows.length, uniqueRows[0].length).setValues(uniqueRows);
+        addedCount = uniqueRows.length;
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({
+          status: "success", 
+          total_received: newRows.length,
+          added: addedCount,
+          message: addedCount + " new rows added. " + (newRows.length - addedCount) + " duplicates skipped."
+      })).setMimeType(ContentService.MimeType.JSON);
     }
+    
     return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid action"}))
       .setMimeType(ContentService.MimeType.JSON);
       
@@ -109,6 +135,13 @@ function setupSheet() {
         }
     };
 
+    // Load Config separately to not block main UI
+    useEffect(() => {
+        if (activeTab === 'EXTERNAL_SYNC') {
+            StorageService.fetchSystemConfig('gsheet_url').then(url => setScriptUrl(url));
+        }
+    }, [activeTab]);
+
     useEffect(() => { refreshData(); }, []);
 
     const handleDelete = async (id: string) => {
@@ -148,6 +181,33 @@ function setupSheet() {
         } catch (e) { showToast("Gagal menyimpan ke server", "error"); }
     };
 
+    const handleSaveScriptUrl = async () => {
+        if (!scriptUrl.trim()) return;
+        try {
+            await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
+            showToast("URL Google Script disimpan ke Database", "success");
+        } catch (e) {
+            showToast("Gagal menyimpan URL", "error");
+        }
+    };
+
+    const handleStartSync = async () => {
+        if (!scriptUrl) return showToast("Masukkan Script URL terlebih dahulu", "warning");
+        setIsSyncing(true);
+        try {
+            // Save URL first just in case
+            await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
+            
+            await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
+            showToast("Sync Selesai. Cek Spreadsheet Anda.", "success");
+        } catch (e: any) {
+            console.error(e);
+            showToast("Gagal Sync. Pastikan URL benar & Deployment mode 'Web App'", "error");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const filteredData = () => {
         const lower = searchTerm.toLowerCase();
         if (activeTab === 'WAREHOUSE') return warehouses.filter(w => w.name.toLowerCase().includes(lower));
@@ -156,10 +216,6 @@ function setupSheet() {
         if (activeTab === 'USERS') return users.filter(u => u.name.toLowerCase().includes(lower));
         return [];
     };
-
-    const isPartnerTab = activeTab === 'SUPPLIER' || activeTab === 'CUSTOMER';
-    const isUserTab = activeTab === 'USERS';
-    const isWarehouseTab = activeTab === 'WAREHOUSE';
 
     return (
         <div className="flex h-full bg-daintree transition-colors font-sans">
@@ -256,11 +312,34 @@ function setupSheet() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Web App Script URL</label>
-                                        <input type="text" className="w-full p-3 bg-daintree border border-spectra rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-spectra text-white" value={scriptUrl} onChange={e => setScriptUrl(e.target.value)} />
+                                        <div className="flex gap-2">
+                                            <input type="text" className="w-full p-3 bg-daintree border border-spectra rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-spectra text-white" value={scriptUrl} onChange={e => setScriptUrl(e.target.value)} placeholder="https://script.google.com/..." />
+                                            <button onClick={handleSaveScriptUrl} className="p-3 bg-daintree border border-spectra rounded-xl hover:bg-spectra/20 text-white" title="Simpan URL ke Database"><Save size={16}/></button>
+                                        </div>
                                     </div>
-                                    <button onClick={() => StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd).then(() => showToast("Export Berhasil", "success")).catch(() => showToast("Gagal Export", "error"))} className="w-full py-4 bg-spectra hover:bg-gable text-white rounded-xl font-black text-sm shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 border border-spectra/50">
-                                        <Share2 size={20} /> Mulai Export Data Baris
+                                    
+                                    {/* Date Range Filter for Sync */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Filter Periode Data</label>
+                                        <div className="flex gap-3">
+                                            <div className="flex-1 relative">
+                                                <input type="date" value={syncStart} onChange={e => setSyncStart(e.target.value)} className="w-full p-3 bg-daintree border border-spectra rounded-xl text-xs font-bold text-white outline-none" />
+                                                <span className="absolute -top-2 left-2 bg-gable px-1 text-[9px] text-slate-500 font-bold">START</span>
+                                            </div>
+                                            <div className="flex-1 relative">
+                                                <input type="date" value={syncEnd} onChange={e => setSyncEnd(e.target.value)} className="w-full p-3 bg-daintree border border-spectra rounded-xl text-xs font-bold text-white outline-none" />
+                                                <span className="absolute -top-2 left-2 bg-gable px-1 text-[9px] text-slate-500 font-bold">END</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <button onClick={handleStartSync} disabled={isSyncing} className="w-full py-4 bg-spectra hover:bg-gable text-white rounded-xl font-black text-sm shadow-lg flex items-center justify-center gap-3 transition-all active:scale-95 border border-spectra/50 disabled:opacity-50">
+                                        {isSyncing ? <Loader2 size={20} className="animate-spin"/> : <Share2 size={20} />} 
+                                        {isSyncing ? 'MENGIRIM DATA...' : 'MULAI SINKRONISASI'}
                                     </button>
+                                    <p className="text-[10px] text-center text-slate-500 italic mt-2">
+                                        Note: Transaksi & Reject akan digabungkan. Data yang sudah ada (Ref No sama) tidak akan diduplikat.
+                                    </p>
                                 </div>
                             </div>
                             <div className="bg-daintree rounded-[24px] border border-spectra flex flex-col h-[500px] shadow-2xl overflow-hidden">

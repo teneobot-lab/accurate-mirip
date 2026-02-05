@@ -43,6 +43,22 @@ export const StorageService = {
     return response.json();
   },
 
+  // --- CONFIG (NEW) ---
+  async fetchSystemConfig(key: string): Promise<string> {
+      try {
+          const res = await this.apiCall(`/api/inventory/config/${key}`);
+          return res.value || '';
+      } catch (e) {
+          return '';
+      }
+  },
+  async saveSystemConfig(key: string, value: string) {
+      return this.apiCall('/api/inventory/config', { 
+          method: 'POST', 
+          body: JSON.stringify({ key, value }) 
+      });
+  },
+
   // --- MASTER DATA ---
   async fetchItems(): Promise<Item[]> {
     return this.apiCall('/api/inventory/items');
@@ -175,19 +191,48 @@ export const StorageService = {
   saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
 
   async syncToGoogleSheets(scriptUrl: string, startDate: string, endDate: string) {
+    // 1. Fetch Transactions (With Date Filter)
     const transactions: Transaction[] = await this.fetchTransactions({ start: startDate, end: endDate });
     const items: Item[] = await this.fetchItems();
-    const rows = transactions.flatMap(tx => tx.items.map(line => ([
-        tx.date, tx.referenceNo, tx.type,
+    
+    // 2. Map Transactions to Rows
+    const txRows = transactions.flatMap(tx => tx.items.map(line => ([
+        tx.date, 
+        tx.referenceNo, // Key for deduplication
+        tx.type,
         items.find(i => i.id === line.itemId)?.code || '?',
         items.find(i => i.id === line.itemId)?.name || '?',
-        line.qty, line.unit, line.note || tx.notes || '-'
+        line.qty, 
+        line.unit, 
+        line.note || tx.notes || '-'
     ])));
+
+    // 3. Fetch Rejects (Filter Client-Side)
+    const rejectBatches: RejectBatch[] = await this.fetchRejectBatches();
+    const filteredRejects = rejectBatches.filter(b => b.date >= startDate && b.date <= endDate);
+    
+    // 4. Map Rejects to Rows
+    const rejectRows = filteredRejects.flatMap(batch => batch.items.map(line => ([
+        batch.date,
+        batch.id, // Key for deduplication
+        'REJECT', // Type Explicit
+        line.sku || '?',
+        line.name || '?',
+        line.qty,
+        line.unit,
+        line.reason || batch.outlet || '-'
+    ])));
+
+    // 5. Combine All
+    const allRows = [...txRows, ...rejectRows];
+
+    // 6. Send to Google Apps Script
+    // GAS will handle Idempotency (checking Column B)
     await fetch(scriptUrl, {
       method: 'POST',
       mode: 'no-cors',
-      body: JSON.stringify({ action: 'APPEND_ROWS', rows: rows })
+      body: JSON.stringify({ action: 'APPEND_ROWS', rows: allRows })
     });
-    return { status: 'success' };
+    return { status: 'success', count: allRows.length };
   }
 };

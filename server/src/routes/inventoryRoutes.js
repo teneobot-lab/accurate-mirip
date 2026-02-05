@@ -4,6 +4,32 @@ const db = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 
+// --- SYSTEM CONFIG (Google Sheets URL etc) ---
+router.get('/config/:key', async (req, res, next) => {
+    try {
+        const { key } = req.params;
+        const [rows] = await db.query('SELECT setting_value FROM system_settings WHERE setting_key = ?', [key]);
+        if (rows.length > 0) {
+            res.json({ key, value: rows[0].setting_value });
+        } else {
+            res.json({ key, value: '' });
+        }
+    } catch(e) { next(e); }
+});
+
+router.post('/config', async (req, res, next) => {
+    try {
+        const { key, value } = req.body;
+        if (!key) return res.status(400).json({ message: "Key is required" });
+        
+        await db.query(
+            'INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)',
+            [key, value]
+        );
+        res.json({ status: 'success', key, value });
+    } catch(e) { next(e); }
+});
+
 // --- ITEMS ---
 router.get('/items', async (req, res, next) => {
     try {
