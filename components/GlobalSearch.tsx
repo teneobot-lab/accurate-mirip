@@ -1,8 +1,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Command, ArrowRight, Package, Tag } from 'lucide-react';
+import { Search, ArrowRight, Package, Tag } from 'lucide-react';
 import { Item } from '../types';
 import { StorageService } from '../services/storage';
+
+// --- UTILS ---
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => setDebouncedValue(value), delay);
+        return () => clearTimeout(handler);
+    }, [value, delay]);
+    return debouncedValue;
+}
 
 interface Props {
   onSelectItem: (item: Item) => void;
@@ -10,6 +20,8 @@ interface Props {
 
 export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
   const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounce(query, 300); // 300ms delay before processing
+
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
@@ -17,7 +29,7 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load items on mount using fetchItems
+  // Load items on mount
   useEffect(() => {
     const loadItems = async () => {
         try {
@@ -30,26 +42,26 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
     loadItems();
   }, []);
 
-  // Filter Logic (Fuzzy-ish)
+  // Filter Logic (Triggered by DEBOUNCED query)
   useEffect(() => {
-    if (!query) {
+    if (!debouncedQuery) {
       setFilteredItems([]);
       setIsOpen(false);
       return;
     }
 
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = debouncedQuery.toLowerCase();
     const terms = lowerQuery.split(' ').filter(t => t.length > 0);
 
     const results = items.filter(item => {
       const searchString = `${item.code} ${item.name} ${item.category}`.toLowerCase();
       return terms.every(term => searchString.includes(term));
-    }).slice(0, 8);
+    }).slice(0, 8); // Limit to 8 items
 
     setFilteredItems(results);
     setIsOpen(results.length > 0);
     setSelectedIndex(0);
-  }, [query, items]);
+  }, [debouncedQuery, items]);
 
   // Click Outside
   useEffect(() => {
@@ -114,42 +126,41 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
         </div>
       </div>
 
-      {/* Dropdown Results - Posisi Tepat di Bawah Search Bar */}
       {isOpen && (
         <div className="absolute z-[100] mt-2 left-0 w-full bg-gable rounded-xl shadow-2xl border border-spectra overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="text-[10px] uppercase font-bold text-cutty px-4 py-2.5 bg-daintree border-b border-spectra flex justify-between items-center">
+            <div className="text-[10px] uppercase font-bold text-cutty px-4 py-2 bg-daintree border-b border-spectra flex justify-between items-center">
                 <span className="flex items-center gap-1.5"><Tag size={10}/> Hasil Pencarian</span>
-                <span>Pilih dengan <ArrowRight size={10} className="inline mx-1"/> atau Enter</span>
+                <span>Enter to Select</span>
             </div>
             <ul className="max-h-[60vh] overflow-y-auto">
                 {filteredItems.map((item, index) => (
                 <li
                     key={item.id}
                     onClick={() => handleSelect(item)}
-                    className={`cursor-pointer px-4 py-3 border-b border-spectra last:border-0 flex justify-between items-center transition-colors ${
+                    className={`cursor-pointer px-4 py-2 border-b border-spectra last:border-0 flex justify-between items-center transition-colors ${
                         index === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'
                     }`}
                 >
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${index === selectedIndex ? 'bg-daintree text-white' : 'bg-daintree text-spectra'}`}>
-                            <Package size={18} />
+                        <div className={`p-1.5 rounded-lg ${index === selectedIndex ? 'bg-daintree text-white' : 'bg-daintree text-spectra'}`}>
+                            <Package size={14} />
                         </div>
                         <div className="flex flex-col">
-                            <span className={`text-sm font-bold ${index === selectedIndex ? 'text-white' : 'text-slate-200'}`}>
+                            <span className={`text-xs font-bold ${index === selectedIndex ? 'text-white' : 'text-slate-200'}`}>
                                  {item.name}
                             </span>
-                            <span className={`text-xs font-mono ${index === selectedIndex ? 'text-slate-200' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] font-mono ${index === selectedIndex ? 'text-slate-200' : 'text-slate-500'}`}>
                                 {item.code} • {item.category}
                             </span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded border ${
+                    <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
                             index === selectedIndex ? 'bg-daintree border-cutty text-white' : 'bg-daintree border-spectra text-slate-400'
                         }`}>
                             {item.baseUnit}
                         </span>
-                        {index === selectedIndex && <ArrowRight size={16} className="text-white animate-pulse" />}
+                        {index === selectedIndex && <ArrowRight size={14} className="text-white" />}
                     </div>
                 </li>
                 ))}

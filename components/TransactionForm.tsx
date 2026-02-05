@@ -1,10 +1,23 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner, Stock } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote, ChevronDown, Upload, FileSpreadsheet, AlertTriangle, Image as ImageIcon, Eye, Download } from 'lucide-react';
+import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, StickyNote, ChevronDown, Upload, FileSpreadsheet, Image as ImageIcon, Eye, Download, Package, FileText } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
+
+// --- CUSTOM HOOK FOR PERFORMANCE ---
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+    return debouncedValue;
+}
 
 interface Props {
   type: TransactionType;
@@ -39,13 +52,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   // Row Entry & Autocomplete States
   const [query, setQuery] = useState('');
-  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  // DEBOUNCE: Delay filtering logic by 300ms
+  const debouncedQuery = useDebounce(query, 300);
+  
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingUnit, setPendingUnit] = useState('');
-  const [pendingQty, setPendingQty] = useState<string>(''); // Default empty string to remove 0/1
+  const [pendingQty, setPendingQty] = useState<string>('');
 
   // Refs for Navigation
   const itemInputRef = useRef<HTMLInputElement>(null);
@@ -65,10 +80,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             setWarehouses(whs || []);
             setStocks(stks || []);
             
-            // Filter Partners: Must match Type AND be Active
             const filteredPartners = pts.filter(p => 
                 (type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER') && 
-                (p.isActive === true || p.id === initialData?.partnerId) // Allow currently selected if inactive
+                (p.isActive === true || p.id === initialData?.partnerId)
             );
             setPartners(filteredPartners || []);
 
@@ -80,26 +94,30 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     load();
   }, [type, initialData]);
 
-  // Fuzzy Search Logic (Filtered by Active)
-  useEffect(() => {
-    if (!query || pendingItem) {
-        setFilteredItems([]);
-        setIsDropdownOpen(false);
-        return;
-    }
-    const lowerQuery = query.toLowerCase();
+  // OPTIMIZED: Fuzzy Search Logic using useMemo and Debounced Query
+  const filteredItems = useMemo(() => {
+    if (!debouncedQuery || pendingItem) return [];
     
-    // Only show Active Items in search results
-    const activeItems = items.filter(it => it.isActive === true);
+    const lowerQuery = debouncedQuery.toLowerCase();
+    // Pre-filter active items generally usually done once, but inside useMemo is fine
+    // as it only runs when debouncedQuery changes.
+    return items
+        .filter(it => 
+            it.isActive && 
+            (it.name.toLowerCase().includes(lowerQuery) || it.code.toLowerCase().includes(lowerQuery))
+        )
+        .slice(0, 15); // Limit to 15 items for rendering performance
+  }, [debouncedQuery, items, pendingItem]);
 
-    const results = activeItems.filter(it => 
-        it.name.toLowerCase().includes(lowerQuery) || 
-        it.code.toLowerCase().includes(lowerQuery)
-    ).slice(0, 10); // Limit results
-    setFilteredItems(results);
-    setIsDropdownOpen(results.length > 0);
-    setSelectedIndex(0);
-  }, [query, items, pendingItem]);
+  // Handle Dropdown Open State based on filtered results
+  useEffect(() => {
+      if (filteredItems.length > 0 && !pendingItem) {
+          setIsDropdownOpen(true);
+          setSelectedIndex(0);
+      } else {
+          setIsDropdownOpen(false);
+      }
+  }, [filteredItems, pendingItem]);
 
   const getStockQty = (itemId: string) => {
       if (!selectedWh) return 0;
@@ -110,21 +128,20 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const selectItem = (item: Item) => {
     setPendingItem(item);
     setPendingUnit(item.baseUnit);
-    setQuery(item.name);
+    setQuery(item.name); // Set visual input
     setIsDropdownOpen(false);
-    // Focus move to Qty
-    setTimeout(() => qtyInputRef.current?.focus(), 10);
+    setTimeout(() => qtyInputRef.current?.focus(), 50); // Small delay to ensure render cycle completes
   };
 
   const handleItemKeyDown = (e: React.KeyboardEvent) => {
-    if (isDropdownOpen) {
+    if (isDropdownOpen && filteredItems.length > 0) {
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setSelectedIndex(prev => (prev + 1) % filteredItems.length);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setSelectedIndex(prev => (prev - 1 + filteredItems.length) % filteredItems.length);
-        } else if (e.key === 'Enter') {
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
             if (filteredItems[selectedIndex]) selectItem(filteredItems[selectedIndex]);
         } else if (e.key === 'Escape') {
@@ -157,7 +174,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       code: pendingItem.code
     };
     
-    setLines(prev => [...prev, newLine]); // Append to bottom
+    setLines(prev => [...prev, newLine]);
     
     // Reset for next input
     setQuery('');
@@ -165,7 +182,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setPendingUnit('');
     setPendingQty('');
     
-    setTimeout(() => itemInputRef.current?.focus(), 10);
+    setTimeout(() => itemInputRef.current?.focus(), 50);
   };
 
   // Inline Editing
@@ -189,7 +206,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       setLines(newLines);
   };
 
-  // --- IMAGE COMPRESSION & UPLOAD LOGIC ---
   const compressImage = (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -199,17 +215,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               img.src = event.target?.result as string;
               img.onload = () => {
                   const canvas = document.createElement('canvas');
-                  const MAX_WIDTH = 800; // Resize to reasonable width for screen viewing
+                  const MAX_WIDTH = 800;
                   const scaleSize = MAX_WIDTH / img.width;
                   canvas.width = MAX_WIDTH;
                   canvas.height = img.height * scaleSize;
-                  
                   const ctx = canvas.getContext('2d');
                   ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                  
-                  // Compress to JPEG 70% quality
-                  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                  resolve(dataUrl);
+                  resolve(canvas.toDataURL('image/jpeg', 0.7));
               };
               img.onerror = (error) => reject(error);
           };
@@ -218,10 +230,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files || e.target.files.length === 0) return;
-      
       setIsCompressing(true);
       const newPhotos: string[] = [];
-      
       try {
           for (let i = 0; i < e.target.files.length; i++) {
               const file = e.target.files[i];
@@ -230,7 +240,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               newPhotos.push(compressed);
           }
           setAttachments(prev => [...prev, ...newPhotos]);
-          showToast(`${newPhotos.length} foto berhasil dikompres & diupload`, "success");
+          showToast(`${newPhotos.length} foto berhasil diupload`, "success");
       } catch (error) {
           showToast("Gagal memproses gambar", "error");
       } finally {
@@ -248,7 +258,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       document.body.removeChild(link);
   };
 
-  // --- EXCEL IMPORT LOGIC ---
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -266,7 +275,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               const createdItems: Item[] = [];
 
               for (const row of data) {
-                  // Format Excel: SKU | Nama | Qty | Satuan
                   const code = String(row.SKU || row.Code || row.Kode || '').trim();
                   const name = String(row.Nama || row.Name || row.Barang || '').trim();
                   const qty = Number(row.Qty || row.Jumlah || 0);
@@ -276,39 +284,23 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
                   let item = items.find(i => i.code === code);
                   
-                  // Auto-create SKU Logic
                   if (!item) {
                       const newItem: Item = {
-                          id: crypto.randomUUID(),
-                          code,
-                          name,
-                          category: 'Uncategorized',
-                          baseUnit: unit,
-                          conversions: [],
-                          minStock: 0,
-                          isActive: true
+                          id: crypto.randomUUID(), code, name, category: 'Uncategorized', baseUnit: unit, conversions: [], minStock: 0, isActive: true
                       };
-                      // Save to DB immediately
                       await StorageService.saveItem(newItem);
                       createdItems.push(newItem);
                       item = newItem;
                   }
 
                   newLines.push({
-                      itemId: item.id,
-                      qty,
-                      unit,
-                      ratio: 1, // Default ratio for imported items unless we do complex matching
-                      name: item.name,
-                      code: item.code
+                      itemId: item.id, qty, unit, ratio: 1, name: item.name, code: item.code
                   });
               }
 
-              // Refresh items state if we created new ones
               if (createdItems.length > 0) {
                   const updatedItems = await StorageService.fetchItems();
                   setItems(updatedItems);
-                  showToast(`${createdItems.length} SKU baru otomatis dibuat`, "info");
               }
 
               setLines(prev => [...prev, ...newLines]);
@@ -328,7 +320,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     if (lines.length === 0) return showToast("Tambahkan baris barang terlebih dahulu", "warning");
     if (!selectedWh) return showToast("Pilih gudang terlebih dahulu", "warning");
     
-    // VALIDASI STOK MINUS (Toast/Confirm Logic)
     if (type === 'OUT') {
         const lowStockItems = [];
         for (const line of lines) {
@@ -338,11 +329,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 lowStockItems.push(`${line.name} (Sisa: ${currentStock}, Minta: ${reqQty})`);
             }
         }
-
         if (lowStockItems.length > 0) {
-            const confirmed = window.confirm(
-                `PERINGATAN: Stok berikut akan menjadi MINUS:\n\n${lowStockItems.join('\n')}\n\nLanjutkan transaksi? (Klik OK untuk VALID)`
-            );
+            const confirmed = window.confirm(`STOK MINUS DETECTED:\n\n${lowStockItems.join('\n')}\n\nLanjutkan?`);
             if (!confirmed) return;
         }
     }
@@ -350,20 +338,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setIsSubmitting(true);
     try {
         const txData = {
-            date,
-            referenceNo: refNo,
-            type,
-            sourceWarehouseId: selectedWh,
-            partnerId: selectedPartnerId,
+            date, referenceNo: refNo, type, sourceWarehouseId: selectedWh, partnerId: selectedPartnerId,
             items: lines.map(line => ({
-                item_id: line.itemId,
-                qty: line.qty,
-                unit: line.unit,
-                conversionRatio: line.ratio || 1,
-                note: '' // Removed per request
+                item_id: line.itemId, qty: line.qty, unit: line.unit, conversionRatio: line.ratio || 1, note: ''
             })),
-            notes,
-            attachments // Include photos
+            notes, attachments
         };
         
         if (initialData?.id) {
@@ -375,8 +354,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         }
         onSuccess();
     } catch (e: any) {
-        const msg = e.message?.includes('409') ? "Gagal: Stok tidak mencukupi (Backend Rejected)" : `Gagal: ${e.message}`;
-        showToast(msg, "error");
+        showToast(`Gagal: ${e.message}`, "error");
     } finally {
         setIsSubmitting(false);
     }
@@ -384,88 +362,76 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   return (
     <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200 font-sans">
-      <div className="bg-gable rounded-2xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
+      <div className="bg-gable rounded-xl shadow-2xl w-full max-w-6xl h-[95vh] flex flex-col overflow-hidden border border-spectra ring-1 ring-white/10">
         
         {/* Title Bar */}
-        <div className="bg-daintree px-5 py-3 flex justify-between items-center border-b border-spectra">
+        <div className="bg-daintree px-4 py-2 flex justify-between items-center border-b border-spectra">
             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl border shadow-inner ${type === 'IN' ? 'bg-emerald-900/20 border-emerald-900/50 text-emerald-400' : 'bg-red-900/20 border-red-900/50 text-red-400'}`}>
-                   <FileText size={18} />
+                <div className={`p-1.5 rounded-lg border shadow-inner ${type === 'IN' ? 'bg-emerald-900/20 border-emerald-900/50 text-emerald-400' : 'bg-red-900/20 border-red-900/50 text-red-400'}`}>
+                   <FileText size={16} />
                 </div>
                 <div>
-                   <h2 className="text-lg font-black text-white leading-none uppercase tracking-tight">
-                      {initialData ? 'Edit Transaksi' : 'Form Transaksi'} <span className={type === 'IN' ? 'text-emerald-500' : 'text-red-500'}>{type === 'IN' ? 'Penerimaan' : 'Pengeluaran'}</span>
+                   <h2 className="text-base font-black text-white leading-none uppercase tracking-tight">
+                      {initialData ? 'Edit' : 'Input'} <span className={type === 'IN' ? 'text-emerald-500' : 'text-red-500'}>{type === 'IN' ? 'Penerimaan' : 'Pengeluaran'}</span>
                    </h2>
-                   <p className="text-[10px] text-cutty font-bold uppercase tracking-widest">Ref: {refNo}</p>
+                   <p className="text-[10px] text-cutty font-bold uppercase tracking-widest">{refNo}</p>
                 </div>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-slate-400">
+            <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg transition-colors text-slate-400">
                 <X size={18}/>
             </button>
         </div>
 
-        {/* Header Form */}
-        <div className="p-4 bg-gable border-b border-spectra shadow-sm">
-            <div className="grid grid-cols-12 gap-4">
-                <div className="col-span-9">
-                    <div className="rounded-xl border border-spectra overflow-hidden shadow-sm bg-daintree/10">
+        {/* Header Form - Condensed */}
+        <div className="p-3 bg-gable border-b border-spectra shadow-sm">
+            <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-10">
+                    <div className="rounded-lg border border-spectra overflow-hidden shadow-sm bg-daintree/10">
                         <table className="w-full text-left text-xs border-collapse">
                             <tbody>
                                 <tr>
-                                    <td className="w-32 bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
-                                        {type === 'IN' ? 'Supplier / Vendor' : 'Customer'}
-                                    </td>
-                                    <td className="p-1 border-r border-b border-spectra bg-gable relative">
+                                    <td className="w-24 bg-daintree px-2 py-1.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">Partner</td>
+                                    <td className="p-0.5 border-r border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
-                                            <User size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 pr-8 py-1.5 appearance-none focus:bg-daintree/50 transition-colors rounded-lg border-none" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
-                                                <option value="">-- Pilih Partner (Active Only) --</option>
+                                            <User size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 pr-4 py-1 appearance-none focus:bg-daintree/50" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
+                                                <option value="">-- Pilih Partner --</option>
                                                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                             </select>
-                                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                                         </div>
                                     </td>
-                                    <td className="w-32 bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
-                                        Gudang {type === 'IN' ? 'Tujuan' : 'Asal'}
-                                    </td>
-                                    <td className="p-1 border-b border-spectra bg-gable relative">
+                                    <td className="w-24 bg-daintree px-2 py-1.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">Gudang</td>
+                                    <td className="p-0.5 border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
-                                            <Building2 size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 pr-8 py-1.5 appearance-none focus:bg-daintree/50 transition-colors rounded-lg border-none" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
+                                            <Building2 size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 pr-4 py-1 appearance-none focus:bg-daintree/50" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
                                                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                             </select>
-                                            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                                         </div>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td className="bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
-                                        Tanggal
-                                    </td>
-                                    <td className="p-1 border-r border-b border-spectra bg-gable relative">
+                                    <td className="bg-daintree px-2 py-1.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">Tanggal</td>
+                                    <td className="p-0.5 border-r border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
-                                            <Calendar size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 py-1.5 focus:bg-daintree/50 transition-colors rounded-lg border-none" />
+                                            <Calendar size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 py-1 focus:bg-daintree/50" />
                                         </div>
                                     </td>
-                                    <td className="bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">
-                                        No. Referensi
-                                    </td>
-                                    <td className="p-1 border-b border-spectra bg-gable relative">
+                                    <td className="bg-daintree px-2 py-1.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">Ref No.</td>
+                                    <td className="p-0.5 border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
-                                            <Hash size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full bg-transparent font-mono text-emerald-400 text-xs font-bold outline-none pl-8 py-1.5 uppercase focus:bg-daintree/50 transition-colors rounded-lg border-none" />
+                                            <Hash size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full bg-transparent font-mono text-emerald-400 text-xs font-bold outline-none pl-7 py-1 uppercase focus:bg-daintree/50" />
                                         </div>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td className="bg-daintree px-3 py-2.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-spectra">
-                                        Catatan
-                                    </td>
-                                    <td colSpan={3} className="p-1 bg-gable relative">
+                                    <td className="bg-daintree px-2 py-1.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-spectra">Memo</td>
+                                    <td colSpan={3} className="p-0.5 bg-gable relative">
                                         <div className="relative h-full">
-                                            <StickyNote size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <input type="text" placeholder="Keterangan transaksi..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-8 py-1.5 focus:bg-daintree/50 transition-colors rounded-lg border-none" />
+                                            <StickyNote size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
+                                            <input type="text" placeholder="Keterangan..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 py-1 focus:bg-daintree/50" />
                                         </div>
                                     </td>
                                 </tr>
@@ -474,52 +440,49 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </div>
                 </div>
                 
-                 {/* Right Column */}
-                <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-between">
-                    <div className="bg-daintree rounded-xl border border-spectra p-3 flex flex-col h-full shadow-inner gap-2">
+                <div className="col-span-2 pl-2 border-l border-spectra/50 flex flex-col justify-center">
+                     <div className="bg-daintree rounded-lg border border-spectra p-2 flex flex-col gap-1">
                         <div className="flex justify-between items-center text-[10px] font-bold text-cutty uppercase">
-                            <span>Total Lines</span>
+                            <span>Lines</span>
                             <span className="text-white font-mono">{lines.length}</span>
                         </div>
-                         <div className="w-full h-px bg-spectra/30"></div>
                         <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls" onChange={handleImportExcel} />
                         <button 
                             onClick={() => fileInputRef.current?.click()} 
                             disabled={isImporting}
-                            className="w-full py-2 bg-emerald-900/20 text-emerald-400 border border-emerald-900/50 rounded-lg text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-emerald-900/40 transition-all active:scale-95"
+                            className="w-full py-1 bg-emerald-900/20 text-emerald-400 border border-emerald-900/50 rounded text-[9px] font-black uppercase flex items-center justify-center gap-1 hover:bg-emerald-900/40"
                         >
-                            {isImporting ? <Loader2 size={14} className="animate-spin"/> : <FileSpreadsheet size={14}/>} Import Excel
+                            {isImporting ? <Loader2 size={10} className="animate-spin"/> : <FileSpreadsheet size={10}/>} Import
                         </button>
-                        <div className="text-[9px] text-cutty text-center italic">Format: SKU, Nama, Qty, Satuan</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {/* Transaction Grid Table & Attachments */}
-        <div className="flex-1 bg-gable p-4 overflow-hidden flex flex-col gap-4">
-            <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-spectra bg-daintree/30 shadow-inner">
+        {/* Transaction Grid Table - Dense */}
+        <div className="flex-1 bg-gable p-3 overflow-hidden flex flex-col gap-3">
+            <div className="flex-1 overflow-auto scrollbar-thin rounded-lg border border-spectra bg-daintree/30 shadow-inner">
                 <table className="w-full text-left border-separate border-spacing-0">
                     <thead className="sticky top-0 z-20 bg-daintree text-cutty text-[10px] font-black uppercase tracking-widest shadow-md">
                         <tr>
-                            <th className="px-3 py-2 border-b border-spectra w-10 text-center">#</th>
-                            <th className="px-3 py-2 border-b border-spectra">Kode & Nama Barang</th>
-                            <th className="px-3 py-2 border-b border-spectra w-32 text-right">Kuantitas</th>
-                            <th className="px-3 py-2 border-b border-spectra w-32 text-center">Satuan</th>
-                            <th className="px-3 py-2 border-b border-spectra w-40 text-right">Total Dasar</th>
-                            <th className="px-3 py-2 border-b border-spectra w-10 text-center"></th>
+                            <th className="px-2 py-1.5 border-b border-spectra w-8 text-center">#</th>
+                            <th className="px-2 py-1.5 border-b border-spectra">Item Description</th>
+                            <th className="px-2 py-1.5 border-b border-spectra w-24 text-right">Qty</th>
+                            <th className="px-2 py-1.5 border-b border-spectra w-20 text-center">Unit</th>
+                            <th className="px-2 py-1.5 border-b border-spectra w-28 text-right">Total Base</th>
+                            <th className="px-2 py-1.5 border-b border-spectra w-8 text-center"></th>
                         </tr>
                     </thead>
                     <tbody className="text-xs text-slate-200">
                         {/* Entry Row */}
-                        <tr className="bg-daintree/50 border-b border-spectra sticky top-[33px] z-10 shadow-sm backdrop-blur-sm group">
-                            <td className="p-2 border-b border-spectra text-center"><Plus size={14} className="text-spectra mx-auto"/></td>
-                            <td className="p-2 border-b border-spectra relative">
+                        <tr className="bg-daintree/50 border-b border-spectra sticky top-[28px] z-10 shadow-sm backdrop-blur-sm">
+                            <td className="p-1 border-b border-spectra text-center"><Plus size={12} className="text-spectra mx-auto"/></td>
+                            <td className="p-1 border-b border-spectra relative">
                                 <input 
                                     ref={itemInputRef}
                                     type="text"
-                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white shadow-sm text-xs"
-                                    placeholder="Cari Barang Aktif..."
+                                    className="w-full bg-gable border border-spectra rounded px-2 py-1 outline-none focus:ring-1 focus:ring-spectra font-bold placeholder:text-cutty placeholder:font-normal uppercase text-white text-xs h-7"
+                                    placeholder="SCAN / TYPE SKU..."
                                     value={query}
                                     onChange={e => {
                                         setQuery(e.target.value);
@@ -530,13 +493,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     onFocus={() => { if(query && !pendingItem) setIsDropdownOpen(true); }}
                                 />
                                 {isDropdownOpen && (
-                                    <div ref={dropdownRef} className="absolute left-2 top-full mt-1 w-[500px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-60 overflow-y-auto">
+                                    <div ref={dropdownRef} className="absolute left-1 top-full mt-1 w-[400px] bg-gable rounded-lg shadow-2xl border border-spectra z-[100] max-h-48 overflow-y-auto">
                                         {filteredItems.map((it, idx) => {
                                             const stockQty = getStockQty(it.id);
                                             return (
                                                 <div 
                                                     key={it.id}
-                                                    className={`px-3 py-2 cursor-pointer border-b border-spectra/30 text-xs flex justify-between items-center ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'}`}
+                                                    className={`px-3 py-1.5 cursor-pointer border-b border-spectra/30 text-xs flex justify-between items-center ${idx === selectedIndex ? 'bg-spectra text-white' : 'hover:bg-daintree'}`}
                                                     onMouseDown={(e) => { e.preventDefault(); selectItem(it); }}
                                                     onMouseEnter={() => setSelectedIndex(idx)}
                                                 >
@@ -544,9 +507,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                                         <div className="font-bold">{it.code}</div>
                                                         <div className={`text-[10px] ${idx === selectedIndex ? 'text-white/80' : 'text-slate-400'}`}>{it.name}</div>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`text-[9px] font-bold ${stockQty < 0 ? 'text-red-400' : 'text-emerald-400'}`}>Stok: {stockQty}</div>
-                                                        <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`text-[9px] font-bold ${stockQty < 0 ? 'text-red-400' : 'text-emerald-400'}`}>Qty: {stockQty}</div>
+                                                        <div className={`text-[9px] font-bold px-1 py-0.5 rounded ${idx === selectedIndex ? 'bg-white/20' : 'bg-daintree text-cutty'}`}>{it.baseUnit}</div>
                                                     </div>
                                                 </div>
                                             );
@@ -554,11 +517,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     </div>
                                 )}
                             </td>
-                            <td className="p-2 border-b border-spectra">
+                            <td className="p-1 border-b border-spectra">
                                 <input 
                                     ref={qtyInputRef}
                                     type="number" 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white shadow-sm text-xs appearance-none"
+                                    className="w-full bg-gable border border-spectra rounded px-2 py-1 outline-none focus:ring-1 focus:ring-spectra text-right font-mono font-bold text-white text-xs h-7"
                                     placeholder="0"
                                     value={pendingQty} 
                                     onChange={e => setPendingQty(e.target.value)} 
@@ -566,9 +529,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }}
                                 />
                             </td>
-                            <td className="p-2 border-b border-spectra relative">
+                            <td className="p-1 border-b border-spectra">
                                  <select 
-                                    className="w-full bg-gable border border-spectra rounded-lg px-1 py-1.5 outline-none font-bold text-center text-white text-xs shadow-sm appearance-none cursor-pointer"
+                                    className="w-full bg-gable border border-spectra rounded px-1 py-1 outline-none font-bold text-center text-white text-xs h-7"
                                     value={pendingUnit}
                                     onChange={e => setPendingUnit(e.target.value)}
                                     disabled={!pendingItem}
@@ -581,33 +544,30 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     )}
                                 </select>
                             </td>
-                            <td className="p-2 border-b border-spectra text-right font-mono text-slate-500 text-[10px]">
-                                -
-                            </td>
-                            <td className="p-2 border-b border-spectra text-center">
-                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra disabled:opacity-50 transition-colors shadow-sm"><CornerDownLeft size={14}/></button>
+                            <td className="p-1 border-b border-spectra text-right font-mono text-slate-500 text-[10px]">-</td>
+                            <td className="p-1 border-b border-spectra text-center">
+                                <button onClick={handleAddLine} disabled={!pendingItem} className="p-1 bg-spectra text-white rounded hover:bg-white hover:text-spectra transition-colors h-7 w-7 flex items-center justify-center"><CornerDownLeft size={12}/></button>
                             </td>
                         </tr>
 
-                        {/* Existing Lines - Inline Editing */}
                         {lines.map((l, i) => {
                             const itemMaster = items.find(it => it.id === l.itemId);
                             return (
                                 <tr key={i} className="hover:bg-spectra/5 transition-colors group">
-                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
-                                    <td className="px-3 py-1.5 border-b border-spectra/10">
+                                    <td className="px-2 py-1 border-b border-spectra/10 text-center text-cutty font-mono text-[10px]">{i + 1}</td>
+                                    <td className="px-2 py-1 border-b border-spectra/10">
                                         <div className="font-bold text-slate-200">{l.name}</div>
-                                        <div className="text-[10px] text-cutty font-mono">{l.code}</div>
+                                        <div className="text-[9px] text-cutty font-mono">{l.code}</div>
                                     </td>
-                                    <td className="px-3 py-1.5 border-b border-spectra/10">
+                                    <td className="px-2 py-1 border-b border-spectra/10">
                                         <input 
                                             type="number"
                                             value={l.qty}
                                             onChange={e => updateLine(i, 'qty', e.target.value)}
-                                            className="w-full bg-transparent border-b border-transparent focus:border-spectra outline-none text-right font-black text-white text-xs py-1 appearance-none"
+                                            className="w-full bg-transparent border-b border-transparent focus:border-spectra outline-none text-right font-bold text-white text-xs py-0.5"
                                         />
                                     </td>
-                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-center">
+                                    <td className="px-2 py-1 border-b border-spectra/10 text-center">
                                         {itemMaster ? (
                                             <select 
                                                 value={l.unit} 
@@ -619,13 +579,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                             </select>
                                         ) : <span className="text-[10px]">{l.unit}</span>}
                                     </td>
-                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-right font-mono text-cutty text-[11px]">
+                                    <td className="px-2 py-1 border-b border-spectra/10 text-right font-mono text-cutty text-[10px]">
                                         {(l.qty * (l.ratio || 1)).toLocaleString()}
                                     </td>
-                                    <td className="px-3 py-1.5 border-b border-spectra/10 text-center">
-                                        <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                                            <Trash2 size={14}/>
-                                        </button>
+                                    <td className="px-2 py-1 border-b border-spectra/10 text-center">
+                                        <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100"><Trash2 size={12}/></button>
                                     </td>
                                 </tr>
                             );
@@ -633,80 +591,50 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </tbody>
                 </table>
                 
-                {/* Empty State Overlay */}
                 {lines.length === 0 && (
-                    <div className="flex flex-col items-center justify-center p-12 pointer-events-none opacity-20">
-                        <Package size={48} className="text-spectra"/>
-                        <div className="text-sm font-black uppercase text-spectra mt-2 tracking-widest">Belum ada item</div>
+                    <div className="flex flex-col items-center justify-center p-8 pointer-events-none opacity-20">
+                        <Package size={32} className="text-spectra"/>
+                        <div className="text-xs font-black uppercase text-spectra mt-1 tracking-widest">No Items</div>
                     </div>
                 )}
             </div>
 
-            {/* --- ATTACHMENTS SECTION (ONLY FOR INBOUND) --- */}
             {type === 'IN' && (
-                <div className="bg-daintree border border-spectra rounded-xl p-4 flex flex-col gap-3 shadow-inner">
-                    <div className="flex justify-between items-center">
-                        <h3 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2">
-                            <ImageIcon size={14}/> Dokumentasi / Foto Barang
-                        </h3>
-                        <div className="flex items-center gap-2">
-                            <input 
-                                type="file" 
-                                multiple 
-                                accept="image/*" 
-                                ref={photoInputRef}
-                                className="hidden"
-                                onChange={handlePhotoUpload}
-                            />
-                            <button 
-                                onClick={() => photoInputRef.current?.click()}
-                                disabled={isCompressing}
-                                className="px-3 py-1.5 bg-gable border border-spectra rounded-lg text-[10px] font-bold text-white hover:bg-spectra/50 flex items-center gap-2 transition-all disabled:opacity-50"
-                            >
-                                {isCompressing ? <Loader2 size={12} className="animate-spin"/> : <Upload size={12}/>} Upload Foto
-                            </button>
-                        </div>
-                    </div>
+                <div className="bg-daintree border border-spectra rounded-lg p-3 flex gap-3 overflow-x-auto h-24 items-center shadow-inner">
+                     <button 
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={isCompressing}
+                        className="flex-shrink-0 w-20 h-full border border-dashed border-spectra rounded bg-gable text-cutty hover:text-white hover:bg-spectra/10 flex flex-col items-center justify-center gap-1 transition-colors"
+                    >
+                        {isCompressing ? <Loader2 size={16} className="animate-spin"/> : <Upload size={16}/>} 
+                        <span className="text-[9px] font-bold">Add Photo</span>
+                    </button>
+                    <input type="file" multiple accept="image/*" ref={photoInputRef} className="hidden" onChange={handlePhotoUpload} />
                     
-                    {/* Photo Grid */}
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                        {attachments.length === 0 ? (
-                            <div className="text-[10px] text-cutty italic w-full text-center py-4 border border-dashed border-spectra/30 rounded-lg">
-                                Belum ada foto. Upload untuk bukti fisik barang.
+                    {attachments.map((img, idx) => (
+                        <div key={idx} className="relative group w-20 h-full rounded overflow-hidden border border-spectra bg-black flex-shrink-0">
+                            <img src={img} alt="Attachment" className="w-full h-full object-cover opacity-80 group-hover:opacity-100" />
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => setPreviewImage(img)} className="text-white hover:text-emerald-400"><Eye size={14}/></button>
+                                <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-white hover:text-red-400"><Trash2 size={14}/></button>
                             </div>
-                        ) : (
-                            attachments.map((img, idx) => (
-                                <div key={idx} className="relative group min-w-[80px] w-20 h-20 rounded-lg overflow-hidden border border-spectra bg-black">
-                                    <img src={img} alt="Attachment" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => setPreviewImage(img)} className="text-white hover:text-emerald-400"><Eye size={16}/></button>
-                                        <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-white hover:text-red-400"><Trash2 size={16}/></button>
-                                    </div>
-                                    <div className="absolute bottom-0 right-0 bg-black/60 px-1 text-[8px] text-white font-mono">{idx + 1}</div>
-                                </div>
-                            ))
-                        )}
-                    </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-daintree p-4 border-t border-spectra flex justify-between items-center z-20">
-             <div className="text-[10px] text-cutty font-bold uppercase tracking-widest flex gap-4">
-                <span className="flex items-center gap-2"><Info size={14} className="text-spectra"/> Pastikan data sudah valid</span>
-             </div>
-             <div className="flex gap-3">
-                <button onClick={onClose} className="px-5 py-2 rounded-xl border border-spectra bg-gable hover:bg-spectra/20 text-slate-300 text-xs font-bold uppercase tracking-wide transition-colors">Batal</button>
-                <button 
-                    onClick={handleSubmit} 
-                    disabled={isSubmitting || !selectedWh}
-                    className="px-6 py-2 rounded-xl bg-spectra hover:bg-white hover:text-daintree text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
-                >
-                    {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                    {initialData ? 'Simpan Perubahan' : 'Simpan Transaksi'}
-                </button>
-             </div>
+        <div className="bg-daintree p-3 border-t border-spectra flex justify-end gap-3 z-20">
+            <button onClick={onClose} className="px-4 py-1.5 rounded-lg border border-spectra bg-gable hover:bg-spectra/20 text-slate-300 text-xs font-bold uppercase transition-colors">Batal</button>
+            <button 
+                onClick={handleSubmit} 
+                disabled={isSubmitting || !selectedWh}
+                className="px-6 py-1.5 rounded-lg bg-spectra hover:bg-white hover:text-daintree text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
+            >
+                {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Simpan
+            </button>
         </div>
       </div>
 
@@ -714,29 +642,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       {previewImage && (
           <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-8 backdrop-blur-md animate-in fade-in" onClick={() => setPreviewImage(null)}>
               <div className="relative max-w-4xl max-h-full" onClick={e => e.stopPropagation()}>
-                  <img src={previewImage} alt="Full Preview" className="max-w-full max-h-[80vh] rounded-lg shadow-2xl border border-spectra" />
+                  <img src={previewImage} alt="Full Preview" className="max-w-full max-h-[80vh] rounded shadow-2xl border border-spectra" />
                   <button onClick={() => setPreviewImage(null)} className="absolute -top-10 right-0 text-white hover:text-red-400"><X size={24}/></button>
-                  <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex gap-4">
-                      <button 
-                        onClick={() => downloadImage(previewImage, attachments.indexOf(previewImage))}
-                        className="px-4 py-2 bg-spectra text-white rounded-full text-xs font-bold flex items-center gap-2 hover:bg-white hover:text-spectra transition-colors shadow-lg"
-                      >
-                          <Download size={14}/> Download HD
-                      </button>
-                  </div>
+                  <button onClick={() => downloadImage(previewImage, attachments.indexOf(previewImage))} className="absolute -bottom-12 left-1/2 -translate-x-1/2 px-4 py-2 bg-spectra text-white rounded-full text-xs font-bold flex items-center gap-2 shadow-lg hover:bg-white hover:text-spectra"><Download size={14}/> Save</button>
               </div>
           </div>
       )}
-
       <style>{`
-        /* Remove Spinner */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; 
-            margin: 0; 
-        }
-        /* Dropdown options background */
-        option { background-color: #193338 !important; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        option { background-color: #193338; }
       `}</style>
     </div>
   );
