@@ -370,7 +370,8 @@ export const InventoryView: React.FC = () => {
                                             <Barcode size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
-                                                className="modal-input font-mono font-bold text-emerald-400 uppercase tracking-widest pl-11" 
+                                                className="modal-input" 
+                                                style={{ paddingLeft: '2.75rem', fontFamily: 'monospace', fontWeight: 'bold', color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.1em' }}
                                                 placeholder="AUTO" 
                                                 autoComplete="off"
                                                 value={itemForm.code} 
@@ -384,7 +385,8 @@ export const InventoryView: React.FC = () => {
                                             <Package size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
-                                                className="modal-input font-bold text-white pl-11 tracking-wide" 
+                                                className="modal-input" 
+                                                style={{ paddingLeft: '2.75rem', color: 'white', letterSpacing: '0.025em', fontWeight: 'bold' }}
                                                 placeholder="Nama Item..." 
                                                 autoComplete="off"
                                                 value={itemForm.name} 
@@ -398,7 +400,8 @@ export const InventoryView: React.FC = () => {
                                             <Layers size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-spectra transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
-                                                className="modal-input pl-11 font-bold text-slate-200" 
+                                                className="modal-input" 
+                                                style={{ paddingLeft: '2.75rem', fontWeight: 'bold', color: '#e2e8f0' }}
                                                 placeholder="Ketik Kategori..." 
                                                 autoComplete="off"
                                                 value={itemForm.category} 
@@ -422,7 +425,8 @@ export const InventoryView: React.FC = () => {
                                             <Ruler size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors pointer-events-none"/>
                                             <input 
                                                 type="text" 
-                                                className="modal-input font-black text-white text-center pl-10" 
+                                                className="modal-input" 
+                                                style={{ paddingLeft: '2.5rem', fontWeight: '900', color: 'white', textAlign: 'center' }}
                                                 placeholder="Pcs" 
                                                 autoComplete="off"
                                                 value={itemForm.baseUnit} 
@@ -436,7 +440,8 @@ export const InventoryView: React.FC = () => {
                                             <div className="relative">
                                                 <input 
                                                     type="number" 
-                                                    className="modal-input text-right font-mono text-emerald-400 font-bold pr-4" 
+                                                    className="modal-input" 
+                                                    style={{ textAlign: 'right', fontFamily: 'monospace', color: '#34d399', fontWeight: 'bold', paddingRight: '1rem' }}
                                                     autoComplete="off"
                                                     value={itemForm.initialStock} 
                                                     onChange={e => setItemForm({...itemForm, initialStock: Number(e.target.value)})} 
@@ -450,7 +455,8 @@ export const InventoryView: React.FC = () => {
                                             <AlertTriangle size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-red-400 transition-colors pointer-events-none"/>
                                             <input 
                                                 type="number" 
-                                                className="modal-input text-right font-mono text-red-300 font-bold pl-10" 
+                                                className="modal-input" 
+                                                style={{ textAlign: 'right', fontFamily: 'monospace', color: '#fca5a5', fontWeight: 'bold', paddingLeft: '2.5rem' }}
                                                 autoComplete="off"
                                                 value={itemForm.minStock} 
                                                 onChange={e => setItemForm({...itemForm, minStock: Number(e.target.value)})} 
@@ -568,15 +574,55 @@ export const InventoryView: React.FC = () => {
 
             <style>{`
                 .modal-input { 
-                    @apply w-full h-11 bg-black/20 border-transparent rounded-full px-4 text-xs text-white outline-none focus:bg-black/40 focus:ring-1 focus:ring-spectra/50 transition-all placeholder:text-slate-600 appearance-none shadow-inner; 
+                    width: 100%;
+                    height: 2.75rem;
+                    background-color: rgba(0, 0, 0, 0.2) !important;
+                    border: 0 !important;
+                    outline: none !important;
+                    border-radius: 9999px;
+                    padding: 0 1rem;
+                    font-size: 0.75rem;
+                    color: white !important;
+                    transition: all 150ms;
+                    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+                    appearance: none;
+                    -webkit-appearance: none;
                 }
-                .table-input {
-                    @apply w-full h-9 bg-black/20 border-transparent rounded-full px-3 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra focus:bg-black/40 transition-all placeholder:text-cutty appearance-none;
+                .modal-input:focus {
+                    background-color: rgba(0, 0, 0, 0.4) !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    border: 0 !important;
+                    ring: 0 !important;
                 }
-                .scrollbar-thin::-webkit-scrollbar { width: 5px; }
-                .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
+                .modal-input::placeholder { color: #64748b; }
 
-                /* Remove number spinner arrows */
+                .table-input {
+                    width: 100%;
+                    height: 2.25rem;
+                    background-color: rgba(0, 0, 0, 0.2) !important;
+                    border: 0 !important;
+                    outline: none !important;
+                    border-radius: 9999px;
+                    padding: 0 0.75rem;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: white !important;
+                    transition: all 150ms;
+                    appearance: none;
+                    -webkit-appearance: none;
+                }
+                .table-input:focus {
+                    background-color: rgba(0, 0, 0, 0.4) !important;
+                    outline: none !important;
+                    box-shadow: none !important;
+                    border: 0 !important;
+                }
+                .table-input::placeholder { color: #496569; }
+
+                .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+                .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #496569; border-radius: 9999px; }
+
                 input[type=number]::-webkit-inner-spin-button, 
                 input[type=number]::-webkit-outer-spin-button { 
                     -webkit-appearance: none; 
