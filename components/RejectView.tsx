@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, UnitConversion } from '../types';
-import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Upload, Download, Tag, Edit3, Equal, Info, Box, ClipboardCopy, FileSpreadsheet, Share2, ChevronDown, Check } from 'lucide-react';
+import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Upload, Download, Tag, Edit3, Equal, Info, Box, ClipboardCopy, FileSpreadsheet, Share2, ChevronDown, Check, Ruler, LayoutGrid } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -28,7 +28,7 @@ export const RejectView: React.FC = () => {
     // --- Master Items State ---
     const [showItemModal, setShowItemModal] = useState(false);
     const [masterSearch, setMasterSearch] = useState(''); 
-    const debouncedMasterSearch = useDebounce(masterSearch, 300); // Debounce Master Item Search
+    const debouncedMasterSearch = useDebounce(masterSearch, 300); 
 
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [itemForm, setItemForm] = useState<Partial<Item>>({
@@ -42,7 +42,7 @@ export const RejectView: React.FC = () => {
     
     // --- Autocomplete State ---
     const [query, setQuery] = useState('');
-    const debouncedQuery = useDebounce(query, 300); // Debounce Entry Search
+    const debouncedQuery = useDebounce(query, 300);
 
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -146,13 +146,9 @@ export const RejectView: React.FC = () => {
     };
 
     const handleExportFlattened = () => {
-        // ... (Export Logic same as before)
-        // Kept brief for XML update, assumes same logic as previous file but with performance fixes elsewhere
         const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
         if (filteredBatches.length === 0) return showToast("No data", "warning");
-        // ... implementation of export logic ...
-        // For brevity in XML updates, reusing the logic is implied or fully copied if necessary. 
-        // Since I must provide full content, I'll paste the logic back.
+        
         const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
         const itemMap = new Map<string, { code: string, name: string, baseUnit: string }>();
         filteredBatches.forEach(b => {
@@ -221,7 +217,11 @@ export const RejectView: React.FC = () => {
         if (!itemForm.code || !itemForm.name) return showToast("Wajib diisi", "warning");
         setIsLoading(true);
         try {
-            const payload = { ...itemForm, id: editingItem?.id || crypto.randomUUID(), conversions: (itemForm.conversions || []).map(c => ({ ...c, operator: c.operator || '*' })) } as Item;
+            const payload = { 
+                ...itemForm, 
+                id: editingItem?.id || crypto.randomUUID(), 
+                conversions: (itemForm.conversions || []).map(c => ({ ...c, operator: c.operator || '*' })) 
+            } as Item;
             await StorageService.saveRejectMasterItem(payload);
             showToast("Saved", "success"); setShowItemModal(false); loadData();
         } catch (e: any) { showToast(e.message, "error"); } finally { setIsLoading(false); }
@@ -235,6 +235,12 @@ export const RejectView: React.FC = () => {
     const handleAddOutlet = async () => {
         if (!newOutlet.trim()) return;
         try { await StorageService.saveRejectOutlet(newOutlet.trim()); setNewOutlet(''); showToast("Outlet Added", "success"); loadData(); } catch (e) { showToast("Error", "error"); }
+    };
+
+    const updateConversion = (index: number, updates: Partial<UnitConversion>) => {
+        const next = [...(itemForm.conversions || [])];
+        next[index] = { ...next[index], ...updates };
+        setItemForm({ ...itemForm, conversions: next });
     };
 
     // Filtered Master Items for Master Tab
@@ -353,7 +359,6 @@ export const RejectView: React.FC = () => {
                     </div>
                 </div>
             ) : activeTab === 'HISTORY' ? (
-                // ... History Tab Content (Simplified/Same logic, just denser) ...
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                      <div className="bg-gable p-3 rounded-xl border border-spectra flex gap-4 items-end">
                          <div className="flex flex-col gap-1">
@@ -424,7 +429,7 @@ export const RejectView: React.FC = () => {
                                         <td className="px-4 py-2 text-slate-400 uppercase">{item.category}</td>
                                         <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] border border-spectra">{item.baseUnit}</span></td>
                                         <td className="px-4 py-2 text-center flex justify-center gap-2">
-                                            <button onClick={() => { setEditingItem(item); setItemForm({...item}); setShowItemModal(true); }} className="text-blue-400"><Edit3 size={14}/></button>
+                                            <button onClick={() => { setEditingItem(item); setItemForm({...item, conversions: item.conversions ? [...item.conversions] : []}); setShowItemModal(true); }} className="text-blue-400"><Edit3 size={14}/></button>
                                             <button onClick={() => handleDeleteMasterItem(item.id)} className="text-red-400"><Trash2 size={14}/></button>
                                         </td>
                                     </tr>
@@ -434,7 +439,6 @@ export const RejectView: React.FC = () => {
                     </div>
                 </div>
             ) : (
-                /* Master Outlet Tab - Simple */
                 <div className="flex-1 max-w-lg mx-auto w-full bg-gable p-8 rounded-2xl border border-spectra space-y-6">
                     <h3 className="text-lg font-black text-white">Manage Outlets</h3>
                     <div className="flex gap-2">
@@ -449,20 +453,122 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal & Viewing Batch (Similar logic kept, condensed) */}
+            {/* Modal ADD/EDIT MASTER ITEM - UPDATED STYLE (Zero Border, Conversion Restored) */}
             {showItemModal && (
-                <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-gable rounded-2xl w-full max-w-lg shadow-2xl border border-spectra overflow-hidden">
-                         <div className="bg-daintree p-4 border-b border-spectra flex justify-between"><h3 className="font-black text-white">Master Item</h3><button onClick={()=>setShowItemModal(false)}><X size={20} className="text-slate-400"/></button></div>
-                         <div className="p-6 space-y-4">
-                             <input type="text" placeholder="Code" className="rej-input" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value})} />
-                             <input type="text" placeholder="Name" className="rej-input" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} />
-                             <input type="text" placeholder="Category" className="rej-input" value={itemForm.category} onChange={e=>setItemForm({...itemForm, category:e.target.value})} />
-                             <input type="text" placeholder="Base Unit" className="rej-input" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value})} />
-                             <div className="flex justify-end pt-4 gap-2">
-                                 <button onClick={()=>setShowItemModal(false)} className="px-4 py-2 text-xs font-bold text-slate-400">CANCEL</button>
-                                 <button onClick={handleSaveMasterItem} className="px-6 py-2 bg-spectra text-white rounded-lg text-xs font-black">SAVE</button>
+                <div className="fixed inset-0 bg-daintree/90 z-[60] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="bg-gable rounded-[24px] w-full max-w-xl shadow-2xl border border-spectra overflow-hidden flex flex-col max-h-[90vh]">
+                         <div className="bg-daintree p-5 border-b border-spectra flex justify-between items-center">
+                             <div className="flex items-center gap-3">
+                                 <div className="p-2 bg-gable rounded-lg border border-spectra text-white shadow-sm"><Tag size={18}/></div>
+                                 <h3 className="font-black text-sm uppercase tracking-widest text-white">{editingItem ? 'Edit Master Item' : 'New Master Item'}</h3>
                              </div>
+                             <button onClick={()=>setShowItemModal(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/10"><X size={20}/></button>
+                         </div>
+                         
+                         <div className="p-6 overflow-y-auto scrollbar-thin space-y-6">
+                             {/* Identitas Produk */}
+                             <div className="space-y-4">
+                                 <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest border-b border-spectra pb-1 flex items-center gap-2"><Box size={12}/> Identitas Produk</h4>
+                                 <div className="grid grid-cols-2 gap-4">
+                                     <div className="col-span-1 space-y-1">
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Kode Item</label>
+                                         <input type="text" placeholder="AUTO / SKU" className="rej-input font-mono tracking-widest text-emerald-400" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value})} />
+                                     </div>
+                                     <div className="col-span-1 space-y-1">
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Kategori</label>
+                                         <input type="text" placeholder="UMUM" className="rej-input" value={itemForm.category} onChange={e=>setItemForm({...itemForm, category:e.target.value.toUpperCase()})} />
+                                     </div>
+                                     <div className="col-span-2 space-y-1">
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nama Barang</label>
+                                         <input type="text" placeholder="Nama Lengkap Barang..." className="rej-input" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} />
+                                     </div>
+                                     <div className="col-span-1 space-y-1">
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Satuan Dasar</label>
+                                         <input type="text" placeholder="PCS" className="rej-input text-center font-black" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value})} />
+                                     </div>
+                                 </div>
+                             </div>
+
+                             {/* Konversi Satuan - Restored */}
+                             <div className="space-y-3 pt-2">
+                                <div className="flex justify-between items-end border-b border-spectra pb-1">
+                                    <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2"><LayoutGrid size={12}/> Konversi Satuan</h4>
+                                    <button 
+                                        onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
+                                        className="text-[9px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded transition-colors flex items-center gap-1"
+                                    >
+                                        <Plus size={10}/> Tambah
+                                    </button>
+                                </div>
+                                
+                                <div className="rounded-xl border border-spectra/30 overflow-hidden bg-daintree/20">
+                                    <table className="w-full text-left table-fixed">
+                                        <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
+                                            <tr>
+                                                <th className="px-3 py-2 w-24">Satuan</th>
+                                                <th className="px-3 py-2 w-20">Op</th>
+                                                <th className="px-3 py-2">Rasio</th>
+                                                <th className="px-3 py-2 w-10 text-center"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-spectra/10 text-xs">
+                                            {(itemForm.conversions || []).length === 0 ? (
+                                                <tr><td colSpan={4} className="p-4 text-center text-[10px] text-slate-500 italic">Belum ada konversi</td></tr>
+                                            ) : (
+                                                itemForm.conversions?.map((c, i) => (
+                                                    <tr key={i} className="group">
+                                                        <td className="p-1">
+                                                            <input 
+                                                                type="text" 
+                                                                className="rej-input text-center h-8 text-[10px]" 
+                                                                placeholder="BOX"
+                                                                value={c.name} 
+                                                                onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
+                                                            />
+                                                        </td>
+                                                        <td className="p-1">
+                                                            <div className="relative h-8">
+                                                                <select 
+                                                                    className="rej-input h-full text-[10px] appearance-none pr-4 cursor-pointer"
+                                                                    value={c.operator}
+                                                                    onChange={e => updateConversion(i, { operator: e.target.value as any })}
+                                                                >
+                                                                    <option value="*">*</option>
+                                                                    <option value="/">/</option>
+                                                                </select>
+                                                                <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-1">
+                                                            <input 
+                                                                type="number" 
+                                                                className="rej-input text-right h-8 font-mono text-[10px]" 
+                                                                value={c.ratio} 
+                                                                onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
+                                                            />
+                                                        </td>
+                                                        <td className="p-1 text-center">
+                                                            <button 
+                                                                onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
+                                                                className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                                                            >
+                                                                <Trash2 size={12}/>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                             </div>
+                         </div>
+
+                         <div className="bg-daintree p-5 border-t border-spectra flex justify-end gap-3">
+                             <button onClick={()=>setShowItemModal(false)} className="px-5 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors">BATAL</button>
+                             <button onClick={handleSaveMasterItem} className="px-6 py-2 bg-spectra text-white rounded-lg text-xs font-black shadow-lg hover:bg-white hover:text-spectra transition-all border border-spectra active:scale-95 flex items-center gap-2">
+                                 <Save size={14}/> SIMPAN
+                             </button>
                          </div>
                     </div>
                 </div>
@@ -477,7 +583,34 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
             
-            <style>{` .rej-input { @apply w-full bg-[#0b1619] border border-[#335157] rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:bg-[#0f1f22] placeholder:text-slate-500 transition-colors shadow-inner; } `}</style>
+            <style>{` 
+                .rej-input { 
+                    width: 100%; 
+                    background-color: rgba(0, 0, 0, 0.2) !important; 
+                    border: none !important; 
+                    outline: none !important; 
+                    box-shadow: none !important;
+                    border-radius: 0.5rem; 
+                    padding: 0.6rem 0.8rem; 
+                    font-size: 0.75rem; 
+                    font-weight: 700; 
+                    color: white !important; 
+                    transition: background-color 0.2s ease;
+                }
+                .rej-input:focus {
+                    background-color: rgba(0, 0, 0, 0.4) !important;
+                }
+                .rej-input::placeholder {
+                    color: #475569 !important;
+                    font-weight: 500;
+                }
+                
+                /* Select Specific */
+                select.rej-input {
+                    appearance: none;
+                    -webkit-appearance: none;
+                }
+            `}</style>
         </div>
     );
 };
