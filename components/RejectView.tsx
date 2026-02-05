@@ -17,6 +17,7 @@ export const RejectView: React.FC = () => {
     
     // --- Master Items State ---
     const [showItemModal, setShowItemModal] = useState(false);
+    const [masterSearch, setMasterSearch] = useState(''); // Added Search State
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [itemForm, setItemForm] = useState<Partial<Item>>({
         code: '', name: '', category: '', baseUnit: 'Pcs', conversions: []
@@ -534,7 +535,19 @@ export const RejectView: React.FC = () => {
                 </div>
             ) : activeTab === 'MASTER_ITEMS' ? (
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="bg-gable p-3 rounded-xl shadow-sm border border-spectra flex justify-between items-center">
+                    <div className="bg-gable p-3 rounded-xl shadow-sm border border-spectra flex flex-wrap justify-between items-center gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-cutty group-focus-within:text-spectra transition-colors" size={14} />
+                                <input 
+                                    type="text" 
+                                    placeholder="Cari Master Item..." 
+                                    value={masterSearch}
+                                    onChange={e => setMasterSearch(e.target.value)}
+                                    className="pl-9 pr-4 py-2 bg-daintree border border-spectra rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra w-64 placeholder:text-cutty transition-all shadow-inner" 
+                                />
+                            </div>
+                        </div>
                         <div className="flex items-center gap-3">
                             <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:bg-spectra/20 rounded-xl text-[10px] font-black border border-spectra bg-daintree">
                                 <Download size={14}/> Template
@@ -543,10 +556,10 @@ export const RejectView: React.FC = () => {
                             <button onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="flex items-center gap-2 px-4 py-2 bg-emerald-900/20 text-emerald-400 rounded-xl text-[10px] font-black border border-emerald-900 hover:bg-emerald-900/40">
                                 {isImporting ? <Loader2 size={14} className="animate-spin"/> : <Upload size={14}/>} Import Bulk
                             </button>
+                            <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }} className="px-6 py-2 bg-spectra text-white rounded-xl text-[10px] font-black shadow-lg shadow-black/20 flex items-center gap-2 hover:bg-daintree active:scale-95 transition-all border border-spectra/50">
+                                <Plus size={16}/> Master Item Baru
+                            </button>
                         </div>
-                        <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }} className="px-6 py-2.5 bg-spectra text-white rounded-xl text-[10px] font-black shadow-lg shadow-black/20 flex items-center gap-2 hover:bg-daintree active:scale-95 transition-all border border-spectra/50">
-                            <Plus size={16}/> Master Item Baru
-                        </button>
                     </div>
 
                     <div className="flex-1 bg-gable rounded-xl border border-spectra overflow-auto shadow-sm">
@@ -562,7 +575,10 @@ export const RejectView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-spectra/20 text-white">
-                                {rejectMasterItems.map(item => (
+                                {rejectMasterItems.filter(i => 
+                                    i.name.toLowerCase().includes(masterSearch.toLowerCase()) || 
+                                    i.code.toLowerCase().includes(masterSearch.toLowerCase())
+                                ).map(item => (
                                     <tr key={item.id} className="hover:bg-spectra/10 transition-colors">
                                         <td className="px-4 py-2 font-mono font-bold text-cutty uppercase">{item.code}</td>
                                         <td className="px-4 py-2 font-black text-slate-200">{item.name}</td>
