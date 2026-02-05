@@ -126,7 +126,9 @@ export const RejectView: React.FC = () => {
         const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
         let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
         batch.items.forEach(it => {
-            text += `- ${it.name.toLowerCase()} ${it.qty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
+            // Perbaikan: Gunakan parseFloat untuk membersihkan trailing zeros
+            const displayQty = parseFloat(it.qty.toString());
+            text += `- ${it.name.toLowerCase()} ${displayQty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
         });
         navigator.clipboard.writeText(text).then(() => {
             showToast("Format teks berhasil disalin ke clipboard", "success");
@@ -163,19 +165,27 @@ export const RejectView: React.FC = () => {
         const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
             const rowData: any[] = [itemInfo.code, itemInfo.name, itemInfo.baseUnit];
             dateList.forEach(d => {
-                // Calculation uses baseQty for standardization
+                // Perbaikan logic: Mengambil semua item dalam batch di tanggal tersebut, filter by itemId, jumlahkan baseQty
                 const totalBaseQty = filteredBatches
                     .filter(b => b.date === d)
                     .flatMap(b => b.items)
                     .filter(it => it.itemId === itemId)
                     .reduce((sum, it) => sum + Number(it.baseQty), 0);
                 
-                rowData.push(totalBaseQty > 0 ? totalBaseQty : "");
+                // Jika total > 0, masukkan angkanya (Excel akan memformat angka secara otomatis)
+                rowData.push(totalBaseQty > 0 ? parseFloat(totalBaseQty.toFixed(4)) : "");
             });
             return rowData;
         });
 
         const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
+        
+        // Merging first 3 cells of header rows
+        if (!ws['!merges']) ws['!merges'] = [];
+        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }); // Kode
+        ws['!merges'].push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }); // Nama
+        ws['!merges'].push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }); // Satuan
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Laporan Reject Matrix");
         XLSX.writeFile(wb, `Laporan_Matrix_Reject_${exportStart}_${exportEnd}.xlsx`);
@@ -367,7 +377,7 @@ export const RejectView: React.FC = () => {
                                                 <div className="font-bold text-white">{line.name}</div>
                                                 <div className="text-[9px] text-slate-400 font-mono font-bold mt-0.5">{line.sku}</div>
                                             </td>
-                                            <td className="px-4 py-2 text-right font-mono text-red-400 font-black text-sm">-{line.qty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-red-400 font-black text-sm">-{parseFloat(line.qty.toString()).toLocaleString()}</td>
                                             <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[10px] font-black text-slate-300 border border-spectra">{line.unit}</span></td>
                                             <td className="px-4 py-2 text-slate-400 italic font-medium">{line.reason}</td>
                                             <td className="px-4 py-2 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16}/></button></td>
@@ -513,8 +523,8 @@ export const RejectView: React.FC = () => {
                                         <td className="px-4 py-2 text-center">
                                             <div className="flex justify-center gap-2">
                                                 <button onClick={() => handleCopyToClipboard(b)} title="Salin format teks" className="p-2 text-emerald-500 hover:bg-emerald-900/20 rounded-lg transition-all"><Share2 size={16}/></button>
-                                                <button onClick={() => setViewingBatch(b)} className="p-2 text-blue-400 hover:bg-blue-900/20 rounded-lg transition-all"><Eye size={16}/></button>
-                                                <button onClick={() => { if(confirm('Hapus batch ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg transition-all"><Trash2 size={16}/></button>
+                                                <button onClick={() => setViewingBatch(b)} className="p-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-all"><Eye size={16}/></button>
+                                                <button onClick={() => { if(confirm('Hapus batch ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-all"><Trash2 size={16}/></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -569,8 +579,8 @@ export const RejectView: React.FC = () => {
                                         </td>
                                         <td className="px-4 py-2 text-center">
                                             <div className="flex justify-center gap-2">
-                                                <button onClick={() => { setEditingItem(item); setItemForm({...item}); setShowItemModal(true); }} className="p-1.5 text-blue-400 hover:bg-blue-900/20 rounded"><Edit3 size={14}/></button>
-                                                <button onClick={() => handleDeleteMasterItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-900/20 rounded"><Trash2 size={14}/></button>
+                                                <button onClick={() => { setEditingItem(item); setItemForm({...item}); setShowItemModal(true); }} className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded"><Edit3 size={14}/></button>
+                                                <button onClick={() => handleDeleteMasterItem(item.id)} className="p-1.5 text-red-400 hover:bg-red-900/30 rounded"><Trash2 size={14}/></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -707,8 +717,8 @@ export const RejectView: React.FC = () => {
                                                 <div className="font-bold">{item.name}</div>
                                                 <div className="text-[9px] text-spectra font-mono">{item.sku}</div>
                                             </td>
-                                            <td className="px-4 py-2 text-right font-black text-red-400">{item.qty.toLocaleString()} <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span></td>
-                                            <td className="px-4 py-2 text-right font-black text-slate-400">{item.baseQty.toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-right font-black text-red-400">{parseFloat(item.qty.toString()).toLocaleString()} <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span></td>
+                                            <td className="px-4 py-2 text-right font-black text-slate-400">{parseFloat(item.baseQty.toString()).toLocaleString()}</td>
                                             <td className="px-4 py-2 italic text-slate-500">{item.reason}</td>
                                         </tr>
                                     ))}
