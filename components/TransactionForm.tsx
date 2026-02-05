@@ -199,7 +199,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               img.src = event.target?.result as string;
               img.onload = () => {
                   const canvas = document.createElement('canvas');
-                  const MAX_WIDTH = 800;
+                  const MAX_WIDTH = 800; // Resize to reasonable width for screen viewing
                   const scaleSize = MAX_WIDTH / img.width;
                   canvas.width = MAX_WIDTH;
                   canvas.height = img.height * scaleSize;

@@ -138,6 +138,17 @@ const initSchema = async () => {
             ) ENGINE=InnoDB;
         `);
 
+        // --- NEW: Transaction Photos Table ---
+        await conn.query(`
+            CREATE TABLE IF NOT EXISTS transaction_photos (
+                id CHAR(36) PRIMARY KEY,
+                transaction_id CHAR(36) NOT NULL,
+                photo LONGTEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB;
+        `);
+
         await conn.query(`
             CREATE TABLE IF NOT EXISTS reject_outlets (
                 id INT AUTO_INCREMENT PRIMARY KEY,

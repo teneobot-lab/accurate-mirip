@@ -66,8 +66,9 @@ const revertTransactionEffects = async (conn, transactionId) => {
  * APPLY LOGIC
  */
 const applyTransactionEffects = async (conn, transactionId, data) => {
-    const { type, sourceWarehouseId, items } = data;
+    const { type, sourceWarehouseId, items, attachments } = data;
 
+    // 1. Process Stock & Items
     for (const item of items) {
         const itemId = item.item_id || item.itemId;
         const qty = Number(item.qty);
@@ -85,6 +86,19 @@ const applyTransactionEffects = async (conn, transactionId, data) => {
             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [transactionId, itemId, qty, unit, ratio, baseQty, note]
         );
+    }
+
+    // 2. Process Photos (Save to DB)
+    // Only process attachments for IN transactions or if provided
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        for (const photoBase64 of attachments) {
+            if (!photoBase64) continue;
+            const photoId = uuidv4();
+            await conn.query(
+                `INSERT INTO transaction_photos (id, transaction_id, photo) VALUES (?, ?, ?)`,
+                [photoId, transactionId, photoBase64]
+            );
+        }
     }
 };
 
@@ -135,7 +149,11 @@ exports.updateTransaction = async (id, data, user) => {
         const oldTx = await revertTransactionEffects(conn, id);
         if (!oldTx) throw new Error(`Transaksi ID ${id} tidak ditemukan.`);
 
+        // Clear Items
         await conn.query('DELETE FROM transaction_items WHERE transaction_id = ?', [id]);
+        
+        // Clear Photos (We will re-insert the updated list)
+        await conn.query('DELETE FROM transaction_photos WHERE transaction_id = ?', [id]);
 
         const partnerId = (data.partnerId && data.partnerId.trim() !== "") ? data.partnerId : null;
         const doNo = data.deliveryOrderNo || null;
@@ -178,6 +196,7 @@ exports.deleteTransaction = async (id) => {
 
         // Delete items first (though cascade is on, manual is safer for auditing during transaction)
         await conn.query('DELETE FROM transaction_items WHERE transaction_id = ?', [id]);
+        await conn.query('DELETE FROM transaction_photos WHERE transaction_id = ?', [id]); // Delete photos
         await conn.query('DELETE FROM transactions WHERE id = ?', [id]);
 
         await conn.commit();

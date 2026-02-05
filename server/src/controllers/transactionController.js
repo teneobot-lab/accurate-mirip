@@ -118,6 +118,7 @@ exports.getTransactions = async (req, res, next) => {
         const [txs] = await db.query(query, params);
 
         for (const tx of txs) {
+            // Fetch Items
             const [items] = await db.query(
                 `SELECT ti.*, i.name, i.code 
                  FROM transaction_items ti
@@ -135,6 +136,13 @@ exports.getTransactions = async (req, res, next) => {
                 name: it.name,
                 code: it.code
             }));
+
+            // Fetch Photos (New)
+            const [photos] = await db.query(
+                `SELECT photo FROM transaction_photos WHERE transaction_id = ?`, 
+                [tx.id]
+            );
+            tx.attachments = photos.map(p => p.photo); // Array of Base64 strings
 
             tx.sourceWarehouseId = tx.source_warehouse_id;
             tx.referenceNo = tx.reference_no;
