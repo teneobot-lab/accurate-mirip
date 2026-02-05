@@ -311,7 +311,7 @@ export const RejectView: React.FC = () => {
                                                 onKeyDown={handleItemKeyDown}
                                                 onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
                                                 onFocus={() => { if(query && !pendingItem) setIsDropdownOpen(true); }}
-                                                className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none focus:ring-1 focus:ring-spectra font-bold uppercase placeholder:text-cutty" 
+                                                className="w-full p-2 bg-black/20 border border-spectra rounded-lg text-xs text-white outline-none focus:ring-1 focus:ring-spectra font-bold uppercase placeholder:text-cutty" 
                                             />
                                             {isDropdownOpen && (
                                                 <div className="absolute left-2 top-full mt-1 w-[400px] bg-gable rounded-xl shadow-2xl border border-spectra z-[100] max-h-48 overflow-y-auto">
@@ -329,15 +329,15 @@ export const RejectView: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="p-2">
-                                            <input ref={qtyInputRef} type="number" placeholder="0" value={pendingQty} onChange={e => setPendingQty(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); reasonInputRef.current?.focus(); } }} className="w-full p-2 bg-gable border border-spectra rounded-lg text-right text-xs text-white font-black outline-none focus:ring-1 focus:ring-spectra" />
+                                            <input ref={qtyInputRef} type="number" placeholder="0" value={pendingQty} onChange={e => setPendingQty(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); reasonInputRef.current?.focus(); } }} className="w-full p-2 bg-black/20 border border-spectra rounded-lg text-right text-xs text-white font-black outline-none focus:ring-1 focus:ring-spectra" />
                                         </td>
                                         <td className="p-2 text-center">
-                                            <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full p-2 bg-gable border border-spectra rounded-lg text-[10px] font-bold text-white outline-none">
+                                            <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full p-2 bg-black/20 border border-spectra rounded-lg text-[10px] font-bold text-white outline-none">
                                                 {pendingItem ? (<> <option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option> {pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)} </>) : <option value="">-</option>}
                                             </select>
                                         </td>
                                         <td className="p-2">
-                                            <input ref={reasonInputRef} type="text" placeholder="..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }} className="w-full p-2 bg-gable border border-spectra rounded-lg text-xs text-white outline-none" />
+                                            <input ref={reasonInputRef} type="text" placeholder="..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddLine(); } }} className="w-full p-2 bg-black/20 border border-spectra rounded-lg text-xs text-white outline-none" />
                                         </td>
                                         <td className="p-2 text-center">
                                             <button onClick={handleAddLine} disabled={!pendingItem} className="p-2 bg-spectra text-white rounded-lg hover:bg-white hover:text-spectra transition-colors disabled:opacity-50"><Plus size={14}/></button>
@@ -477,7 +477,7 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
             
-            <style>{` .rej-input { @apply w-full bg-black/20 border-0 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:bg-black/40; } `}</style>
+            <style>{` .rej-input { @apply w-full bg-[#0b1619] border border-[#335157] rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:bg-[#0f1f22] placeholder:text-slate-500 transition-colors shadow-inner; } `}</style>
         </div>
     );
 };

@@ -69,19 +69,31 @@
         color-scheme: dark;
       }
       
+      /* UPDATED INPUT STYLES FOR BETTER VISIBILITY */
       input, select, textarea {
-        background-color: #02272c !important; /* daintree */
-        border-color: #335157 !important; /* spectra */
-        color: #e2e8f0 !important; /* slate-200 */
+        background-color: #0b1619 !important; /* Very Dark Teal (Contrast against Gable/Daintree) */
+        border-color: #335157 !important; /* Spectra */
+        color: #f1f5f9 !important; /* Slate-100 (Brighter text) */
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+      }
+      
+      /* Make Readonly/Disabled inputs look different */
+      input:disabled, select:disabled, textarea:disabled {
+        background-color: #0f2429 !important;
+        color: #64748b !important;
+        cursor: not-allowed;
       }
 
+      /* UPDATED PLACEHOLDER COLOR */
       input::placeholder, textarea::placeholder {
-        color: #496569 !important; /* cutty */
+        color: #6c868a !important; /* Lighter/Distinct from Cutty */
+        opacity: 1;
+        font-weight: 500;
       }
 
       /* Fix Select Option Backgrounds */
       select option {
-        background-color: #193338; /* gable */
+        background-color: #0b1619; /* Match input bg */
         color: white;
         padding: 8px;
       }
@@ -91,15 +103,15 @@
       input:-webkit-autofill:hover, 
       input:-webkit-autofill:focus, 
       input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #02272c inset !important;
+        -webkit-box-shadow: 0 0 0 30px #0b1619 inset !important;
         -webkit-text-fill-color: white !important;
         transition: background-color 5000s ease-in-out 0s;
       }
 
       /* Date Picker Icon Invert */
       ::-webkit-calendar-picker-indicator {
-        filter: invert(1);
-        opacity: 0.5;
+        filter: invert(0.8);
+        opacity: 0.7;
         cursor: pointer;
       }
     </style>

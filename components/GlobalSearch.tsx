@@ -110,7 +110,7 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
         <input
           ref={inputRef}
           type="text"
-          className="block w-full pl-10 pr-4 py-2.5 border border-spectra bg-daintree text-white rounded-xl placeholder:text-slate-500 focus:ring-2 focus:ring-spectra focus:bg-gable text-sm transition-all shadow-sm outline-none"
+          className="block w-full pl-10 pr-4 py-2.5 border border-spectra bg-black/40 text-white rounded-xl placeholder:text-slate-500 focus:ring-2 focus:ring-spectra focus:bg-gable text-sm transition-all shadow-sm outline-none"
           placeholder="Cari Barang (Kode, Nama, atau Kategori)..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}

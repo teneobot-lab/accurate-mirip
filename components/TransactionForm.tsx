@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner, Stock } from '../types';
 import { StorageService } from '../services/storage';
@@ -394,7 +395,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     <td className="p-0.5 border-r border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
                                             <User size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 pr-4 py-1 appearance-none focus:bg-daintree/50" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
+                                            <select className="w-full bg-black/20 text-white text-xs font-bold outline-none pl-7 pr-4 py-1 appearance-none focus:bg-daintree/50 border border-spectra/20 rounded" value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)}>
                                                 <option value="">-- Pilih Partner --</option>
                                                 {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                             </select>
@@ -404,7 +405,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     <td className="p-0.5 border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
                                             <Building2 size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <select className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 pr-4 py-1 appearance-none focus:bg-daintree/50" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
+                                            <select className="w-full bg-black/20 text-white text-xs font-bold outline-none pl-7 pr-4 py-1 appearance-none focus:bg-daintree/50 border border-spectra/20 rounded" value={selectedWh} onChange={e => setSelectedWh(e.target.value)}>
                                                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                             </select>
                                         </div>
@@ -415,14 +416,14 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     <td className="p-0.5 border-r border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
                                             <Calendar size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 py-1 focus:bg-daintree/50" />
+                                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-black/20 text-white text-xs font-bold outline-none pl-7 py-1 focus:bg-daintree/50 border border-spectra/20 rounded" />
                                         </div>
                                     </td>
                                     <td className="bg-daintree px-2 py-1.5 text-[10px] font-bold text-cutty uppercase tracking-wider border-r border-b border-spectra">Ref No.</td>
                                     <td className="p-0.5 border-b border-spectra bg-gable relative">
                                         <div className="relative h-full">
                                             <Hash size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full bg-transparent font-mono text-emerald-400 text-xs font-bold outline-none pl-7 py-1 uppercase focus:bg-daintree/50" />
+                                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} className="w-full bg-black/20 font-mono text-emerald-400 text-xs font-bold outline-none pl-7 py-1 uppercase focus:bg-daintree/50 border border-spectra/20 rounded" />
                                         </div>
                                     </td>
                                 </tr>
@@ -431,7 +432,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     <td colSpan={3} className="p-0.5 bg-gable relative">
                                         <div className="relative h-full">
                                             <StickyNote size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none z-10"/>
-                                            <input type="text" placeholder="Keterangan..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-transparent text-white text-xs font-bold outline-none pl-7 py-1 focus:bg-daintree/50" />
+                                            <input type="text" placeholder="Keterangan..." value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-black/20 text-white text-xs font-bold outline-none pl-7 py-1 focus:bg-daintree/50 border border-spectra/20 rounded" />
                                         </div>
                                     </td>
                                 </tr>

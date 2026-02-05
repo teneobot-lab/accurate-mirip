@@ -576,31 +576,30 @@ export const InventoryView: React.FC = () => {
                 .modal-input { 
                     width: 100%;
                     height: 2.75rem;
-                    background-color: rgba(0, 0, 0, 0.2) !important;
-                    border: 0 !important;
+                    background-color: #0b1619 !important; /* Darker BG */
+                    border: 1px solid #335157 !important;
                     outline: none !important;
                     border-radius: 9999px;
                     padding: 0 1rem;
                     font-size: 0.75rem;
                     color: white !important;
                     transition: all 150ms;
-                    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+                    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.2);
                     appearance: none;
                     -webkit-appearance: none;
                 }
                 .modal-input:focus {
-                    background-color: rgba(0, 0, 0, 0.4) !important;
+                    background-color: #0f1f22 !important;
                     outline: none !important;
-                    box-shadow: none !important;
-                    border: 0 !important;
-                    ring: 0 !important;
+                    box-shadow: 0 0 0 2px #335157 !important;
+                    border-color: #335157 !important;
                 }
-                .modal-input::placeholder { color: #64748b; }
+                .modal-input::placeholder { color: #64748b !important; }
 
                 .table-input {
                     width: 100%;
                     height: 2.25rem;
-                    background-color: rgba(0, 0, 0, 0.2) !important;
+                    background-color: #0b1619 !important;
                     border: 0 !important;
                     outline: none !important;
                     border-radius: 9999px;
@@ -613,12 +612,11 @@ export const InventoryView: React.FC = () => {
                     -webkit-appearance: none;
                 }
                 .table-input:focus {
-                    background-color: rgba(0, 0, 0, 0.4) !important;
+                    background-color: #0f1f22 !important;
                     outline: none !important;
-                    box-shadow: none !important;
-                    border: 0 !important;
+                    box-shadow: inset 0 0 0 1px #335157 !important;
                 }
-                .table-input::placeholder { color: #496569; }
+                .table-input::placeholder { color: #64748b; }
 
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #496569; border-radius: 9999px; }
