@@ -126,7 +126,6 @@ export const RejectView: React.FC = () => {
         const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
         let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
         batch.items.forEach(it => {
-            // Perbaikan: Gunakan parseFloat untuk membersihkan trailing zeros
             const displayQty = parseFloat(it.qty.toString());
             text += `- ${it.name.toLowerCase()} ${displayQty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
         });
@@ -136,60 +135,68 @@ export const RejectView: React.FC = () => {
     };
 
     const handleExportFlattened = () => {
+        // 1. Filter batch sesuai rentang tanggal
         const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
         if (filteredBatches.length === 0) return showToast("Tidak ada data di rentang tanggal tersebut", "warning");
 
+        // 2. Ambil daftar tanggal unik dan urutkan
         const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
         
-        // itemMap stores code, name, and base unit
+        // 3. Identifikasi Item Unik (Agar 1 Item = 1 Baris)
         const itemMap = new Map<string, { code: string, name: string, baseUnit: string }>();
-        filteredBatches.forEach(b => b.items.forEach(it => {
-            // Finding master item to get the base unit correctly
-            const master = rejectMasterItems.find(mi => mi.id === it.itemId);
-            itemMap.set(it.itemId, { 
-                code: it.sku, 
-                name: it.name, 
-                baseUnit: master?.baseUnit || it.unit 
+        filteredBatches.forEach(b => {
+            b.items.forEach(it => {
+                if (!itemMap.has(it.itemId)) {
+                    const master = rejectMasterItems.find(mi => mi.id === it.itemId);
+                    itemMap.set(it.itemId, { 
+                        code: it.sku, 
+                        name: it.name, 
+                        baseUnit: master?.baseUnit || it.unit 
+                    });
+                }
             });
-        }));
+        });
 
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         
-        // Add "Satuan" column to headers
+        // 4. Bangun Header
         const headerRow1 = ['Kode', 'Nama Barang', 'Satuan', ...dateList.map((d: string) => days[new Date(d).getDay()])];
         const headerRow2 = ['', '', '', ...dateList.map((d: string) => {
             const [y, m, day] = d.split('-');
             return `${day}/${m}/${y}`;
         })];
 
+        // 5. Bangun Baris Data (Agregasi multi-input dalam 1 sel per tanggal)
         const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
             const rowData: any[] = [itemInfo.code, itemInfo.name, itemInfo.baseUnit];
-            dateList.forEach(d => {
-                // Perbaikan logic: Mengambil semua item dalam batch di tanggal tersebut, filter by itemId, jumlahkan baseQty
+            
+            dateList.forEach(currentDate => {
+                // Cari semua input untuk item ini di tanggal ini (bisa ada banyak input per tanggal)
                 const totalBaseQty = filteredBatches
-                    .filter(b => b.date === d)
+                    .filter(b => b.date === currentDate)
                     .flatMap(b => b.items)
                     .filter(it => it.itemId === itemId)
                     .reduce((sum, it) => sum + Number(it.baseQty), 0);
                 
-                // Jika total > 0, masukkan angkanya (Excel akan memformat angka secara otomatis)
+                // Masukkan angka bersih ke sel, jika 0 biarkan kosong agar rapi
                 rowData.push(totalBaseQty > 0 ? parseFloat(totalBaseQty.toFixed(4)) : "");
             });
             return rowData;
         });
 
+        // 6. Generate Excel
         const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
         
-        // Merging first 3 cells of header rows
+        // Styling Merge untuk Header yang rapi
         if (!ws['!merges']) ws['!merges'] = [];
         ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }); // Kode
-        ws['!merges'].push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }); // Nama
+        ws['!merges'].push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }); // Nama Barang
         ws['!merges'].push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }); // Satuan
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Laporan Reject Matrix");
         XLSX.writeFile(wb, `Laporan_Matrix_Reject_${exportStart}_${exportEnd}.xlsx`);
-        showToast("Laporan matrix (satuan dasar) berhasil dibuat", "success");
+        showToast("Laporan matrix agregat berhasil dibuat", "success");
     };
 
     const handleAddLine = () => {
