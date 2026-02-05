@@ -42,7 +42,7 @@ export const RejectView: React.FC = () => {
 
     const [pendingItem, setPendingItem] = useState<Item | null>(null);
     const [pendingUnit, setPendingUnit] = useState('');
-    const [pendingQty, setPendingQty] = useState<string>(''); // Change to string to handle empty state better
+    const [pendingQty, setPendingQty] = useState<string>(''); 
     const [pendingReason, setPendingReason] = useState('');
     
     // Session Memory for Unit Habit
@@ -75,7 +75,6 @@ export const RejectView: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // --- Fuzzy Search Logic ---
     useEffect(() => {
         if (!query || pendingItem) {
             setFilteredItems([]);
@@ -96,13 +95,9 @@ export const RejectView: React.FC = () => {
     const selectItem = (item: Item) => {
         setPendingItem(item);
         setQuery(item.name);
-        
-        // Auto-fill Unit based on Habit or Base Unit
         const preferredUnit = unitPrefs[item.id] || item.baseUnit;
         setPendingUnit(preferredUnit);
-        
         setIsDropdownOpen(false);
-        // Auto focus to Qty
         setTimeout(() => qtyInputRef.current?.focus(), 10);
     };
 
@@ -126,16 +121,13 @@ export const RejectView: React.FC = () => {
         }
     };
 
-    // --- Actions ---
     const handleCopyToClipboard = (batch: RejectBatch) => {
         const d = new Date(batch.date);
         const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
-        
         let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
         batch.items.forEach(it => {
             text += `- ${it.name.toLowerCase()} ${it.qty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
         });
-
         navigator.clipboard.writeText(text).then(() => {
             showToast("Format teks berhasil disalin ke clipboard", "success");
         }).catch(() => showToast("Gagal menyalin teks", "error"));
@@ -146,53 +138,60 @@ export const RejectView: React.FC = () => {
         if (filteredBatches.length === 0) return showToast("Tidak ada data di rentang tanggal tersebut", "warning");
 
         const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
-        const itemMap = new Map<string, { code: string, name: string }>();
+        
+        // itemMap stores code, name, and base unit
+        const itemMap = new Map<string, { code: string, name: string, baseUnit: string }>();
         filteredBatches.forEach(b => b.items.forEach(it => {
-            itemMap.set(it.itemId, { code: it.sku, name: it.name });
+            // Finding master item to get the base unit correctly
+            const master = rejectMasterItems.find(mi => mi.id === it.itemId);
+            itemMap.set(it.itemId, { 
+                code: it.sku, 
+                name: it.name, 
+                baseUnit: master?.baseUnit || it.unit 
+            });
         }));
 
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const headerRow1 = ['Kode', 'Nama Barang', ...dateList.map((d: string) => days[new Date(d).getDay()])];
-        const headerRow2 = ['', '', ...dateList.map((d: string) => {
+        
+        // Add "Satuan" column to headers
+        const headerRow1 = ['Kode', 'Nama Barang', 'Satuan', ...dateList.map((d: string) => days[new Date(d).getDay()])];
+        const headerRow2 = ['', '', '', ...dateList.map((d: string) => {
             const [y, m, day] = d.split('-');
             return `${day}/${m}/${y}`;
         })];
 
         const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
-            const rowData: any[] = [itemInfo.code, itemInfo.name];
+            const rowData: any[] = [itemInfo.code, itemInfo.name, itemInfo.baseUnit];
             dateList.forEach(d => {
-                const totalQty = filteredBatches
+                // Calculation uses baseQty for standardization
+                const totalBaseQty = filteredBatches
                     .filter(b => b.date === d)
                     .flatMap(b => b.items)
                     .filter(it => it.itemId === itemId)
-                    .reduce((sum, it) => sum + Number(it.qty), 0);
-                rowData.push(totalQty > 0 ? totalQty : "");
+                    .reduce((sum, it) => sum + Number(it.baseQty), 0);
+                
+                rowData.push(totalBaseQty > 0 ? totalBaseQty : "");
             });
             return rowData;
         });
 
         const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Laporan Flattened");
-        XLSX.writeFile(wb, `Laporan_Reject_Flattened_${exportStart}_${exportEnd}.xlsx`);
-        showToast("Laporan flattened berhasil dibuat", "success");
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan Reject Matrix");
+        XLSX.writeFile(wb, `Laporan_Matrix_Reject_${exportStart}_${exportEnd}.xlsx`);
+        showToast("Laporan matrix (satuan dasar) berhasil dibuat", "success");
     };
 
     const handleAddLine = () => {
         if (!pendingItem) return showToast("Pilih item terlebih dahulu", "warning");
         if (!pendingQty || Number(pendingQty) <= 0) return showToast("Isi Qty Valid", "warning");
-        
         const unit = pendingUnit || pendingItem.baseUnit;
-        
-        // Save Unit Habit
         setUnitPrefs(prev => ({...prev, [pendingItem.id]: unit}));
-
         let ratio = 1;
         if (unit !== pendingItem.baseUnit) {
             const conv = pendingItem.conversions?.find(c => c.name === unit);
             if (conv) ratio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
         }
-
         const newLine: RejectItem = {
             itemId: pendingItem.id,
             sku: pendingItem.code,
@@ -203,14 +202,11 @@ export const RejectView: React.FC = () => {
             reason: pendingReason || '-'
         };
         setRejectLines([...rejectLines, newLine]);
-        
-        // Reset and Focus back to Item Input for Rapid Entry
         setQuery(''); 
         setPendingItem(null); 
         setPendingQty(''); 
         setPendingReason(''); 
         setPendingUnit('');
-        
         setTimeout(() => itemInputRef.current?.focus(), 10);
     };
 
@@ -231,7 +227,6 @@ export const RejectView: React.FC = () => {
         } catch (e) { showToast("Gagal simpan", "error"); }
     };
 
-    // --- Master Item Logic ---
     const handleSaveMasterItem = async () => {
         if (!itemForm.code || !itemForm.name) return showToast("Kode & Nama wajib diisi.", "warning");
         setIsLoading(true);
@@ -261,7 +256,6 @@ export const RejectView: React.FC = () => {
         } catch (e) { showToast("Gagal hapus", "error"); }
     };
 
-    // --- Bulk Import Logic ---
     const downloadTemplate = () => {
         const templateData = [
             { "Kode": "REJ-001", "Nama": "Semen Rusak", "Kategori": "Material", "Satuan_Dasar": "Pcs", "Konversi": "BAG:20:*,PALLET:100:*" }
@@ -275,7 +269,6 @@ export const RejectView: React.FC = () => {
     const handleImportXLSX = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         setIsImporting(true);
         const reader = new FileReader();
         reader.onload = async (evt) => {
@@ -284,7 +277,6 @@ export const RejectView: React.FC = () => {
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const data: any[] = XLSX.utils.sheet_to_json(ws);
-
                 const itemsPayload = data.map(row => {
                     const conversions: UnitConversion[] = [];
                     const convStr = String(row.Konversi || '');
@@ -305,7 +297,6 @@ export const RejectView: React.FC = () => {
                         isActive: true
                     };
                 }).filter(it => it.code && it.name);
-
                 await StorageService.bulkSaveRejectMasterItems(itemsPayload);
                 showToast(`Berhasil import ${itemsPayload.length} item reject`, "success");
                 loadData();
@@ -327,7 +318,6 @@ export const RejectView: React.FC = () => {
 
     return (
         <div className="flex flex-col h-full bg-daintree p-4 gap-4 transition-colors font-sans">
-            {/* Header Tabs */}
             <div className="bg-gable p-2 rounded-xl shadow-lg border border-spectra flex flex-wrap gap-2">
                 <TabBtn active={activeTab === 'NEW'} onClick={() => setActiveTab('NEW')} label="Entry Reject" icon={<Plus size={16}/>} />
                 <TabBtn active={activeTab === 'HISTORY'} onClick={() => setActiveTab('HISTORY')} label="History" icon={<History size={16}/>} />
@@ -383,7 +373,6 @@ export const RejectView: React.FC = () => {
                                             <td className="px-4 py-2 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={16}/></button></td>
                                         </tr>
                                     ))}
-                                    {/* Input Row with Fuzzy Search & Navigation */}
                                     <tr className="bg-daintree/30 border-t border-spectra/50">
                                         <td className="p-2 relative">
                                             <input 
@@ -591,7 +580,6 @@ export const RejectView: React.FC = () => {
                     </div>
                 </div>
             ) : (
-                /* MASTER OUTLET VIEW */
                 <div className="flex-1 max-w-xl mx-auto w-full bg-gable p-10 rounded-[32px] border border-spectra shadow-xl space-y-8 animate-in fade-in zoom-in-95">
                     <div className="flex items-center gap-5 mb-4 text-white">
                         <div className="p-4 bg-daintree rounded-3xl text-spectra border border-spectra"><Building size={32}/></div>
@@ -612,9 +600,8 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* Master Item Modal */}
             {showItemModal && (
-                <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-md">
+                <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-gable rounded-[32px] w-full max-w-2xl shadow-2xl border border-spectra overflow-hidden animate-in zoom-in-95">
                         <div className="bg-daintree text-white p-8 flex justify-between items-center border-b border-spectra">
                             <div className="flex items-center gap-5">
@@ -698,7 +685,6 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* Batch Detail Modal */}
             {viewingBatch && (
                 <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
                     <div className="bg-gable rounded-[32px] shadow-2xl w-full max-w-2xl border border-spectra overflow-hidden animate-in zoom-in-95">
