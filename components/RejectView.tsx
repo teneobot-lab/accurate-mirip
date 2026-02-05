@@ -135,14 +135,11 @@ export const RejectView: React.FC = () => {
     };
 
     const handleExportFlattened = () => {
-        // 1. Filter batch sesuai rentang tanggal
         const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
         if (filteredBatches.length === 0) return showToast("Tidak ada data di rentang tanggal tersebut", "warning");
 
-        // 2. Ambil daftar tanggal unik dan urutkan
         const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
         
-        // 3. Identifikasi Item Unik (Agar 1 Item = 1 Baris)
         const itemMap = new Map<string, { code: string, name: string, baseUnit: string }>();
         filteredBatches.forEach(b => {
             b.items.forEach(it => {
@@ -159,39 +156,33 @@ export const RejectView: React.FC = () => {
 
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         
-        // 4. Bangun Header
         const headerRow1 = ['Kode', 'Nama Barang', 'Satuan', ...dateList.map((d: string) => days[new Date(d).getDay()])];
         const headerRow2 = ['', '', '', ...dateList.map((d: string) => {
             const [y, m, day] = d.split('-');
             return `${day}/${m}/${y}`;
         })];
 
-        // 5. Bangun Baris Data (Agregasi multi-input dalam 1 sel per tanggal)
         const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
             const rowData: any[] = [itemInfo.code, itemInfo.name, itemInfo.baseUnit];
             
             dateList.forEach(currentDate => {
-                // Cari semua input untuk item ini di tanggal ini (bisa ada banyak input per tanggal)
                 const totalBaseQty = filteredBatches
                     .filter(b => b.date === currentDate)
                     .flatMap(b => b.items)
                     .filter(it => it.itemId === itemId)
                     .reduce((sum, it) => sum + Number(it.baseQty), 0);
                 
-                // Masukkan angka bersih ke sel, jika 0 biarkan kosong agar rapi
                 rowData.push(totalBaseQty > 0 ? parseFloat(totalBaseQty.toFixed(4)) : "");
             });
             return rowData;
         });
 
-        // 6. Generate Excel
         const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
         
-        // Styling Merge untuk Header yang rapi
         if (!ws['!merges']) ws['!merges'] = [];
-        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }); // Kode
-        ws['!merges'].push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }); // Nama Barang
-        ws['!merges'].push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }); // Satuan
+        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } });
+        ws['!merges'].push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } });
+        ws['!merges'].push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } });
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Laporan Reject Matrix");
@@ -660,7 +651,7 @@ export const RejectView: React.FC = () => {
                                         <div className="grid grid-cols-12 gap-4 items-end">
                                             <div className="col-span-4 space-y-1">
                                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Satuan</label>
-                                                <input type="text" className="w-full bg-gable p-2 rounded-lg border border-spectra text-xs font-black outline-none text-white" value={c.name} onChange={e => {
+                                                <input type="text" className="rej-input" value={c.name} onChange={e => {
                                                     const next = [...(itemForm.conversions || [])];
                                                     next[i].name = e.target.value.toUpperCase();
                                                     setItemForm({...itemForm, conversions: next});
@@ -668,7 +659,7 @@ export const RejectView: React.FC = () => {
                                             </div>
                                             <div className="col-span-3 space-y-1">
                                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Operator</label>
-                                                <select className="w-full bg-gable p-2 rounded-lg border border-spectra text-xs font-black outline-none text-white" value={c.operator} onChange={e => {
+                                                <select className="rej-input" value={c.operator} onChange={e => {
                                                     const next = [...(itemForm.conversions || [])];
                                                     next[i].operator = e.target.value as any;
                                                     setItemForm({...itemForm, conversions: next});
@@ -679,7 +670,7 @@ export const RejectView: React.FC = () => {
                                             </div>
                                             <div className="col-span-4 space-y-1">
                                                 <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Rasio ke {itemForm.baseUnit}</label>
-                                                <input type="number" className="w-full bg-gable p-2 rounded-lg border border-spectra text-xs font-black text-right outline-none text-white" value={c.ratio} onChange={e => {
+                                                <input type="number" className="rej-input text-right" value={c.ratio} onChange={e => {
                                                     const next = [...(itemForm.conversions || [])];
                                                     next[i].ratio = Number(e.target.value);
                                                     setItemForm({...itemForm, conversions: next});
@@ -737,7 +728,28 @@ export const RejectView: React.FC = () => {
             )}
 
             <style>{`
-                .rej-input { @apply w-full bg-daintree border border-spectra rounded-xl px-4 py-3 text-xs outline-none focus:ring-1 focus:ring-spectra focus:border-spectra transition-all shadow-inner text-white placeholder:text-cutty; }
+                .rej-input { 
+                    width: 100%;
+                    background-color: rgba(0, 0, 0, 0.2) !important;
+                    border: 0 !important;
+                    outline: none !important;
+                    border-radius: 0.75rem;
+                    padding: 0.75rem 1rem;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: white !important;
+                    transition: all 150ms;
+                    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+                    appearance: none;
+                    -webkit-appearance: none;
+                }
+                .rej-input:focus {
+                    background-color: rgba(0, 0, 0, 0.4) !important;
+                    box-shadow: none !important;
+                    ring: 0 !important;
+                }
+                .rej-input::placeholder { color: #496569; }
+                
                 .scrollbar-thin::-webkit-scrollbar { width: 5px; }
                 .scrollbar-thin::-webkit-scrollbar-thumb { @apply bg-cutty rounded-full; }
                 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
