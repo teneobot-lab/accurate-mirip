@@ -16,6 +16,14 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
+// --- HELPER: CLEAN NUMBER FORMATTER ---
+// Mengubah 5.0000 -> 5, 2.5000 -> 2.5
+const formatCleanNumber = (val: string | number | undefined): string => {
+    if (val === undefined || val === null || val === '') return '';
+    const num = Number(val);
+    return isNaN(num) ? '' : num.toString();
+};
+
 export const RejectView: React.FC = () => {
     const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'MASTER' | 'MASTER_ITEMS'>('NEW');
@@ -137,7 +145,8 @@ export const RejectView: React.FC = () => {
         const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
         let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
         batch.items.forEach(it => {
-            const displayQty = parseFloat(it.qty.toString());
+            // FIX: Gunakan formatCleanNumber agar 5.000 jadi 5 saat copy
+            const displayQty = formatCleanNumber(it.qty);
             text += `- ${it.name.toLowerCase()} ${displayQty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
         });
         navigator.clipboard.writeText(text).then(() => {
@@ -150,28 +159,54 @@ export const RejectView: React.FC = () => {
         if (filteredBatches.length === 0) return showToast("No data", "warning");
         
         const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
+        
+        // LOGIC FIX: Kumpulkan SEMUA item ID yang ada di filteredBatches, jangan cuma dari Master Item
+        const allItemIds = new Set<string>();
+        filteredBatches.forEach(b => {
+            b.items.forEach(it => allItemIds.add(it.itemId));
+        });
+
+        // Build Map data
         const itemMap = new Map<string, { code: string, name: string, baseUnit: string }>();
+        
+        // Populate info based on transaction history first (most accurate for snapshot)
         filteredBatches.forEach(b => {
             b.items.forEach(it => {
                 if (!itemMap.has(it.itemId)) {
+                    // Coba cari di master, kalo gak ada pake data snapshot transaksi
                     const master = rejectMasterItems.find(mi => mi.id === it.itemId);
                     itemMap.set(it.itemId, { 
-                        code: it.sku, name: it.name, baseUnit: master?.baseUnit || it.unit 
+                        code: it.sku || master?.code || '?', 
+                        name: it.name || master?.name || '?', 
+                        baseUnit: master?.baseUnit || it.unit 
                     });
                 }
             });
         });
+
+        // Ensure master items that might have been missed (optional, but requested "per batch" usually implies transaction data)
+        // If we want to include master items that have 0 reject, we would iterate rejectMasterItems here.
+        // But prompt says "menampilkan semua item reject per batch", so strictly transaction data is safer.
+
         const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         const headerRow1 = ['Kode', 'Nama Barang', 'Satuan', ...dateList.map((d: string) => days[new Date(d).getDay()])];
         const headerRow2 = ['', '', '', ...dateList.map((d: string) => { const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; })];
+        
         const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
             const rowData: any[] = [itemInfo.code, itemInfo.name, itemInfo.baseUnit];
             dateList.forEach(currentDate => {
-                const totalBaseQty = filteredBatches.filter(b => b.date === currentDate).flatMap(b => b.items).filter(it => it.itemId === itemId).reduce((sum, it) => sum + Number(it.baseQty), 0);
-                rowData.push(totalBaseQty > 0 ? parseFloat(totalBaseQty.toFixed(4)) : "");
+                const totalBaseQty = filteredBatches
+                    .filter(b => b.date === currentDate)
+                    .flatMap(b => b.items)
+                    .filter(it => it.itemId === itemId)
+                    .reduce((sum, it) => sum + Number(it.baseQty), 0);
+                
+                // FIX: Clean number for Excel (5 instead of 5.0000)
+                rowData.push(totalBaseQty > 0 ? Number(formatCleanNumber(totalBaseQty)) : "");
             });
             return rowData;
         });
+
         const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
         if (!ws['!merges']) ws['!merges'] = [];
         ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } });
@@ -239,6 +274,8 @@ export const RejectView: React.FC = () => {
 
     const updateConversion = (index: number, updates: Partial<UnitConversion>) => {
         const next = [...(itemForm.conversions || [])];
+        // Ensure ratio is stored as number if changed, but allow partial typing if needed in robust forms. 
+        // Here we keep it simple but clean the input value in UI.
         next[index] = { ...next[index], ...updates };
         setItemForm({ ...itemForm, conversions: next });
     };
@@ -494,7 +531,7 @@ export const RejectView: React.FC = () => {
                                 <div className="flex justify-between items-end border-b border-spectra pb-1">
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2"><LayoutGrid size={12}/> Konversi Satuan</h4>
                                     <button 
-                                        onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
+                                        onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: '' as any, operator: '*' }]})} 
                                         className="text-[9px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded transition-colors flex items-center gap-1"
                                     >
                                         <Plus size={10}/> Tambah
@@ -540,11 +577,12 @@ export const RejectView: React.FC = () => {
                                                             </div>
                                                         </td>
                                                         <td className="p-1">
+                                                            {/* FIX: Field Ratio Bersih */}
                                                             <input 
                                                                 type="number" 
                                                                 className="rej-input text-right h-8 font-mono text-[10px]" 
-                                                                value={c.ratio} 
-                                                                onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} 
+                                                                value={formatCleanNumber(c.ratio)} 
+                                                                onChange={e => updateConversion(i, { ratio: e.target.value as any })} 
                                                             />
                                                         </td>
                                                         <td className="p-1 text-center">
@@ -578,7 +616,7 @@ export const RejectView: React.FC = () => {
                 <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
                      <div className="bg-gable rounded-2xl w-full max-w-lg border border-spectra overflow-hidden max-h-[80vh]">
                          <div className="p-4 bg-daintree flex justify-between"><h3 className="font-black text-white text-xs">Batch {viewingBatch.id}</h3><button onClick={()=>setViewingBatch(null)}><X size={18} className="text-slate-400"/></button></div>
-                         <div className="p-4 overflow-auto"><table className="w-full text-[10px] text-white"><tbody className="divide-y divide-spectra/20">{viewingBatch.items.map((it,i)=><tr key={i}><td className="py-2">{it.name}</td><td className="text-right py-2 text-red-400 font-bold">{it.qty} {it.unit}</td><td className="py-2 pl-4 text-slate-400">{it.reason}</td></tr>)}</tbody></table></div>
+                         <div className="p-4 overflow-auto"><table className="w-full text-[10px] text-white"><tbody className="divide-y divide-spectra/20">{viewingBatch.items.map((it,i)=><tr key={i}><td className="py-2">{it.name}</td><td className="text-right py-2 text-red-400 font-bold">{formatCleanNumber(it.qty)} {it.unit}</td><td className="py-2 pl-4 text-slate-400">{it.reason}</td></tr>)}</tbody></table></div>
                      </div>
                 </div>
             )}
@@ -591,8 +629,8 @@ export const RejectView: React.FC = () => {
                     outline: none !important; 
                     box-shadow: none !important;
                     border-radius: 0.5rem; 
-                    padding: 0.6rem 0.8rem; 
-                    font-size: 0.75rem; 
+                    padding: 0.75rem 1rem; /* Expanded Padding */
+                    font-size: 0.85rem; /* Slightly larger font */
                     font-weight: 700; 
                     color: white !important; 
                     transition: background-color 0.2s ease;
