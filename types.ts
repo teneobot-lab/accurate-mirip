@@ -79,6 +79,7 @@ export interface Transaction {
   targetWarehouseId?: string;
   items: TransactionItem[];
   notes?: string;
+  attachments?: string[]; // Array of Base64 strings for photos
   createdAt: number;
 }
 

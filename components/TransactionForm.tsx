@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner, Stock } from '../types';
 import { StorageService } from '../services/storage';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote, ChevronDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, Tag, Edit3, Info, Search, Package, ArrowRight, FileText, StickyNote, ChevronDown, Upload, FileSpreadsheet, AlertTriangle, Image as ImageIcon, Eye, Download } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -30,6 +30,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [selectedWh, setSelectedWh] = useState(initialData?.sourceWarehouseId || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [lines, setLines] = useState<TransactionItem[]>(initialData?.items || []);
+  
+  // Attachments State (Only for IN)
+  const [attachments, setAttachments] = useState<string[]>(initialData?.attachments || []);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // Row Entry & Autocomplete States
   const [query, setQuery] = useState('');
@@ -183,6 +189,66 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       setLines(newLines);
   };
 
+  // --- IMAGE COMPRESSION & UPLOAD LOGIC ---
+  const compressImage = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+              const img = new Image();
+              img.src = event.target?.result as string;
+              img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  const MAX_WIDTH = 800;
+                  const scaleSize = MAX_WIDTH / img.width;
+                  canvas.width = MAX_WIDTH;
+                  canvas.height = img.height * scaleSize;
+                  
+                  const ctx = canvas.getContext('2d');
+                  ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  
+                  // Compress to JPEG 70% quality
+                  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                  resolve(dataUrl);
+              };
+              img.onerror = (error) => reject(error);
+          };
+      });
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      
+      setIsCompressing(true);
+      const newPhotos: string[] = [];
+      
+      try {
+          for (let i = 0; i < e.target.files.length; i++) {
+              const file = e.target.files[i];
+              if (!file.type.startsWith('image/')) continue;
+              const compressed = await compressImage(file);
+              newPhotos.push(compressed);
+          }
+          setAttachments(prev => [...prev, ...newPhotos]);
+          showToast(`${newPhotos.length} foto berhasil dikompres & diupload`, "success");
+      } catch (error) {
+          showToast("Gagal memproses gambar", "error");
+      } finally {
+          setIsCompressing(false);
+          if (photoInputRef.current) photoInputRef.current.value = '';
+      }
+  };
+
+  const downloadImage = (base64: string, index: number) => {
+      const link = document.createElement('a');
+      link.href = base64;
+      link.download = `attachment-${refNo}-${index + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+  // --- EXCEL IMPORT LOGIC ---
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -296,7 +362,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 conversionRatio: line.ratio || 1,
                 note: '' // Removed per request
             })),
-            notes
+            notes,
+            attachments // Include photos
         };
         
         if (initialData?.id) {
@@ -408,8 +475,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 </div>
                 
                  {/* Right Column */}
-                <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-center">
-                    <div className="bg-daintree rounded-xl border border-spectra p-3 flex flex-col justify-between h-full shadow-inner gap-2">
+                <div className="col-span-3 pl-3 border-l border-spectra/50 flex flex-col justify-between">
+                    <div className="bg-daintree rounded-xl border border-spectra p-3 flex flex-col h-full shadow-inner gap-2">
                         <div className="flex justify-between items-center text-[10px] font-bold text-cutty uppercase">
                             <span>Total Lines</span>
                             <span className="text-white font-mono">{lines.length}</span>
@@ -429,8 +496,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </div>
         </div>
 
-        {/* Transaction Grid Table */}
-        <div className="flex-1 bg-gable p-4 overflow-hidden flex flex-col">
+        {/* Transaction Grid Table & Attachments */}
+        <div className="flex-1 bg-gable p-4 overflow-hidden flex flex-col gap-4">
             <div className="flex-1 overflow-auto scrollbar-thin rounded-xl border border-spectra bg-daintree/30 shadow-inner">
                 <table className="w-full text-left border-separate border-spacing-0">
                     <thead className="sticky top-0 z-20 bg-daintree text-cutty text-[10px] font-black uppercase tracking-widest shadow-md">
@@ -574,6 +641,54 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </div>
                 )}
             </div>
+
+            {/* --- ATTACHMENTS SECTION (ONLY FOR INBOUND) --- */}
+            {type === 'IN' && (
+                <div className="bg-daintree border border-spectra rounded-xl p-4 flex flex-col gap-3 shadow-inner">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2">
+                            <ImageIcon size={14}/> Dokumentasi / Foto Barang
+                        </h3>
+                        <div className="flex items-center gap-2">
+                            <input 
+                                type="file" 
+                                multiple 
+                                accept="image/*" 
+                                ref={photoInputRef}
+                                className="hidden"
+                                onChange={handlePhotoUpload}
+                            />
+                            <button 
+                                onClick={() => photoInputRef.current?.click()}
+                                disabled={isCompressing}
+                                className="px-3 py-1.5 bg-gable border border-spectra rounded-lg text-[10px] font-bold text-white hover:bg-spectra/50 flex items-center gap-2 transition-all disabled:opacity-50"
+                            >
+                                {isCompressing ? <Loader2 size={12} className="animate-spin"/> : <Upload size={12}/>} Upload Foto
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* Photo Grid */}
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                        {attachments.length === 0 ? (
+                            <div className="text-[10px] text-cutty italic w-full text-center py-4 border border-dashed border-spectra/30 rounded-lg">
+                                Belum ada foto. Upload untuk bukti fisik barang.
+                            </div>
+                        ) : (
+                            attachments.map((img, idx) => (
+                                <div key={idx} className="relative group min-w-[80px] w-20 h-20 rounded-lg overflow-hidden border border-spectra bg-black">
+                                    <img src={img} alt="Attachment" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => setPreviewImage(img)} className="text-white hover:text-emerald-400"><Eye size={16}/></button>
+                                        <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-white hover:text-red-400"><Trash2 size={16}/></button>
+                                    </div>
+                                    <div className="absolute bottom-0 right-0 bg-black/60 px-1 text-[8px] text-white font-mono">{idx + 1}</div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Footer Actions */}
@@ -594,6 +709,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
              </div>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+          <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-8 backdrop-blur-md animate-in fade-in" onClick={() => setPreviewImage(null)}>
+              <div className="relative max-w-4xl max-h-full" onClick={e => e.stopPropagation()}>
+                  <img src={previewImage} alt="Full Preview" className="max-w-full max-h-[80vh] rounded-lg shadow-2xl border border-spectra" />
+                  <button onClick={() => setPreviewImage(null)} className="absolute -top-10 right-0 text-white hover:text-red-400"><X size={24}/></button>
+                  <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex gap-4">
+                      <button 
+                        onClick={() => downloadImage(previewImage, attachments.indexOf(previewImage))}
+                        className="px-4 py-2 bg-spectra text-white rounded-full text-xs font-bold flex items-center gap-2 hover:bg-white hover:text-spectra transition-colors shadow-lg"
+                      >
+                          <Download size={14}/> Download HD
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       <style>{`
         /* Remove Spinner */
         input[type=number]::-webkit-inner-spin-button, 
