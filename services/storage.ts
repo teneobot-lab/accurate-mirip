@@ -51,7 +51,7 @@ export const StorageService = {
     return response.json();
   },
 
-  // --- CONFIG (NEW) ---
+  // --- CONFIG ---
   async fetchSystemConfig(key: string): Promise<string> {
       try {
           const res = await this.apiCall(`/api/inventory/config/${key}`);
@@ -204,24 +204,22 @@ export const StorageService = {
     const items: Item[] = await this.fetchItems();
     
     // --- PROSES TRANSAKSI (IN/OUT) ---
-    // Mapping seperti biasa, gunakan 'cleanNum' untuk qty input user
     const txRows = transactions.flatMap(tx => tx.items.map(line => ([
         tx.date, 
-        tx.referenceNo, // Key for deduplication
+        tx.referenceNo, 
         tx.type,
         items.find(i => i.id === line.itemId)?.code || '?',
         items.find(i => i.id === line.itemId)?.name || '?',
-        cleanNum(line.qty), // Gunakan input user asli yang dibersihkan (3.2000 -> 3.2)
+        cleanNum(line.qty), // Menggunakan Qty asli input user yang sudah dibersihkan
         line.unit, 
         line.note || tx.notes || '-'
     ])));
 
-    // --- PROSES REJECT (AGGREGATION TO BASE UNIT) ---
+    // --- PROSES REJECT (Wajib Agregasi ke Satuan Dasar / Base) ---
     const rejectBatches: RejectBatch[] = await this.fetchRejectBatches();
-    const rejectMasterItems: Item[] = await this.fetchRejectMasterItems(); // Need master to get Base Unit name
+    const rejectMasterItems: Item[] = await this.fetchRejectMasterItems();
     const filteredRejects = rejectBatches.filter(b => b.date >= startDate && b.date <= endDate);
     
-    // Map untuk Agregasi: Key = Date + SKU
     const rejectAggMap = new Map<string, {
         date: string,
         sku: string,
@@ -234,9 +232,8 @@ export const StorageService = {
     filteredRejects.forEach(batch => {
         batch.items.forEach(it => {
             const master = rejectMasterItems.find(mi => mi.id === it.itemId);
-            const baseUnitName = master ? master.baseUnit : it.unit; // Fallback jika master hilang
+            const baseUnitName = master ? master.baseUnit : it.unit; 
             
-            // Buat Key Unik per Hari + SKU
             const key = `${batch.date}_${it.sku}`;
             
             if (!rejectAggMap.has(key)) {
@@ -251,34 +248,32 @@ export const StorageService = {
             }
 
             const record = rejectAggMap.get(key)!;
-            // Penting: Gunakan baseQty (hasil konversi di BE/FE) untuk dijumlahkan
+            // Gunakan baseQty yang sudah dikalkulasi saat entry (Satuan Input * Rasio)
             record.totalBaseQty += Number(it.baseQty || 0);
             if (it.reason) record.reasons.add(it.reason);
         });
     });
 
-    // Convert Map ke Array Rows untuk Google Sheet
     const rejectRows = Array.from(rejectAggMap.values()).map(rec => {
-        // ID Unik Buatan untuk mencegah duplikasi di Sheet: "REJ-{Date}-{SKU}"
         const uniqueId = `REJ-${rec.date.replace(/-/g, '')}-${rec.sku}`;
         
         return [
             rec.date,
-            uniqueId,       // Col B: ID Unik
-            rec.sku,        // Col C
-            rec.name,       // Col D
-            cleanNum(rec.totalBaseQty), // Col E: Total Qty (Base) - Clean format
-            rec.baseUnit,   // Col F: Satuan Utama
-            Array.from(rec.reasons).join(', ') || '-' // Col G: Gabungan alasan
+            uniqueId, 
+            rec.sku, 
+            rec.name, 
+            cleanNum(rec.totalBaseQty), // Hasil agregasi dalam satuan utama (angka valid/bersih)
+            rec.baseUnit,               // Wajib Satuan Utama
+            Array.from(rec.reasons).join(', ') || '-'
         ];
     });
 
-    // --- SEND TO GAS (DUAL PAYLOAD) ---
+    // --- SEND TO GAS ---
     await fetch(scriptUrl, {
       method: 'POST',
       mode: 'no-cors',
       body: JSON.stringify({ 
-          action: 'SYNC_V2', // Changed action name to support new logic
+          action: 'SYNC_V2',
           transactions: txRows,
           rejects: rejectRows
       })

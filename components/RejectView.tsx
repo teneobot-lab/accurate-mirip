@@ -17,11 +17,10 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 // --- HELPER: CLEAN NUMBER FORMATTER ---
-// Mengubah 5.0000 -> 5, 2.5000 -> 2.5
 const formatCleanNumber = (val: string | number | undefined): string => {
     if (val === undefined || val === null || val === '') return '';
     const num = Number(val);
-    return isNaN(num) ? '' : num.toString();
+    return isNaN(num) ? '' : parseFloat(num.toFixed(4)).toString();
 };
 
 export const RejectView: React.FC = () => {
@@ -30,7 +29,6 @@ export const RejectView: React.FC = () => {
     const [rejectMasterItems, setRejectMasterItems] = useState<Item[]>([]);
     const [outlets, setOutlets] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // --- Master Items State ---
@@ -92,7 +90,6 @@ export const RejectView: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // OPTIMIZED: Memoized Filter
     const filteredItems = useMemo(() => {
         if (!debouncedQuery || pendingItem) return [];
         const lower = debouncedQuery.toLowerCase();
@@ -145,7 +142,6 @@ export const RejectView: React.FC = () => {
         const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
         let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
         batch.items.forEach(it => {
-            // FIX: Gunakan formatCleanNumber agar 5.000 jadi 5 saat copy
             const displayQty = formatCleanNumber(it.qty);
             text += `- ${it.name.toLowerCase()} ${displayQty} ${it.unit.toLowerCase()} ${it.reason.toLowerCase()}\n`;
         });
@@ -154,79 +150,18 @@ export const RejectView: React.FC = () => {
         });
     };
 
-    const handleExportFlattened = () => {
-        const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
-        if (filteredBatches.length === 0) return showToast("No data", "warning");
-        
-        const dateList: string[] = (Array.from(new Set(filteredBatches.map(b => b.date))) as string[]).sort();
-        
-        // LOGIC FIX: Kumpulkan SEMUA item ID yang ada di filteredBatches, jangan cuma dari Master Item
-        const allItemIds = new Set<string>();
-        filteredBatches.forEach(b => {
-            b.items.forEach(it => allItemIds.add(it.itemId));
-        });
-
-        // Build Map data
-        const itemMap = new Map<string, { code: string, name: string, baseUnit: string }>();
-        
-        // Populate info based on transaction history first (most accurate for snapshot)
-        filteredBatches.forEach(b => {
-            b.items.forEach(it => {
-                if (!itemMap.has(it.itemId)) {
-                    // Coba cari di master, kalo gak ada pake data snapshot transaksi
-                    const master = rejectMasterItems.find(mi => mi.id === it.itemId);
-                    itemMap.set(it.itemId, { 
-                        code: it.sku || master?.code || '?', 
-                        name: it.name || master?.name || '?', 
-                        baseUnit: master?.baseUnit || it.unit 
-                    });
-                }
-            });
-        });
-
-        // Ensure master items that might have been missed (optional, but requested "per batch" usually implies transaction data)
-        // If we want to include master items that have 0 reject, we would iterate rejectMasterItems here.
-        // But prompt says "menampilkan semua item reject per batch", so strictly transaction data is safer.
-
-        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        const headerRow1 = ['Kode', 'Nama Barang', 'Satuan', ...dateList.map((d: string) => days[new Date(d).getDay()])];
-        const headerRow2 = ['', '', '', ...dateList.map((d: string) => { const [y, m, day] = d.split('-'); return `${day}/${m}/${y}`; })];
-        
-        const rows = Array.from(itemMap.entries()).map(([itemId, itemInfo]) => {
-            const rowData: any[] = [itemInfo.code, itemInfo.name, itemInfo.baseUnit];
-            dateList.forEach(currentDate => {
-                const totalBaseQty = filteredBatches
-                    .filter(b => b.date === currentDate)
-                    .flatMap(b => b.items)
-                    .filter(it => it.itemId === itemId)
-                    .reduce((sum, it) => sum + Number(it.baseQty), 0);
-                
-                // FIX: Clean number for Excel (5 instead of 5.0000)
-                rowData.push(totalBaseQty > 0 ? Number(formatCleanNumber(totalBaseQty)) : "");
-            });
-            return rowData;
-        });
-
-        const ws = XLSX.utils.aoa_to_sheet([headerRow1, headerRow2, ...rows]);
-        if (!ws['!merges']) ws['!merges'] = [];
-        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 1, c: 0 } });
-        ws['!merges'].push({ s: { r: 0, c: 1 }, e: { r: 1, c: 1 } });
-        ws['!merges'].push({ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } });
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Laporan Reject Matrix");
-        XLSX.writeFile(wb, `Laporan_Matrix_Reject_${exportStart}_${exportEnd}.xlsx`);
-    };
-
     const handleAddLine = () => {
         if (!pendingItem) return showToast("Pilih item", "warning");
         if (!pendingQty || Number(pendingQty) <= 0) return showToast("Qty invalid", "warning");
         const unit = pendingUnit || pendingItem.baseUnit;
         setUnitPrefs(prev => ({...prev, [pendingItem.id]: unit}));
+        
         let ratio = 1;
         if (unit !== pendingItem.baseUnit) {
             const conv = pendingItem.conversions?.find(c => c.name === unit);
             if (conv) ratio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
         }
+
         const newLine: RejectItem = {
             itemId: pendingItem.id, sku: pendingItem.code, name: pendingItem.name,
             qty: Number(pendingQty), unit: unit, baseQty: Number(pendingQty) * ratio, reason: pendingReason || '-'
@@ -274,13 +209,10 @@ export const RejectView: React.FC = () => {
 
     const updateConversion = (index: number, updates: Partial<UnitConversion>) => {
         const next = [...(itemForm.conversions || [])];
-        // Ensure ratio is stored as number if changed, but allow partial typing if needed in robust forms. 
-        // Here we keep it simple but clean the input value in UI.
         next[index] = { ...next[index], ...updates };
         setItemForm({ ...itemForm, conversions: next });
     };
 
-    // Filtered Master Items for Master Tab
     const filteredMasterItems = useMemo(() => {
         const lower = debouncedMasterSearch.toLowerCase();
         return rejectMasterItems.filter(i => i.name.toLowerCase().includes(lower) || i.code.toLowerCase().includes(lower));
@@ -337,7 +269,7 @@ export const RejectView: React.FC = () => {
                                                 <div className="font-bold text-white">{line.name}</div>
                                                 <div className="text-[9px] text-slate-400 font-mono mt-0.5">{line.sku}</div>
                                             </td>
-                                            <td className="px-4 py-1.5 text-right font-mono text-red-400 font-black">-{parseFloat(line.qty.toString()).toLocaleString()}</td>
+                                            <td className="px-4 py-1.5 text-right font-mono text-red-400 font-black">-{formatCleanNumber(line.qty)}</td>
                                             <td className="px-4 py-1.5 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] font-black text-slate-300 border border-spectra">{line.unit}</span></td>
                                             <td className="px-4 py-1.5 text-slate-400 italic">{line.reason}</td>
                                             <td className="px-4 py-1.5 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button></td>
@@ -406,7 +338,6 @@ export const RejectView: React.FC = () => {
                              <label className="text-[10px] font-bold text-cutty uppercase">End</label>
                              <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="bg-daintree border border-spectra rounded-lg px-2 py-1 text-xs text-white" />
                          </div>
-                         <button onClick={handleExportFlattened} className="px-4 py-1.5 bg-emerald-900/30 text-emerald-400 border border-emerald-900 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-900/50"><FileSpreadsheet size={14}/> Export Matrix</button>
                          <button onClick={loadData} className="ml-auto p-1.5 text-slate-400 hover:text-white"><History size={18}/></button>
                      </div>
                      <div className="flex-1 bg-gable rounded-xl border border-spectra overflow-auto">
@@ -453,8 +384,8 @@ export const RejectView: React.FC = () => {
                                 <tr>
                                     <th className="px-4 py-2">Code</th>
                                     <th className="px-4 py-2">Name</th>
-                                    <th className="px-4 py-2">Category</th>
-                                    <th className="px-4 py-2 text-center">Unit</th>
+                                    <th className="px-4 py-2 text-center">Unit Utama</th>
+                                    <th className="px-4 py-2 text-center">Konversi</th>
                                     <th className="px-4 py-2 text-center">Action</th>
                                 </tr>
                             </thead>
@@ -463,8 +394,10 @@ export const RejectView: React.FC = () => {
                                     <tr key={item.id} className="hover:bg-spectra/10">
                                         <td className="px-4 py-2 font-mono font-bold text-cutty">{item.code}</td>
                                         <td className="px-4 py-2 font-bold">{item.name}</td>
-                                        <td className="px-4 py-2 text-slate-400 uppercase">{item.category}</td>
-                                        <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] border border-spectra">{item.baseUnit}</span></td>
+                                        <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] border border-spectra font-black text-emerald-400">{item.baseUnit}</span></td>
+                                        <td className="px-4 py-2 text-center text-[10px] text-slate-400 italic">
+                                            {item.conversions?.length ? `${item.conversions.length} Satuan` : '-'}
+                                        </td>
                                         <td className="px-4 py-2 text-center flex justify-center gap-2">
                                             <button onClick={() => { setEditingItem(item); setItemForm({...item, conversions: item.conversions ? [...item.conversions] : []}); setShowItemModal(true); }} className="text-blue-400"><Edit3 size={14}/></button>
                                             <button onClick={() => handleDeleteMasterItem(item.id)} className="text-red-400"><Trash2 size={14}/></button>
@@ -490,10 +423,10 @@ export const RejectView: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal ADD/EDIT MASTER ITEM - UPDATED STYLE (Zero Border, Conversion Restored) */}
+            {/* Modal MASTER ITEM - DENGAN TABEL KONVERSI BARU */}
             {showItemModal && (
                 <div className="fixed inset-0 bg-daintree/90 z-[60] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
-                    <div className="bg-gable rounded-[24px] w-full max-w-xl shadow-2xl border border-spectra overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="bg-gable rounded-[24px] w-full max-w-xl shadow-2xl border border-spectra overflow-hidden flex flex-col max-h-[95vh]">
                          <div className="bg-daintree p-5 border-b border-spectra flex justify-between items-center">
                              <div className="flex items-center gap-3">
                                  <div className="p-2 bg-gable rounded-lg border border-spectra text-white shadow-sm"><Tag size={18}/></div>
@@ -503,38 +436,33 @@ export const RejectView: React.FC = () => {
                          </div>
                          
                          <div className="p-6 overflow-y-auto scrollbar-thin space-y-6">
-                             {/* Identitas Produk */}
                              <div className="space-y-4">
                                  <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest border-b border-spectra pb-1 flex items-center gap-2"><Box size={12}/> Identitas Produk</h4>
                                  <div className="grid grid-cols-2 gap-4">
                                      <div className="col-span-1 space-y-1">
                                          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Kode Item</label>
-                                         <input type="text" placeholder="AUTO / SKU" className="rej-input font-mono tracking-widest text-emerald-400" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value})} />
+                                         <input type="text" placeholder="SKU..." className="rej-input font-mono tracking-widest text-emerald-400" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value})} />
                                      </div>
                                      <div className="col-span-1 space-y-1">
-                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Kategori</label>
-                                         <input type="text" placeholder="UMUM" className="rej-input" value={itemForm.category} onChange={e=>setItemForm({...itemForm, category:e.target.value.toUpperCase()})} />
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Satuan Utama (BASE)</label>
+                                         <input type="text" placeholder="PCS / GRM" className="rej-input text-center font-black text-white" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value.toUpperCase()})} />
                                      </div>
                                      <div className="col-span-2 space-y-1">
                                          <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nama Barang</label>
                                          <input type="text" placeholder="Nama Lengkap Barang..." className="rej-input" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} />
                                      </div>
-                                     <div className="col-span-1 space-y-1">
-                                         <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Satuan Dasar</label>
-                                         <input type="text" placeholder="PCS" className="rej-input text-center font-black" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value})} />
-                                     </div>
                                  </div>
                              </div>
 
-                             {/* Konversi Satuan - Restored */}
+                             {/* Tabel Baru: Konversi Satuan ke Base */}
                              <div className="space-y-3 pt-2">
                                 <div className="flex justify-between items-end border-b border-spectra pb-1">
-                                    <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2"><LayoutGrid size={12}/> Konversi Satuan</h4>
+                                    <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2"><LayoutGrid size={12}/> Tabel Konversi Satuan</h4>
                                     <button 
-                                        onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: '' as any, operator: '*' }]})} 
-                                        className="text-[9px] font-bold text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-2 py-1 rounded transition-colors flex items-center gap-1"
+                                        onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
+                                        className="text-[9px] font-black text-spectra hover:text-white bg-spectra/10 hover:bg-spectra px-3 py-1 rounded-full transition-colors flex items-center gap-1.5"
                                     >
-                                        <Plus size={10}/> Tambah
+                                        <Plus size={12}/> TAMBAH UNIT
                                     </button>
                                 </div>
                                 
@@ -542,56 +470,34 @@ export const RejectView: React.FC = () => {
                                     <table className="w-full text-left table-fixed">
                                         <thead className="bg-daintree text-[9px] font-black uppercase text-cutty tracking-wider">
                                             <tr>
-                                                <th className="px-3 py-2 w-24">Satuan</th>
-                                                <th className="px-3 py-2 w-20">Op</th>
-                                                <th className="px-3 py-2">Rasio</th>
+                                                <th className="px-3 py-2 w-28">Nama Satuan</th>
+                                                <th className="px-3 py-2 w-20 text-center">Op</th>
+                                                <th className="px-3 py-2 text-right">Rasio ({itemForm.baseUnit})</th>
                                                 <th className="px-3 py-2 w-10 text-center"></th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-spectra/10 text-xs">
                                             {(itemForm.conversions || []).length === 0 ? (
-                                                <tr><td colSpan={4} className="p-4 text-center text-[10px] text-slate-500 italic">Belum ada konversi</td></tr>
+                                                <tr><td colSpan={4} className="p-6 text-center text-[10px] text-slate-500 italic opacity-50">Belum ada konversi tambahan</td></tr>
                                             ) : (
                                                 itemForm.conversions?.map((c, i) => (
-                                                    <tr key={i} className="group">
+                                                    <tr key={i} className="group hover:bg-white/5 transition-colors">
                                                         <td className="p-1">
-                                                            <input 
-                                                                type="text" 
-                                                                className="rej-input text-center h-8 text-[10px]" 
-                                                                placeholder="BOX"
-                                                                value={c.name} 
-                                                                onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} 
-                                                            />
+                                                            <input type="text" className="rej-input text-center h-8 text-[10px] uppercase" placeholder="BOX / CTN" value={c.name} onChange={e => updateConversion(i, { name: e.target.value.toUpperCase() })} />
                                                         </td>
                                                         <td className="p-1">
                                                             <div className="relative h-8">
-                                                                <select 
-                                                                    className="rej-input h-full text-[10px] appearance-none pr-4 cursor-pointer"
-                                                                    value={c.operator}
-                                                                    onChange={e => updateConversion(i, { operator: e.target.value as any })}
-                                                                >
-                                                                    <option value="*">*</option>
-                                                                    <option value="/">/</option>
+                                                                <select className="rej-input h-full text-[10px] appearance-none pr-4 cursor-pointer text-center" value={c.operator} onChange={e => updateConversion(i, { operator: e.target.value as any })}>
+                                                                    <option value="*">x (Kali)</option>
+                                                                    <option value="/">/ (Bagi)</option>
                                                                 </select>
-                                                                <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-cutty pointer-events-none"/>
                                                             </div>
                                                         </td>
                                                         <td className="p-1">
-                                                            {/* FIX: Field Ratio Bersih */}
-                                                            <input 
-                                                                type="number" 
-                                                                className="rej-input text-right h-8 font-mono text-[10px]" 
-                                                                value={formatCleanNumber(c.ratio)} 
-                                                                onChange={e => updateConversion(i, { ratio: e.target.value as any })} 
-                                                            />
+                                                            <input type="number" className="rej-input text-right h-8 font-mono text-[10px] text-emerald-400" value={c.ratio} onChange={e => updateConversion(i, { ratio: Number(e.target.value) })} />
                                                         </td>
                                                         <td className="p-1 text-center">
-                                                            <button 
-                                                                onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} 
-                                                                className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
-                                                            >
-                                                                <Trash2 size={12}/>
-                                                            </button>
+                                                            <button onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
                                                         </td>
                                                     </tr>
                                                 ))
@@ -599,13 +505,16 @@ export const RejectView: React.FC = () => {
                                         </tbody>
                                     </table>
                                 </div>
+                                <p className="text-[9px] text-slate-500 italic px-1 flex items-center gap-1">
+                                    <Info size={10}/> Saat Sync ke Google Sheet, semua jumlah akan otomatis dikonversi ke <b>{itemForm.baseUnit}</b>.
+                                </p>
                              </div>
                          </div>
 
                          <div className="bg-daintree p-5 border-t border-spectra flex justify-end gap-3">
-                             <button onClick={()=>setShowItemModal(false)} className="px-5 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors">BATAL</button>
-                             <button onClick={handleSaveMasterItem} className="px-6 py-2 bg-spectra text-white rounded-lg text-xs font-black shadow-lg hover:bg-white hover:text-spectra transition-all border border-spectra active:scale-95 flex items-center gap-2">
-                                 <Save size={14}/> SIMPAN
+                             <button onClick={()=>setShowItemModal(false)} className="px-5 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-widest">Batal</button>
+                             <button onClick={handleSaveMasterItem} className="px-8 py-2 bg-spectra text-white rounded-xl text-xs font-black shadow-lg hover:bg-white hover:text-spectra transition-all border border-spectra active:scale-95 flex items-center gap-2">
+                                 <Save size={14}/> SIMPAN MASTER
                              </button>
                          </div>
                     </div>
@@ -615,8 +524,30 @@ export const RejectView: React.FC = () => {
             {viewingBatch && (
                 <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
                      <div className="bg-gable rounded-2xl w-full max-w-lg border border-spectra overflow-hidden max-h-[80vh]">
-                         <div className="p-4 bg-daintree flex justify-between"><h3 className="font-black text-white text-xs">Batch {viewingBatch.id}</h3><button onClick={()=>setViewingBatch(null)}><X size={18} className="text-slate-400"/></button></div>
-                         <div className="p-4 overflow-auto"><table className="w-full text-[10px] text-white"><tbody className="divide-y divide-spectra/20">{viewingBatch.items.map((it,i)=><tr key={i}><td className="py-2">{it.name}</td><td className="text-right py-2 text-red-400 font-bold">{formatCleanNumber(it.qty)} {it.unit}</td><td className="py-2 pl-4 text-slate-400">{it.reason}</td></tr>)}</tbody></table></div>
+                         <div className="p-4 bg-daintree flex justify-between"><h3 className="font-black text-white text-xs uppercase tracking-widest">Detail Batch {viewingBatch.id}</h3><button onClick={()=>setViewingBatch(null)}><X size={18} className="text-slate-400"/></button></div>
+                         <div className="p-4 overflow-auto">
+                            <table className="w-full text-[10px] text-white">
+                                <thead className="text-cutty uppercase font-black border-b border-spectra/30">
+                                    <tr>
+                                        <th className="py-2 text-left">Nama Barang</th>
+                                        <th className="py-2 text-right">Qty Input</th>
+                                        <th className="py-2 text-right">Qty Base</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-spectra/20">
+                                    {viewingBatch.items.map((it,i)=>(
+                                        <tr key={i}>
+                                            <td className="py-2">
+                                                <div className="font-bold">{it.name}</div>
+                                                <div className="text-slate-500 text-[8px] italic">{it.reason}</div>
+                                            </td>
+                                            <td className="text-right py-2 text-red-400 font-bold">{formatCleanNumber(it.qty)} {it.unit}</td>
+                                            <td className="text-right py-2 text-emerald-400 font-black">{formatCleanNumber(it.baseQty)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                         </div>
                      </div>
                 </div>
             )}
@@ -624,35 +555,25 @@ export const RejectView: React.FC = () => {
             <style>{` 
                 .rej-input { 
                     width: 100%; 
-                    background-color: rgba(0, 0, 0, 0.2) !important; 
-                    border: none !important; 
+                    background-color: #0b1619 !important; 
+                    border: 1px solid #335157 !important; 
                     outline: none !important; 
-                    box-shadow: none !important;
-                    border-radius: 0.5rem; 
-                    padding: 0.75rem 1rem; /* Expanded Padding */
-                    font-size: 0.85rem; /* Slightly larger font */
+                    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3) !important;
+                    border-radius: 0.75rem; 
+                    padding: 0.5rem 0.75rem;
+                    font-size: 0.75rem; 
                     font-weight: 700; 
-                    color: white !important; 
-                    transition: background-color 0.2s ease;
+                    color: #f1f5f9 !important; 
+                    transition: border-color 0.2s ease;
                 }
-                .rej-input:focus {
-                    background-color: rgba(0, 0, 0, 0.4) !important;
-                }
-                .rej-input::placeholder {
-                    color: #475569 !important;
-                    font-weight: 500;
-                }
-                
-                /* Select Specific */
-                select.rej-input {
-                    appearance: none;
-                    -webkit-appearance: none;
-                }
+                .rej-input:focus { border-color: #496569 !important; }
+                .rej-input::placeholder { color: #475569 !important; font-weight: 500; }
+                input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
             `}</style>
         </div>
     );
 };
 
 const TabBtn = ({ active, onClick, label, icon }: any) => (
-    <button onClick={onClick} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border ${active ? 'bg-spectra text-white border-spectra' : 'text-slate-400 border-transparent hover:bg-daintree'}`}>{icon} {label}</button>
+    <button onClick={onClick} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 border transition-all ${active ? 'bg-spectra text-white border-spectra shadow-lg' : 'text-slate-400 border-transparent hover:bg-daintree'}`}>{icon} {label}</button>
 );
