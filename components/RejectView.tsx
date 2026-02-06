@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, Stock } from '../types';
-import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Tag, Edit3, Equal, Info, Box, Share2, Ruler, LayoutGrid, AlertCircle } from 'lucide-react';
+import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Tag, Edit3, Equal, Info, Box, Share2, Ruler, LayoutGrid, AlertCircle, Copy } from 'lucide-react';
 import { useToast } from './Toast';
 
 // --- PERFORMANCE HOOK ---
@@ -126,7 +126,8 @@ export const RejectView: React.FC = () => {
             qty: conversionResult.baseQty, // DISIMPAN DALAM BASE QTY
             unit: pendingItem.baseUnit,    // DISIMPAN DALAM BASE UNIT
             baseQty: conversionResult.baseQty,
-            reason: `${pendingReason || '-'} (Input: ${pendingQty} ${pendingUnit})` // Log unit asal di alasan
+            // LOGIC: Kita simpan input asli user di dalam string reason agar bisa di-reverse saat Copy Clipboard
+            reason: `${pendingReason || ''} (Input: ${pendingQty} ${pendingUnit})` 
         };
 
         setRejectLines([...rejectLines, newLine]);
@@ -145,7 +146,7 @@ export const RejectView: React.FC = () => {
                 createdAt: Date.now(),
                 items: rejectLines
             });
-            showToast("Reject Saved (Base Unit Consistency)", "success");
+            showToast("Reject Saved", "success");
             setRejectLines([]); loadData();
         } catch (e) { showToast("Gagal simpan", "error"); }
     };
@@ -158,6 +159,49 @@ export const RejectView: React.FC = () => {
             showToast("Master Item Saved", "success");
             setShowItemModal(false); loadData();
         } catch (e) { showToast("Gagal simpan master", "error"); }
+    };
+
+    // --- FITUR COPY CLIPBOARD (RESTORED) ---
+    const handleCopyToClipboard = (batch: RejectBatch) => {
+        const d = new Date(batch.date);
+        // Format Tanggal ddmmyy (050226)
+        const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
+        
+        let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
+
+        batch.items.forEach(it => {
+            let qtyDisplay = it.qty.toString(); // Default Base Qty
+            let unitDisplay = it.unit;          // Default Base Unit
+            let reasonDisplay = it.reason || '';
+
+            // REGEX MAGIC: Ekstrak "Input: 2 DUS" dari string reason
+            const inputMatch = it.reason ? it.reason.match(/\(Input:\s*([0-9.]+)\s*(.+?)\)/i) : null;
+            
+            if (inputMatch) {
+                qtyDisplay = inputMatch[1]; // "2"
+                unitDisplay = inputMatch[2]; // "DUS"
+                
+                // Bersihkan reason agar tidak menampilkan log input lagi
+                reasonDisplay = it.reason.replace(inputMatch[0], '').trim();
+            }
+
+            // Bersihkan reason jika hanya sisa "-" atau kosong
+            if (reasonDisplay === '-' || reasonDisplay === '') reasonDisplay = '';
+
+            // Format Output: - nama_barang qty unit alasan
+            text += `- ${it.name.toLowerCase()} ${qtyDisplay} ${unitDisplay.toLowerCase()}`;
+            
+            if (reasonDisplay) {
+                text += ` ${reasonDisplay.toLowerCase()}`;
+            }
+            text += `\n`;
+        });
+
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("Tersalin (Satuan Input)", "success");
+        }).catch(() => {
+            showToast("Gagal menyalin", "error");
+        });
     };
 
     const filteredMasterItems = useMemo(() => {
@@ -197,10 +241,10 @@ export const RejectView: React.FC = () => {
                             <table className="w-full text-[11px] text-left">
                                 <thead className="bg-daintree sticky top-0 font-black uppercase text-cutty border-b border-spectra tracking-widest p-4 z-10">
                                     <tr>
-                                        <th className="px-4 py-3">Item (Base Unit Only)</th>
-                                        <th className="px-4 py-3 w-32 text-right">Qty Akhir</th>
+                                        <th className="px-4 py-3">Item (Base Unit)</th>
+                                        <th className="px-4 py-3 w-32 text-right">Qty Base</th>
                                         <th className="px-4 py-3 w-20 text-center">Unit</th>
-                                        <th className="px-4 py-3">Keterangan Log</th>
+                                        <th className="px-4 py-3">Log (Input Asli)</th>
                                         <th className="px-4 py-3 w-16"></th>
                                     </tr>
                                 </thead>
@@ -213,18 +257,18 @@ export const RejectView: React.FC = () => {
                                             </td>
                                             <td className="px-4 py-3 text-right font-mono text-red-400 font-bold">{line.qty.toLocaleString()}</td>
                                             <td className="px-4 py-3 text-center"><span className="px-2 py-0.5 rounded bg-daintree border border-spectra text-[9px] font-black text-slate-400 uppercase">{line.unit}</span></td>
-                                            <td className="px-4 py-3 text-slate-400 italic">{line.reason}</td>
+                                            <td className="px-4 py-3 text-slate-400 italic text-[10px]">{line.reason}</td>
                                             <td className="px-4 py-3 text-center"><button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-500 hover:text-red-400"><Trash2 size={14}/></button></td>
                                         </tr>
                                     ))}
                                     
-                                    {/* INPUT ROW WITH CONVERSION ENGINE */}
+                                    {/* INPUT ROW */}
                                     <tr className="bg-daintree/30 border-t border-spectra">
                                         <td className="p-3 relative">
                                             <input 
                                                 ref={itemInputRef}
                                                 type="text"
-                                                placeholder="CARI ITEM REJECT..." 
+                                                placeholder="CARI ITEM..." 
                                                 value={query} 
                                                 onChange={e => { setQuery(e.target.value); if(pendingItem) setPendingItem(null); }} 
                                                 onKeyDown={(e) => {
@@ -268,7 +312,7 @@ export const RejectView: React.FC = () => {
                                             </select>
                                         </td>
                                         <td className="p-3">
-                                            <input ref={reasonInputRef} type="text" placeholder="Alasan reject..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddLine()} className="w-full bg-black/20 border border-spectra rounded-xl p-2.5 text-xs text-white outline-none" />
+                                            <input ref={reasonInputRef} type="text" placeholder="Alasan..." value={pendingReason} onChange={e => setPendingReason(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddLine()} className="w-full bg-black/20 border border-spectra rounded-xl p-2.5 text-xs text-white outline-none" />
                                         </td>
                                         <td className="p-3 text-center">
                                             <button onClick={handleAddLine} disabled={!pendingItem} className="p-2.5 bg-spectra text-white rounded-xl hover:bg-white hover:text-spectra transition-all disabled:opacity-30"><Plus size={16}/></button>
@@ -280,7 +324,7 @@ export const RejectView: React.FC = () => {
                         <div className="p-5 border-t border-spectra bg-daintree flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-spectra/20 rounded-lg border border-spectra text-cutty"><Info size={16}/></div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database Force: All quantities will be stored in <b>Base Units</b>.</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Database: Base Unit. Clipboard: Input Unit.</span>
                             </div>
                             <button onClick={handleSaveBatch} className="px-10 py-3 bg-spectra hover:bg-white hover:text-daintree text-white rounded-xl font-black text-xs shadow-lg transition-all active:scale-95 border border-spectra">SIMPAN DATA AFKIR</button>
                         </div>
@@ -306,6 +350,7 @@ export const RejectView: React.FC = () => {
                                     <td className="px-4 py-3 font-bold">{b.outlet}</td>
                                     <td className="px-4 py-3 text-right font-black text-red-400">{b.items.length}</td>
                                     <td className="px-4 py-3 text-center flex justify-center gap-2">
+                                        <button onClick={() => handleCopyToClipboard(b)} className="p-1.5 text-emerald-400 bg-emerald-900/20 rounded-lg hover:bg-emerald-900/40" title="Copy to Clipboard (Satuan Input)"><Copy size={14}/></button>
                                         <button onClick={() => setViewingBatch(b)} className="p-1.5 text-blue-400 bg-blue-900/20 rounded-lg hover:bg-blue-900/40"><Eye size={14}/></button>
                                         <button onClick={() => { if(confirm('Hapus riwayat ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1.5 text-red-400 bg-red-900/20 rounded-lg hover:bg-red-900/40"><Trash2 size={14}/></button>
                                     </td>
@@ -315,6 +360,7 @@ export const RejectView: React.FC = () => {
                     </table>
                 </div>
             ) : activeTab === 'MASTER_ITEMS' ? (
+                /* ... (Kode Master Items tetap sama, disederhanakan untuk brevity XML) ... */
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                     <div className="bg-gable p-3 rounded-2xl border border-spectra flex justify-between items-center shadow-sm">
                         <div className="relative group">
