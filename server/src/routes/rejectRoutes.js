@@ -91,50 +91,6 @@ router.post('/master-items', async (req, res, next) => {
     }
 });
 
-router.post('/master-items/bulk-upsert', async (req, res, next) => {
-    let conn = null;
-    try {
-        conn = await db.getConnection();
-        await conn.beginTransaction();
-
-        const { items } = req.body;
-        if (!Array.isArray(items)) throw new Error("Payload items harus berupa array");
-
-        for (const item of items) {
-            const itemId = item.id || uuidv4();
-            await conn.query(
-                `INSERT INTO reject_master_items (id, code, name, category, base_unit) 
-                 VALUES (?, ?, ?, ?, ?) 
-                 ON DUPLICATE KEY UPDATE 
-                    name = VALUES(name), 
-                    category = VALUES(category), 
-                    base_unit = VALUES(base_unit)`,
-                [itemId, item.code, item.name, item.category || null, item.baseUnit]
-            );
-            
-            if (Array.isArray(item.conversions)) {
-                await conn.query('DELETE FROM reject_master_units WHERE item_id = ?', [itemId]);
-                for (const conv of item.conversions) {
-                    if (conv.name && conv.ratio) {
-                        await conn.query(
-                            'INSERT INTO reject_master_units (item_id, unit_name, conversion_ratio, operator) VALUES (?, ?, ?, ?)',
-                            [itemId, conv.name, Number(conv.ratio), conv.operator || '*']
-                        );
-                    }
-                }
-            }
-        }
-        await conn.commit();
-        res.json({ status: 'success', count: items.length });
-    } catch (e) {
-        if (conn) await conn.rollback();
-        console.error("[REJECT_MASTER_BULK_ERROR]", e);
-        next(e);
-    } finally {
-        if (conn) conn.release();
-    }
-});
-
 router.delete('/master-items/:id', async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -151,7 +107,16 @@ router.get('/batches', async (req, res, next) => {
         const [batches] = await db.query('SELECT * FROM reject_batches ORDER BY date DESC, created_at DESC');
         for (let b of batches) {
             const [items] = await db.query('SELECT * FROM reject_items WHERE batch_id = ?', [b.id]);
-            b.items = items || [];
+            // PENTING: Map properti database ke format yang dimengerti Frontend
+            b.items = items.map(it => ({
+                itemId: it.item_id,
+                sku: it.sku,
+                name: it.name,
+                qty: Number(it.qty),
+                unit: it.unit,
+                baseQty: Number(it.base_qty), // Mapping dari base_qty ke baseQty
+                reason: it.reason
+            }));
         }
         res.json(batches);
     } catch (e) { 
@@ -176,10 +141,12 @@ router.post('/batches', async (req, res, next) => {
         );
 
         for (const it of items) {
+            // Gunakan baseQty dari payload frontend
+            const baseQty = Number(it.baseQty || it.qty); 
             await conn.query(
                 `INSERT INTO reject_items (batch_id, item_id, sku, name, qty, unit, base_qty, reason)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [batchId, it.itemId, it.sku, it.name, Number(it.qty), it.unit, Number(it.baseQty), it.reason || null]
+                [batchId, it.itemId, it.sku, it.name, Number(it.qty), it.unit, baseQty, it.reason || null]
             );
         }
 
