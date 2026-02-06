@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, Transaction } from '../types';
-import { Calendar, Filter, TrendingUp, Package, Activity, Loader2, AlertCircle, RefreshCw, BarChart3 } from 'lucide-react';
+import { Calendar, Filter, TrendingUp, Package, Activity, Loader2, AlertCircle, RefreshCw, BarChart3, Repeat } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
@@ -53,11 +53,15 @@ export const DashboardView: React.FC = () => {
         
         let totalIn = 0;
         let totalOut = 0;
-        const outItemMap = new Map<string, number>();
+        
+        // Map untuk menghitung FREKUENSI/RUTINITAS transaksi
+        // Key: ItemId, Value: Jumlah Transaksi yang mengandung item tersebut
+        const outItemFrequencyMap = new Map<string, number>();
 
         filteredTx.forEach(tx => {
             if (!tx.items) return;
             
+            // 1. Hitung Total Qty Global (IN/OUT)
             tx.items.forEach(line => { 
                 const qty = Number((line.qty || 0) * (line.ratio || 1));
                 
@@ -67,23 +71,32 @@ export const DashboardView: React.FC = () => {
                 
                 if (tx.type === 'OUT') {
                     totalOut += qty;
-                    // Aggregate for Top 5 Chart
-                    const currentVal = outItemMap.get(line.itemId) || 0;
-                    outItemMap.set(line.itemId, currentVal + qty);
                 }
             });
+
+            // 2. Hitung Rutinitas Item (Khusus OUT)
+            if (tx.type === 'OUT') {
+                // Gunakan Set untuk memastikan 1 Item dihitung 1x per Invoice (Rutinitas)
+                // Meskipun item diinput 2 baris di invoice yang sama, tetap dihitung 1 kejadian.
+                const uniqueItemsInTx = new Set(tx.items.map(i => i.itemId));
+                
+                uniqueItemsInTx.forEach(itemId => {
+                    const currentCount = outItemFrequencyMap.get(itemId) || 0;
+                    outItemFrequencyMap.set(itemId, currentCount + 1);
+                });
+            }
         });
 
-        // Calculate Top 5 Outbound Items
-        const topOutboundItems = Array.from(outItemMap.entries())
-            .sort((a, b) => b[1] - a[1]) // Sort Descending
+        // Calculate Top 5 Outbound Items based on FREQUENCY
+        const topOutboundItems = Array.from(outItemFrequencyMap.entries())
+            .sort((a, b) => b[1] - a[1]) // Sort Descending by Count
             .slice(0, 5) // Take Top 5
             .map(([id, val]) => {
                 const itemMaster = safeItems.find(i => i.id === id);
                 return {
                     name: itemMaster?.name || 'Unknown Item',
                     code: itemMaster?.code || '???',
-                    unit: itemMaster?.baseUnit || 'Unit',
+                    unit: 'Trx', // Unit diganti menjadi Trx (Transaksi)
                     value: val
                 };
             });
@@ -141,7 +154,7 @@ export const DashboardView: React.FC = () => {
                 <StatCard title="Total Item Unik" value={stats.activeItems} icon={<Package/>} color="bg-daintree border-spectra text-cutty" iconColor="text-cutty" />
             </div>
 
-            {/* --- CUSTOM CHART INFOGRAPHIC (TOP 5 OUTBOUND) --- */}
+            {/* --- CUSTOM CHART INFOGRAPHIC (TOP 5 OUTBOUND FREQUENCY) --- */}
             <div className="mb-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-8 items-center bg-gable/30 p-6 rounded-[32px] border border-spectra/30 relative overflow-hidden">
                     {/* Background decoration */}
@@ -152,12 +165,12 @@ export const DashboardView: React.FC = () => {
                         <div className="w-56 h-56 rounded-full bg-daintree border-[6px] border-l-spectra border-t-gable border-r-daintree border-b-cutty shadow-2xl flex flex-col items-center justify-center text-center relative group hover:scale-105 transition-transform duration-500">
                             <div className="absolute inset-0 rounded-full border border-white/5 animate-spin-slow"></div>
                             <h3 className="text-3xl font-black text-white tracking-widest drop-shadow-lg">TOP 5</h3>
-                            <p className="text-xs font-bold text-spectra uppercase tracking-[0.2em] mt-1 mb-2">Outbound</p>
+                            <p className="text-xs font-bold text-spectra uppercase tracking-[0.2em] mt-1 mb-2">High Routine</p>
                             <div className="h-px w-16 bg-white/20 mb-2"></div>
                             <p className="text-[9px] text-slate-400 max-w-[120px] leading-tight">
-                                Barang paling sering keluar periode ini
+                                Barang dengan frekuensi transaksi keluar tertinggi
                             </p>
-                            <BarChart3 size={24} className="text-emerald-500 mt-4 opacity-50 group-hover:opacity-100 transition-opacity"/>
+                            <Repeat size={24} className="text-emerald-500 mt-4 opacity-50 group-hover:opacity-100 transition-opacity"/>
                         </div>
                     </div>
 
@@ -190,9 +203,9 @@ export const DashboardView: React.FC = () => {
                                         </div>
                                         
                                         {/* Value Badge */}
-                                        <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-inner">
-                                            <span className="text-sm font-mono font-black text-white">{item.value.toLocaleString()}</span>
-                                            <span className="text-[9px] text-slate-400 font-bold uppercase">{item.unit}</span>
+                                        <div className="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-inner min-w-[100px] justify-center">
+                                            <span className="text-sm font-mono font-black text-white">{item.value.toLocaleString()}x</span>
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase">Trx</span>
                                         </div>
                                     </div>
                                 </div>
