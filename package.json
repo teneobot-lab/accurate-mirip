@@ -16,6 +16,7 @@
     "xlsx": "0.18.5",
     "jspdf": "2.5.1",
     "jspdf-autotable": "3.8.2",
+    "fuse.js": "7.0.0",
     "@vitejs/plugin-react": "^5.1.2",
     "vite": "^7.3.1"
   },

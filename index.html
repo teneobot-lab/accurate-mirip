@@ -64,55 +64,43 @@
         -moz-osx-font-smoothing: grayscale;
       }
 
-      /* Global Input Reset for Dark Mode Consistency */
+      /* Global Input Reset */
       :root {
         color-scheme: dark;
       }
       
-      /* UPDATED INPUT STYLES FOR BETTER VISIBILITY */
       input, select, textarea {
-        background-color: #0b1619 !important; /* Very Dark Teal (Contrast against Gable/Daintree) */
-        border-color: #335157 !important; /* Spectra */
-        color: #f1f5f9 !important; /* Slate-100 (Brighter text) */
+        background-color: #0b1619 !important;
+        border-color: #335157 !important;
+        color: #f1f5f9 !important;
         box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
       }
       
-      /* Make Readonly/Disabled inputs look different */
       input:disabled, select:disabled, textarea:disabled {
         background-color: #0f2429 !important;
         color: #64748b !important;
         cursor: not-allowed;
       }
 
-      /* UPDATED PLACEHOLDER COLOR */
       input::placeholder, textarea::placeholder {
-        color: #6c868a !important; /* Lighter/Distinct from Cutty */
+        color: #6c868a !important;
         opacity: 1;
         font-weight: 500;
       }
 
-      /* Fix Select Option Backgrounds */
       select option {
-        background-color: #0b1619; /* Match input bg */
+        background-color: #0b1619;
         color: white;
         padding: 8px;
       }
 
-      /* Autofill Fix */
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover, 
-      input:-webkit-autofill:focus, 
-      input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 30px #0b1619 inset !important;
-        -webkit-text-fill-color: white !important;
-        transition: background-color 5000s ease-in-out 0s;
-      }
-
-      /* Date Picker Icon Invert */
-      ::-webkit-calendar-picker-indicator {
-        filter: invert(0.8);
-        opacity: 0.7;
-        cursor: pointer;
+      /* Highlight Animation */
+      .search-highlight {
+        background-color: rgba(51, 81, 87, 0.6);
+        color: white;
+        font-weight: 800;
+        padding: 0 1px;
+        border-radius: 2px;
       }
     </style>
   <script type="importmap">
@@ -127,6 +115,7 @@
     "xlsx": "https://esm.sh/xlsx@0.18.5",
     "jspdf": "https://esm.sh/jspdf@2.5.1",
     "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
+    "fuse.js": "https://esm.sh/fuse.js@7.0.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "vite": "https://esm.sh/vite@^7.3.1"
   }
