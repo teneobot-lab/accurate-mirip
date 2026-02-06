@@ -13,8 +13,8 @@ export const DashboardView: React.FC = () => {
 
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
-        d.setDate(d.getDate() - 30);
-        return d.toISOString().split('T')[0];
+        // Default ke tanggal 1 bulan berjalan
+        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
     });
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -100,7 +100,7 @@ export const DashboardView: React.FC = () => {
             </div>
 
             {/* CHART SECTION - STACKS ON MOBILE */}
-            <div className="bg-gable/30 p-6 rounded-[32px] border border-spectra/30 overflow-hidden">
+            <div className="bg-gable/30 p-6 rounded-[32px] border border-spectra/30 overflow-hidden text-slate-200">
                 <div className="flex flex-col lg:flex-row items-center gap-8">
                     <div className="w-full lg:w-1/3 flex justify-center">
                         <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-daintree border-4 border-spectra shadow-2xl flex flex-col items-center justify-center text-center p-4">

@@ -25,6 +25,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [refNo, setRefNo] = useState(initialData?.referenceNo || `${type === 'IN' ? 'RI' : 'DO'}.${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}.${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`);
@@ -43,11 +46,63 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     StorageService.fetchStocks().then(setStocks);
     setPartners(globalPts.filter(p => (type === 'IN' ? p.type === 'SUPPLIER' : p.type === 'CUSTOMER') && p.isActive));
     if (globalWh.length > 0 && !selectedWh) setSelectedWh(globalWh[0].id);
-  }, []);
+  }, [globalPts, globalWh, type]);
 
   const getStockQty = (itemId: string) => {
       const stock = stocks.find(s => s.itemId === itemId && s.warehouseId === selectedWh);
       return stock ? Number(stock.qty) : 0;
+  };
+
+  const compressImage = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+              const img = new Image();
+              img.src = event.target?.result as string;
+              img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  const MAX_WIDTH = 800;
+                  const scaleSize = MAX_WIDTH / img.width;
+                  canvas.width = MAX_WIDTH;
+                  canvas.height = img.height * scaleSize;
+                  const ctx = canvas.getContext('2d');
+                  ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+                  resolve(canvas.toDataURL('image/jpeg', 0.7));
+              };
+              img.onerror = (error) => reject(error);
+          };
+      });
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      setIsCompressing(true);
+      const newPhotos: string[] = [];
+      try {
+          for (let i = 0; i < e.target.files.length; i++) {
+              const file = e.target.files[i];
+              if (!file.type.startsWith('image/')) continue;
+              const compressed = await compressImage(file);
+              newPhotos.push(compressed);
+          }
+          setAttachments(prev => [...prev, ...newPhotos]);
+          showToast(`${newPhotos.length} foto berhasil ditambahkan`, "success");
+      } catch (error) {
+          showToast("Gagal memproses gambar", "error");
+      } finally {
+          setIsCompressing(false);
+          if (photoInputRef.current) photoInputRef.current.value = '';
+      }
+  };
+
+  const downloadImage = (base64: string, index: number) => {
+      const link = document.createElement('a');
+      link.href = base64;
+      link.download = `attachment-${refNo}-${index + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
   };
 
   const handleAddLine = () => {
@@ -131,7 +186,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             <div className="bg-gable p-4 rounded-2xl border border-spectra shadow-inner space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                     <div className="sm:col-span-6 relative">
-                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block">Cari Produk</label>
+                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Cari Produk</label>
                          <SmartAutocomplete 
                             data={masterItems} searchKeys={['code', 'name']} placeholder="SKU / Nama..." onSelect={it => { setPendingItem(it); setPendingUnit(it.baseUnit); }}
                             renderItem={(it, sel, q) => (
@@ -146,11 +201,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                          />
                     </div>
                     <div className="sm:col-span-3">
-                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block">Qty</label>
+                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Qty</label>
                          <input ref={qtyInputRef} type="number" placeholder="0" value={pendingQty} onChange={e => setPendingQty(e.target.value)} className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-4 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-spectra" />
                     </div>
                     <div className="sm:col-span-2">
-                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block">Unit</label>
+                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Unit</label>
                          <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-2 text-[10px] font-black uppercase text-white outline-none">
                             {pendingItem && [<option key="base" value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>, ...(pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>) || [])]}
                          </select>
@@ -187,6 +242,37 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </table>
                 </div>
             </div>
+
+            {/* ATTACHMENTS SECTION - RESTORED FOR 'IN' */}
+            {type === 'IN' && (
+                <div className="bg-daintree border border-spectra rounded-2xl p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black text-cutty uppercase tracking-widest block text-slate-400">Lampiran Foto Barang</label>
+                        <span className="text-[9px] text-slate-500 italic">Mendukung multi-upload, otomatis kompres.</span>
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin items-center min-h-[100px]">
+                        <button 
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={isCompressing}
+                            className="flex-shrink-0 w-24 h-24 border-2 border-dashed border-spectra rounded-2xl bg-gable text-cutty hover:text-white hover:bg-spectra/10 flex flex-col items-center justify-center gap-1 transition-all"
+                        >
+                            {isCompressing ? <Loader2 size={24} className="animate-spin text-spectra"/> : <Upload size={24}/>} 
+                            <span className="text-[10px] font-black uppercase tracking-tighter">Tambah</span>
+                        </button>
+                        <input type="file" multiple accept="image/*" ref={photoInputRef} className="hidden" onChange={handlePhotoUpload} />
+                        
+                        {attachments.map((img, idx) => (
+                            <div key={idx} className="relative group w-24 h-24 rounded-2xl overflow-hidden border border-spectra bg-black flex-shrink-0 shadow-lg">
+                                <img src={img} alt="Attachment" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all" />
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                                    <button onClick={() => setPreviewImage(img)} className="text-white hover:text-emerald-400 transform hover:scale-125 transition-all"><Eye size={18}/></button>
+                                    <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-white hover:text-red-400 transform hover:scale-125 transition-all"><Trash2 size={18}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Footer Actions */}
@@ -205,6 +291,17 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </div>
         </div>
       </div>
+
+      {/* Full Preview Modal */}
+      {previewImage && (
+          <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-8 backdrop-blur-md animate-in fade-in" onClick={() => setPreviewImage(null)}>
+              <div className="relative max-w-4xl max-h-full" onClick={e => e.stopPropagation()}>
+                  <img src={previewImage} alt="Full Preview" className="max-w-full max-h-[85vh] rounded-3xl shadow-2xl border border-spectra" />
+                  <button onClick={() => setPreviewImage(null)} className="absolute -top-12 right-0 text-white hover:text-red-400 bg-white/10 p-2 rounded-full"><X size={24}/></button>
+                  <button onClick={() => downloadImage(previewImage, attachments.indexOf(previewImage))} className="absolute -bottom-16 left-1/2 -translate-x-1/2 px-8 py-3 bg-spectra text-white rounded-full text-xs font-black uppercase flex items-center gap-2 shadow-2xl hover:bg-white hover:text-spectra transition-all border border-spectra/50 tracking-widest"><Download size={18}/> Unduh Gambar</button>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

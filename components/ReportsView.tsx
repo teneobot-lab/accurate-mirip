@@ -22,8 +22,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
-        d.setDate(d.getDate() - 30);
-        return d.toISOString().split('T')[0];
+        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
     });
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 

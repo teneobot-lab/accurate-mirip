@@ -31,12 +31,15 @@ export const SettingsView: React.FC = () => {
     const [editData, setEditData] = useState<any>(null);
 
     const [scriptUrl, setScriptUrl] = useState('');
-    const [syncStart, setSyncStart] = useState(new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0]);
+    const [syncStart, setSyncStart] = useState(() => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    });
     const [syncEnd, setSyncEnd] = useState(new Date().toISOString().split('T')[0]);
     const [isSyncing, setIsSyncing] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // --- UPDATED GAS CODE FOR DUAL SHEET & IDEMPOTENCY ---
+    // ... (rest of the GS_CODE_BOILERPLATE remains the same)
     const GS_CODE_BOILERPLATE = `/**
  * GudangPro - Smart Sync v4.0
  * Supports: Separate Sheets (Mutasi & Reject), Clean Numbers, Idempotency
@@ -119,13 +122,9 @@ function processSheet(sheetName, newRows, headers) {
                 StorageService.fetchPartners().catch(() => []),
                 StorageService.fetchUsers().catch(() => [])
             ]);
-            
-            // Ensure consistency in frontend state
             const mappedUsers = (Array.isArray(usrs) ? usrs : []).map((u: any) => ({
-                ...u,
-                isActive: u.status === 'ACTIVE' // Normalize for UI toggle
+                ...u, isActive: u.status === 'ACTIVE'
             }));
-
             setWarehouses(Array.isArray(whs) ? whs : []);
             setPartners(Array.isArray(pts) ? pts : []);
             setUsers(mappedUsers);
@@ -136,7 +135,6 @@ function processSheet(sheetName, newRows, headers) {
         }
     };
 
-    // Load Config separately to not block main UI
     useEffect(() => {
         if (activeTab === 'EXTERNAL_SYNC') {
             StorageService.fetchSystemConfig('gsheet_url').then(url => setScriptUrl(url));
@@ -159,11 +157,8 @@ function processSheet(sheetName, newRows, headers) {
     const handleSave = async (data: any) => {
         try {
             const payload = { ...data, id: data.id || crypto.randomUUID() };
-            
-            // Handling Status & Password logic based on Type
             if (activeTab === 'USERS') {
                 payload.status = data.isActive ? 'ACTIVE' : 'INACTIVE';
-                // Password sent automatically if present in 'data'
                 await StorageService.saveUser(payload);
             } 
             else if (activeTab === 'WAREHOUSE') {
@@ -171,14 +166,11 @@ function processSheet(sheetName, newRows, headers) {
                 await StorageService.saveWarehouse(payload);
             }
             else {
-                // Partners
                 payload.isActive = data.isActive === undefined ? true : data.isActive;
                 await StorageService.savePartner({ ...payload, type: activeTab as any });
             }
-            
             showToast("Tersimpan ke MySQL Database", "success");
-            setShowModal(false); 
-            refreshData();
+            setShowModal(false); refreshData();
         } catch (e) { showToast("Gagal menyimpan ke server", "error"); }
     };
 
@@ -187,23 +179,18 @@ function processSheet(sheetName, newRows, headers) {
         try {
             await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
             showToast("URL Google Script disimpan ke Database", "success");
-        } catch (e) {
-            showToast("Gagal menyimpan URL", "error");
-        }
+        } catch (e) { showToast("Gagal menyimpan URL", "error"); }
     };
 
     const handleStartSync = async () => {
         if (!scriptUrl) return showToast("Masukkan Script URL terlebih dahulu", "warning");
         setIsSyncing(true);
         try {
-            // Save URL first just in case
             await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
-            
             await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
             showToast("Sync Selesai. Cek Sheet 'Mutasi' dan 'Reject'.", "success");
         } catch (e: any) {
-            console.error(e);
-            showToast("Gagal Sync. Pastikan script V4.0 sudah di-update di Google Script Editor.", "error");
+            showToast("Gagal Sync. Pastikan script V4.0 sudah di-update.", "error");
         } finally {
             setIsSyncing(false);
         }
@@ -319,7 +306,6 @@ function processSheet(sheetName, newRows, headers) {
                                         </div>
                                     </div>
                                     
-                                    {/* Date Range Filter for Sync */}
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Filter Periode Data</label>
                                         <div className="flex gap-3">
@@ -338,10 +324,6 @@ function processSheet(sheetName, newRows, headers) {
                                         {isSyncing ? <Loader2 size={20} className="animate-spin"/> : <Share2 size={20} />} 
                                         {isSyncing ? 'MENGIRIM DATA...' : 'MULAI SINKRONISASI'}
                                     </button>
-                                    <div className="text-[9px] text-center text-slate-500 italic mt-2 space-y-1">
-                                        <p>1. Transaksi (IN/OUT) &rarr; Sheet "Mutasi GudangPro"</p>
-                                        <p>2. Reject (Aggregated) &rarr; Sheet "Laporan Reject"</p>
-                                    </div>
                                 </div>
                             </div>
                             <div className="bg-daintree rounded-[24px] border border-spectra flex flex-col h-[500px] shadow-2xl overflow-hidden">
@@ -358,7 +340,6 @@ function processSheet(sheetName, newRows, headers) {
                 )}
             </div>
 
-            {/* CRUD MODAL */}
             {showModal && (
                 <div className="fixed inset-0 bg-daintree/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-gable rounded-2xl shadow-2xl w-full max-w-sm border border-spectra overflow-hidden animate-in zoom-in-95">
@@ -401,14 +382,10 @@ function processSheet(sheetName, newRows, headers) {
                                 <input className="w-full p-3 border border-spectra rounded-xl text-sm bg-daintree text-white outline-none focus:ring-2 focus:ring-spectra" value={activeTab === 'WAREHOUSE' ? (editData.location || '') : (editData.phone || '')} onChange={e => setEditData({...editData, [activeTab === 'WAREHOUSE' ? 'location' : 'phone']: e.target.value})} />
                             </div>
 
-                            {/* Active Status Toggle for All Entity Types */}
                             <div className="space-y-1.5 pt-2">
                                 <div className="flex items-center justify-between bg-daintree p-3 rounded-xl border border-spectra">
                                     <span className="text-[10px] font-bold text-cutty uppercase">Status {activeTab}</span>
                                     <div className="flex items-center gap-2">
-                                        <span className={`text-[10px] font-bold uppercase ${editData.isActive !== false ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                            {editData.isActive !== false ? 'Aktif' : 'Nonaktif'}
-                                        </span>
                                         <button 
                                             type="button"
                                             onClick={() => setEditData({...editData, isActive: !(editData.isActive !== false)})} 

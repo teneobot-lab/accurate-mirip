@@ -17,8 +17,7 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
   // Date Filter State
   const [startDate, setStartDate] = useState(() => {
       const d = new Date();
-      d.setDate(d.getDate() - 30);
-      return d.toISOString().split('T')[0];
+      return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -78,7 +77,7 @@ export const StockCardModal: React.FC<Props> = ({ item, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-daintree/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-gable rounded-[24px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-spectra" onClick={e => e.stopPropagation()}>
+      <div className="bg-gable rounded-[24px] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-spectra text-slate-200" onClick={e => e.stopPropagation()}>
         
         {/* Header */}
         <div className="bg-daintree px-6 py-4 flex justify-between items-center border-b border-spectra">

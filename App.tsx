@@ -29,10 +29,8 @@ function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [viewingItem, setViewingItem] = useState<Item | null>(null);
 
-  // Added refreshData function to fix the undefined reference error
   const refreshData = () => {
-    // This function can be used to trigger data refreshes across the app
-    // Currently, child components manage their own data loading.
+    // This function can be used to trigger data refreshes across the app if needed
   };
 
   useEffect(() => {
@@ -45,7 +43,6 @@ function App() {
     }
     setIsLoadingSession(false);
 
-    // Sidebar strategy: Open by default on large screens
     if (window.innerWidth >= 1024) setIsSidebarOpen(true);
   }, []);
 
@@ -173,12 +170,16 @@ function App() {
                       </div>
 
                       <div className="flex items-center gap-1 lg:gap-3 shrink-0">
-                          <div className="hidden xs:flex gap-1 lg:gap-2">
+                          {/* Restored Features */}
+                          <div className="flex items-center gap-1 lg:gap-2">
                             <LowStockAlert />
                             <MusicPlayer />
                           </div>
-                          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-spectra to-daintree flex items-center justify-center text-white font-bold border border-cutty shadow-md text-xs lg:text-sm">
-                              {currentUser?.name.substring(0,2).toUpperCase()}
+                          
+                          <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-spectra">
+                            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-spectra to-daintree flex items-center justify-center text-white font-bold border border-cutty shadow-md text-xs lg:text-sm">
+                                {currentUser?.name.substring(0,2).toUpperCase()}
+                            </div>
                           </div>
                       </div>
                   </header>
