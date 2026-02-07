@@ -108,10 +108,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             ];
 
             // 2. Add Title Rows
-            sheet.insertRow(1, [`LAPORAN MUTASI GUDANGPRO`]);
-            sheet.insertRow(2, [`Periode: ${startDate} s/d ${endDate}`]);
-            sheet.insertRow(3, [`Filter Gudang: ${warehouses.find(w => w.id === filterWh)?.name || 'Semua Gudang'} | Tipe: ${filterType}`]);
-            sheet.insertRow(4, ['']); // Spacer
+            // FIX: Cast to ExcelJS.CellValue[] to satisfy type check for insertRow values.
+            sheet.insertRow(1, [`LAPORAN MUTASI GUDANGPRO`] as ExcelJS.CellValue[]);
+            sheet.insertRow(2, [`Periode: ${startDate} s/d ${endDate}`] as ExcelJS.CellValue[]);
+            sheet.insertRow(3, [`Filter Gudang: ${warehouses.find(w => w.id === filterWh)?.name || 'Semua Gudang'} | Tipe: ${filterType}`] as ExcelJS.CellValue[]);
+            sheet.insertRow(4, [''] as ExcelJS.CellValue[]); // Spacer
 
             // Styling Title
             sheet.mergeCells('A1:K1');
@@ -132,7 +133,9 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
 
             // 3. Styling Header Row (Row 5 because we inserted 4 rows)
             const headerRow = sheet.getRow(5);
-            headerRow.values = sheet.columns.map(c => c.header);
+            // FIX: Map column headers to string safely as headerRow.values expects CellValue[]. 
+            // sheet.columns[].header can be string | string[] | undefined.
+            headerRow.values = (sheet.columns || []).map(c => (Array.isArray(c.header) ? c.header.join(' ') : (c.header || '')) as ExcelJS.CellValue);
             headerRow.eachCell((cell) => {
                 cell.fill = {
                     type: 'pattern',

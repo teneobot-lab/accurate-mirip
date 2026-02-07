@@ -122,7 +122,16 @@ export const RejectView: React.FC = () => {
     const selectItem = (item: Item) => {
         setPendingItem(item);
         setQuery(item.name);
-        setPendingUnit(item.baseUnit);
+        
+        // --- SMART UNIT MEMORY ---
+        // Cari di history input lokal untuk item ini
+        const savedUnit = localStorage.getItem(`reject_unit_pref_${item.id}`);
+        if (savedUnit) {
+            setPendingUnit(savedUnit);
+        } else {
+            setPendingUnit(item.baseUnit);
+        }
+
         setIsDropdownOpen(false);
         setTimeout(() => qtyInputRef.current?.focus(), 50);
     };
@@ -140,6 +149,9 @@ export const RejectView: React.FC = () => {
             baseQty: conversionResult.baseQty,
             reason: `${pendingReason || ''} (Input: ${pendingQty} ${pendingUnit})` 
         };
+
+        // Simpan preferensi unit ke history
+        localStorage.setItem(`reject_unit_pref_${pendingItem.id}`, pendingUnit);
 
         setRejectLines([...rejectLines, newLine]);
         setQuery(''); setPendingItem(null); setPendingQty(''); setPendingReason(''); setPendingUnit('');
@@ -162,17 +174,17 @@ export const RejectView: React.FC = () => {
         } catch (e) { showToast("Gagal simpan", "error"); }
     };
 
-    // --- EXPORT MATRIX ENGINE (EXCELJS) ---
+    // --- ENTERPRISE EXPORT MATRIX (EXCELJS) ---
     const handleExportMatrix = async () => {
         const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
         if (filteredBatches.length === 0) return showToast("Tidak ada data di periode ini", "warning");
 
         try {
-            showToast("Menyiapkan Laporan Mingguan...", "info");
+            showToast("Membangun Laporan Enterprise...", "info");
             const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet('Laporan Reject Mingguan');
+            const sheet = workbook.addWorksheet('Matrix Reject');
 
-            // 1. Generate List of Dates (Horizontal Columns)
+            // 1. Generate List of Dates
             const dateList: string[] = [];
             let curr = new Date(exportStart);
             const end = new Date(exportEnd);
@@ -190,7 +202,7 @@ export const RejectView: React.FC = () => {
                         itemMap.set(it.itemId, { 
                             code: it.sku, 
                             name: it.name, 
-                            unit: it.unit, // Ini dipastikan Base Unit dari saat input
+                            unit: it.unit, 
                             dateValues: new Map() 
                         });
                     }
@@ -200,42 +212,32 @@ export const RejectView: React.FC = () => {
                 });
             });
 
-            // 3. Build Header Structure
-            // Row 1: Main Title
+            // 3. Header Structure (Clean Enterprise Look)
             sheet.mergeCells(1, 1, 1, 5 + dateList.length);
             const titleCell = sheet.getCell(1, 1);
             titleCell.value = `LAPORAN BARANG REJECT MINGGUAN`;
-            titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-            titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF335157' } };
+            titleCell.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+            titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } }; // Dark Slate
             titleCell.alignment = { horizontal: 'center' };
 
-            // Row 2: Header Labels
             const headerRow = sheet.getRow(2);
-            const headerValues: any[] = ['NO', 'Kode Barang', 'Nama Barang', 'Satuan'];
+            const headerValues: any[] = ['NO', 'KODE', 'NAMA BARANG', 'SATUAN'];
             dateList.forEach(d => {
-                headerValues.push(`${getDayNameID(d)}\n${d.split('-').reverse().slice(0, 2).join('/')}`);
+                headerValues.push(`${getDayNameID(d).toUpperCase()}\n${d.split('-').reverse().slice(0, 2).join('/')}`);
             });
             headerValues.push('TOTAL');
             headerRow.values = headerValues;
 
-            // Header Styling
-            headerRow.height = 32;
-            headerRow.eachCell((cell, colNum) => {
+            // Header Style
+            headerRow.height = 35;
+            headerRow.eachCell((cell) => {
                 cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF496569' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF374151' } }; // Slate Gray
                 cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                
-                // Color formatting for Saturday/Sunday
-                if (colNum > 4 && colNum <= 4 + dateList.length) {
-                    const dateIdx = colNum - 5;
-                    const dName = getDayNameID(dateList[dateIdx]);
-                    if (dName === 'Minggu') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEF4444' } };
-                    if (dName === 'Sabtu') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
-                }
             });
 
-            // 4. Populate Data Rows
+            // 4. Populate Rows (Clean Data / Zero Suppressed)
             let rowIdx = 3;
             Array.from(itemMap.values())
                 .sort((a, b) => a.name.localeCompare(b.name))
@@ -246,40 +248,48 @@ export const RejectView: React.FC = () => {
                     let rowTotal = 0;
                     dateList.forEach(d => {
                         const qty = item.dateValues.get(d) || 0;
-                        vals.push(qty || 0); // Tampilkan 0 sesuai layout
+                        // HILANGKAN ANGKA 0 DEFAULT (SUPPRESS ZEROS)
+                        vals.push(qty > 0 ? qty : null); 
                         rowTotal += qty;
                     });
-                    vals.push(rowTotal);
+                    vals.push(rowTotal > 0 ? rowTotal : null);
                     
                     row.values = vals as ExcelJS.CellValue[];
                     
-                    // Style Data Cells
+                    // Zebra Pattern & Border Style
+                    const isEven = rowIdx % 2 === 0;
                     row.eachCell((cell, colNum) => {
-                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                        cell.font = { size: 9 };
+                        // FIX: Move the color property inside each side definition (top, left, bottom, right).
+                        cell.border = { 
+                            top: { style: 'thin', color: { argb: 'FFD1D5DB' } }, 
+                            left: { style: 'thin', color: { argb: 'FFD1D5DB' } }, 
+                            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } }, 
+                            right: { style: 'thin', color: { argb: 'FFD1D5DB' } } 
+                        };
+                        cell.font = { size: 9, color: { argb: 'FF374151' } };
+                        if (isEven) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } }; // Light Gray Zebra
+                        
                         if (colNum >= 5) {
-                            cell.numFmt = '#,##0.####';
-                            cell.alignment = { horizontal: 'right' };
-                            // Highlight non-zero values with yellow like screenshot
-                            if (Number(cell.value) > 0) {
-                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
-                                cell.font = { bold: true, size: 9 };
+                            cell.numFmt = '#,##0.####'; // Hanya format jika ada angka
+                            cell.alignment = { horizontal: 'center' };
+                            // Subtle highlight for non-empty cells
+                            if (cell.value !== null) {
+                                cell.font = { bold: true, size: 9, color: { argb: 'FF111827' } };
                             }
                         }
-                        if (colNum <= 2 || colNum === 4) cell.alignment = { horizontal: 'center' };
                     });
                 });
 
             // 5. Formatting Columns
             sheet.getColumn(1).width = 4;   // NO
             sheet.getColumn(2).width = 15;  // Kode
-            sheet.getColumn(3).width = 40;  // Nama
+            sheet.getColumn(3).width = 45;  // Nama
             sheet.getColumn(4).width = 8;   // Satuan
-            dateList.forEach((_, i) => { sheet.getColumn(5 + i).width = 10; });
-            sheet.getColumn(5 + dateList.length).width = 12;
-            sheet.getColumn(5 + dateList.length).font = { bold: true, size: 9 };
+            dateList.forEach((_, i) => { sheet.getColumn(5 + i).width = 12; });
+            sheet.getColumn(5 + dateList.length).width = 14;
+            sheet.getColumn(5 + dateList.length).font = { bold: true };
 
-            // Freeze panes to keep item info visible
+            // Freeze panes
             sheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 2 }];
 
             // 6. Generate and Download
@@ -288,10 +298,10 @@ export const RejectView: React.FC = () => {
             const url = window.URL.createObjectURL(blob);
             const anchor = document.createElement('a');
             anchor.href = url;
-            anchor.download = `Laporan_Reject_Mingguan_${exportStart}_${exportEnd}.xlsx`;
+            anchor.download = `Weekly_Reject_${exportStart}_${exportEnd}.xlsx`;
             anchor.click();
             window.URL.revokeObjectURL(url);
-            showToast("Laporan Exported!", "success");
+            showToast("Matrix Berhasil Diunduh", "success");
 
         } catch (e) {
             console.error(e);
