@@ -5,9 +5,8 @@ import { StorageService } from '../services/storage';
 import { useGlobalData } from '../search/SearchProvider';
 import { SmartAutocomplete } from './SmartAutocomplete';
 import { highlightMatch } from '../search/highlightMatch';
-import { Plus, Trash2, Save, X, CornerDownLeft, Loader2, Building2, User, Calendar, Hash, StickyNote, FileSpreadsheet, Upload, Eye, FileText, Download } from 'lucide-react';
+import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, Hash, Upload, Eye, FileText, Download, MessageSquare } from 'lucide-react';
 import { useToast } from './Toast';
-import * as XLSX from 'xlsx';
 
 interface Props {
   type: TransactionType;
@@ -23,7 +22,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [partners, setPartners] = useState<Partner[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -39,11 +37,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingUnit, setPendingUnit] = useState('');
   const [pendingQty, setPendingQty] = useState<string>('');
-  const [pendingNote, setPendingNote] = useState('');
   
   const itemInputRef = useRef<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const noteInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     StorageService.fetchStocks().then(setStocks);
@@ -90,7 +86,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               newPhotos.push(compressed);
           }
           setAttachments(prev => [...prev, ...newPhotos]);
-          showToast(`${newPhotos.length} foto berhasil ditambahkan`, "success");
+          showToast(`${newPhotos.length} foto ditambahkan`, "success");
       } catch (error) {
           showToast("Gagal memproses gambar", "error");
       } finally {
@@ -123,16 +119,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       unit: pendingUnit, 
       ratio, 
       name: pendingItem.name, 
-      code: pendingItem.code,
-      note: pendingNote
+      code: pendingItem.code
     };
 
     setLines([newLine, ...lines]);
-    
-    // Reset inputs
     setPendingItem(null); 
     setPendingQty('');
-    setPendingNote('');
     itemInputRef.current?.clear();
     itemInputRef.current?.focus();
   };
@@ -151,8 +143,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             item_id: l.itemId, 
             qty: l.qty, 
             unit: l.unit, 
-            conversionRatio: l.ratio, 
-            note: l.note 
+            conversionRatio: l.ratio
           })), 
           notes, 
           attachments 
@@ -172,7 +163,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-xl ${type === 'IN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}><FileText size={20}/></div>
                 <div>
-                   <h2 className="text-base font-black text-white uppercase">{initialData ? 'Edit' : 'Input'} Transaksi</h2>
+                   <h2 className="text-base font-black text-white uppercase">{initialData ? 'Edit' : 'Input'} Transaksi {type}</h2>
                    <p className="text-[10px] font-black text-cutty tracking-widest">{refNo}</p>
                 </div>
             </div>
@@ -181,45 +172,88 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Master Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3 p-4 bg-daintree/30 rounded-2xl border border-spectra/50">
-                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest block">Informasi Utama</label>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
-                            <Calendar size={14} className="ml-3 text-spectra"/>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent p-2 text-xs font-bold text-white outline-none" />
-                        </div>
-                        <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
-                            <Building2 size={14} className="ml-3 text-spectra"/>
-                            <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-transparent p-2 text-xs font-bold text-white outline-none appearance-none">
-                                {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                            </select>
+            
+            {/* INFORMASI UTAMA & LAMPIRAN GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Kolom 1 & 2: Informasi Dasar */}
+                <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3 p-4 bg-daintree/30 rounded-2xl border border-spectra/50">
+                        <label className="text-[10px] font-black text-cutty uppercase tracking-widest block">Informasi Utama</label>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
+                                <Calendar size={14} className="ml-3 text-spectra"/>
+                                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-transparent p-2 text-xs font-bold text-white outline-none" />
+                            </div>
+                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
+                                <Building2 size={14} className="ml-3 text-spectra"/>
+                                <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-transparent p-2 text-xs font-bold text-white outline-none appearance-none">
+                                    {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
+                    <div className="space-y-3 p-4 bg-daintree/30 rounded-2xl border border-spectra/50">
+                        <label className="text-[10px] font-black text-cutty uppercase tracking-widest block">Partner & Referensi</label>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
+                                <User size={14} className="ml-3 text-spectra"/>
+                                <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-transparent p-2 text-xs font-bold text-white outline-none appearance-none">
+                                    <option value="">-- Pilih {type === 'IN' ? 'Supplier' : 'Customer'} --</option>
+                                    {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
+                                <Hash size={14} className="ml-3 text-spectra"/>
+                                <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Ref No" className="w-full bg-transparent p-2 text-xs font-mono font-bold text-emerald-400 outline-none uppercase" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Field Keterangan - Full Width dibawah Info Dasar */}
+                    <div className="md:col-span-2 space-y-3 p-4 bg-daintree/30 rounded-2xl border border-spectra/50">
+                        <label className="text-[10px] font-black text-cutty uppercase tracking-widest block flex items-center gap-2"><MessageSquare size={12}/> Keterangan Transaksi</label>
+                        <textarea 
+                            value={notes} 
+                            onChange={e => setNotes(e.target.value)} 
+                            placeholder="Tulis catatan atau keterangan transaksi di sini..." 
+                            className="w-full bg-black/20 border border-spectra/30 rounded-xl p-3 text-xs font-medium text-white outline-none focus:ring-1 focus:ring-spectra min-h-[60px] resize-none"
+                        />
+                    </div>
                 </div>
-                <div className="space-y-3 p-4 bg-daintree/30 rounded-2xl border border-spectra/50">
-                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest block">Partner & Referensi</label>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
-                            <User size={14} className="ml-3 text-spectra"/>
-                            <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-transparent p-2 text-xs font-bold text-white outline-none appearance-none">
-                                <option value="">-- Pilih {type === 'IN' ? 'Supplier' : 'Customer'} --</option>
-                                {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-spectra/30">
-                            <Hash size={14} className="ml-3 text-spectra"/>
-                            <input type="text" value={refNo} onChange={e => setRefNo(e.target.value)} placeholder="Ref No" className="w-full bg-transparent p-2 text-xs font-mono font-bold text-emerald-400 outline-none uppercase" />
-                        </div>
+
+                {/* Kolom 3: Lampiran Foto (Samping Kanan pada Desktop) */}
+                <div className="lg:col-span-4 space-y-3 p-4 bg-daintree/30 rounded-2xl border border-spectra/50 flex flex-col">
+                    <label className="text-[10px] font-black text-cutty uppercase tracking-widest block">Lampiran Foto</label>
+                    <div className="flex-1 flex flex-col gap-3">
+                         <div className="flex flex-wrap gap-2 overflow-y-auto max-h-[150px] scrollbar-thin">
+                            <button 
+                                onClick={() => photoInputRef.current?.click()}
+                                disabled={isCompressing}
+                                className="w-16 h-16 border-2 border-dashed border-spectra/50 rounded-xl bg-gable text-cutty hover:text-white hover:bg-spectra/10 flex flex-col items-center justify-center transition-all flex-shrink-0"
+                            >
+                                {isCompressing ? <Loader2 size={16} className="animate-spin"/> : <Upload size={16}/>}
+                            </button>
+                            <input type="file" multiple accept="image/*" ref={photoInputRef} className="hidden" onChange={handlePhotoUpload} />
+                            
+                            {attachments.map((img, idx) => (
+                                <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-spectra/50 bg-black flex-shrink-0">
+                                    <img src={img} alt="Attachment" className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-all" />
+                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button onClick={() => setPreviewImage(img)} className="text-white hover:text-emerald-400 transition-all"><Eye size={14}/></button>
+                                        <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-white hover:text-red-400 transition-all"><Trash2 size={14}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                         </div>
+                         <p className="text-[9px] text-slate-500 italic mt-auto">Upload bukti fisik atau foto barang.</p>
                     </div>
                 </div>
             </div>
 
-            {/* ENTRY AREA */}
+            {/* ENTRY AREA - Ramping (Tanpa Keterangan Baris) */}
             <div className="bg-gable p-4 rounded-2xl border border-spectra shadow-inner space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                    <div className="sm:col-span-4 relative">
+                    <div className="sm:col-span-7 relative">
                          <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Cari Produk</label>
                          <SmartAutocomplete 
                             ref={itemInputRef}
@@ -257,38 +291,26 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-4 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-spectra [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                          />
                     </div>
-                    <div className="sm:col-span-1">
+                    <div className="sm:col-span-2">
                          <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Unit</label>
                          <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-2 text-[10px] font-black uppercase text-white outline-none">
                             {pendingItem && [<option key="base" value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>, ...(pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>) || [])]}
                          </select>
-                    </div>
-                    <div className="sm:col-span-4">
-                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Keterangan</label>
-                         <input 
-                            ref={noteInputRef}
-                            type="text" 
-                            placeholder="Catatan baris..." 
-                            value={pendingNote} 
-                            onChange={e => setPendingNote(e.target.value)} 
-                            className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-4 text-sm font-medium text-white outline-none focus:ring-1 focus:ring-spectra" 
-                         />
                     </div>
                     <div className="sm:col-span-1">
                         <button onClick={handleAddLine} className="w-full h-10 bg-spectra text-white rounded-xl flex items-center justify-center hover:bg-white hover:text-spectra transition-all shadow-lg active:scale-95"><Plus size={20}/></button>
                     </div>
                 </div>
 
-                {/* ITEMS TABLE - HORIZONTAL SCROLL ON MOBILE */}
+                {/* ITEMS TABLE - LEBIH PADAT */}
                 <div className="overflow-x-auto rounded-xl border border-spectra bg-daintree/30">
-                    <table className="w-full text-left border-collapse min-w-[800px]">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
                         <thead className="bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest sticky top-0">
                             <tr>
                                 <th className="px-4 py-3">Deskripsi Barang</th>
-                                <th className="px-4 py-3 text-right w-24">Jumlah</th>
-                                <th className="px-4 py-3 text-center w-24">Satuan</th>
-                                <th className="px-4 py-3">Keterangan</th>
-                                <th className="px-4 py-3 text-right w-24">Total Base</th>
+                                <th className="px-4 py-3 text-right w-32">Jumlah</th>
+                                <th className="px-4 py-3 text-center w-32">Satuan</th>
+                                <th className="px-4 py-3 text-right w-32">Total Base</th>
                                 <th className="px-4 py-3 w-12"></th>
                             </tr>
                         </thead>
@@ -296,49 +318,17 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             {lines.map((l, i) => (
                                 <tr key={i} className="hover:bg-white/5 group">
                                     <td className="px-4 py-3"><div className="font-bold text-white">{l.name}</div><div className="text-[9px] font-mono text-cutty">{l.code}</div></td>
-                                    <td className="px-4 py-3 text-right font-black text-white">{l.qty}</td>
+                                    <td className="px-4 py-3 text-right font-black text-white">{l.qty.toLocaleString()}</td>
                                     <td className="px-4 py-3 text-center uppercase font-bold text-slate-500">{l.unit}</td>
-                                    <td className="px-4 py-3 italic text-slate-400">{l.note || '-'}</td>
                                     <td className="px-4 py-3 text-right font-mono text-cutty">{(l.qty * l.ratio).toLocaleString()}</td>
                                     <td className="px-4 py-3 text-center"><button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="p-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button></td>
                                 </tr>
                             ))}
-                            {lines.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-[10px] font-black text-slate-700 uppercase tracking-widest">Belum ada item ditambahkan</td></tr>}
+                            {lines.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-[10px] font-black text-slate-700 uppercase tracking-widest">Belum ada item ditambahkan</td></tr>}
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            {/* ATTACHMENTS SECTION - RESTORED FOR 'IN' */}
-            {type === 'IN' && (
-                <div className="bg-daintree border border-spectra rounded-2xl p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-black text-cutty uppercase tracking-widest block text-slate-400">Lampiran Foto Barang</label>
-                        <span className="text-[9px] text-slate-500 italic">Mendukung multi-upload, otomatis kompres.</span>
-                    </div>
-                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin items-center min-h-[100px]">
-                        <button 
-                            onClick={() => photoInputRef.current?.click()}
-                            disabled={isCompressing}
-                            className="flex-shrink-0 w-24 h-24 border-2 border-dashed border-spectra rounded-2xl bg-gable text-cutty hover:text-white hover:bg-spectra/10 flex flex-col items-center justify-center gap-1 transition-all"
-                        >
-                            {isCompressing ? <Loader2 size={24} className="animate-spin text-spectra"/> : <Upload size={24}/>} 
-                            <span className="text-[10px] font-black uppercase tracking-tighter">Tambah</span>
-                        </button>
-                        <input type="file" multiple accept="image/*" ref={photoInputRef} className="hidden" onChange={handlePhotoUpload} />
-                        
-                        {attachments.map((img, idx) => (
-                            <div key={idx} className="relative group w-24 h-24 rounded-2xl overflow-hidden border border-spectra bg-black flex-shrink-0 shadow-lg">
-                                <img src={img} alt="Attachment" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all" />
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                                    <button onClick={() => setPreviewImage(img)} className="text-white hover:text-emerald-400 transform hover:scale-125 transition-all"><Eye size={18}/></button>
-                                    <button onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))} className="text-white hover:text-red-400 transform hover:scale-125 transition-all"><Trash2 size={18}/></button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </div>
 
         {/* Footer Actions */}
