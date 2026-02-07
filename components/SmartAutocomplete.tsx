@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { Search, Loader2, Package, Tag, ArrowRight, CornerDownLeft } from 'lucide-react';
 import { useFuseSearch } from '../search/useFuseSearch';
 import { highlightMatch } from '../search/highlightMatch';
@@ -37,7 +37,10 @@ export const SmartAutocomplete = forwardRef(<T extends { id: string | number }>(
     clear: () => setQuery('')
   }));
 
-  const { search } = useFuseSearch(data, { keys: searchKeys, limit: 10 });
+  // Memoize options to prevent unnecessary updates, although useFuseSearch handles key stability internally now.
+  const fuseOptions = useMemo(() => ({ keys: searchKeys, limit: 10 }), [searchKeys]);
+  const { search } = useFuseSearch(data, fuseOptions);
+  
   const results = search(query);
 
   useEffect(() => {

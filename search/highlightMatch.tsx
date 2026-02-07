@@ -1,14 +1,24 @@
 
 import React from 'react';
 
-export const highlightMatch = (text: string, query: string) => {
-  if (!query.trim()) return <span>{text}</span>;
+// Fungsi untuk escape karakter khusus regex agar pencarian aman (misal: "+", "*", "(", dll)
+const escapeRegExp = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
-  const parts = text.split(new RegExp(`(${query})`, 'gi'));
+export const highlightMatch = (text: string, query: string) => {
+  if (!query || !query.trim() || !text) return <span>{text}</span>;
+
+  const cleanQuery = escapeRegExp(query.trim());
+  if (!cleanQuery) return <span>{text}</span>;
+
+  // Split text berdasarkan query (case-insensitive)
+  const parts = text.split(new RegExp(`(${cleanQuery})`, 'gi'));
+
   return (
     <span>
       {parts.map((part, i) => 
-        part.toLowerCase() === query.toLowerCase() ? (
+        part.toLowerCase() === cleanQuery.toLowerCase() ? (
           <span key={i} className="search-highlight">{part}</span>
         ) : (
           part

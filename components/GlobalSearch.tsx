@@ -10,6 +10,12 @@ interface Props {
   onSelectItem: (item: Item) => void;
 }
 
+// Definisikan options di luar komponen agar referensi objek stabil (Performance Optimization)
+const SEARCH_OPTIONS = { 
+  keys: ['code', 'name', 'category'], 
+  limit: 8 
+};
+
 export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
   const { masterItems, isLoading } = useGlobalData();
   const [query, setQuery] = useState('');
@@ -18,10 +24,8 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { search } = useFuseSearch(masterItems, { 
-    keys: ['code', 'name', 'category'], 
-    limit: 8 
-  });
+  // Integrasi Fuse.js Hook
+  const { search } = useFuseSearch(masterItems, SEARCH_OPTIONS);
   
   const filteredItems = search(query);
 
