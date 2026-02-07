@@ -5,6 +5,7 @@ import { Item, RejectBatch, RejectItem, Stock } from '../types';
 import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Tag, Edit3, Equal, Info, Box, Share2, Ruler, LayoutGrid, AlertCircle, Copy, FileSpreadsheet, Download } from 'lucide-react';
 import { useToast } from './Toast';
 import ExcelJS from 'exceljs';
+import { Decimal } from 'decimal.js';
 
 // --- PERFORMANCE HOOK ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -17,8 +18,11 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 const cleanNum = (val: string | number): number => {
-    const num = Number(val);
-    return isNaN(num) ? 0 : parseFloat(num.toFixed(4));
+    try {
+        return new Decimal(val).toNumber();
+    } catch {
+        return 0;
+    }
 };
 
 // Helper untuk mendapatkan nama hari Indonesia
@@ -92,23 +96,29 @@ export const RejectView: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    // --- CONVERSION ENGINE ---
+    // --- CONVERSION ENGINE WITH DECIMAL.JS ---
     const conversionResult = useMemo(() => {
         if (!pendingItem || !pendingQty || isNaN(Number(pendingQty))) return null;
-        const qty = Number(pendingQty);
-        let ratio = 1;
         
-        if (pendingUnit !== pendingItem.baseUnit) {
-            const conv = pendingItem.conversions?.find(c => c.name === pendingUnit);
-            if (conv) {
-                ratio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
-            } else {
-                return { error: 'Unit Invalid' };
+        try {
+            const qty = new Decimal(pendingQty);
+            let ratio = new Decimal(1);
+            
+            if (pendingUnit !== pendingItem.baseUnit) {
+                const conv = pendingItem.conversions?.find(c => c.name === pendingUnit);
+                if (conv) {
+                    const convRatio = new Decimal(conv.ratio);
+                    ratio = conv.operator === '/' ? new Decimal(1).dividedBy(convRatio) : convRatio;
+                } else {
+                    return { error: 'Unit Invalid' };
+                }
             }
-        }
 
-        const baseQty = cleanNum(qty * ratio);
-        return { baseQty, unit: pendingItem.baseUnit };
+            const baseQty = qty.times(ratio).toNumber(); // Clean number
+            return { baseQty, unit: pendingItem.baseUnit };
+        } catch (e) {
+            return { error: 'Calc Error' };
+        }
     }, [pendingItem, pendingQty, pendingUnit]);
 
     const filteredItems = useMemo(() => {
@@ -193,8 +203,8 @@ export const RejectView: React.FC = () => {
                 curr.setDate(curr.getDate() + 1);
             }
 
-            // 2. Map Data: ItemID -> Date -> TotalBaseQty
-            const itemMap = new Map<string, { code: string, name: string, unit: string, dateValues: Map<string, number> }>();
+            // 2. Map Data: ItemID -> Date -> TotalBaseQty using DECIMAL.JS
+            const itemMap = new Map<string, { code: string, name: string, unit: string, dateValues: Map<string, Decimal> }>();
 
             filteredBatches.forEach(batch => {
                 batch.items.forEach(it => {
@@ -207,18 +217,19 @@ export const RejectView: React.FC = () => {
                         });
                     }
                     const data = itemMap.get(it.itemId)!;
-                    const currentVal = data.dateValues.get(batch.date) || 0;
-                    data.dateValues.set(batch.date, currentVal + Number(it.baseQty));
+                    const currentVal = data.dateValues.get(batch.date) || new Decimal(0);
+                    // Gunakan Decimal untuk penjumlahan
+                    data.dateValues.set(batch.date, currentVal.plus(it.baseQty));
                 });
             });
 
-            // 3. Header Structure (Clean Enterprise Look)
+            // 3. Header Structure (High Contrast)
             sheet.mergeCells(1, 1, 1, 5 + dateList.length);
             const titleCell = sheet.getCell(1, 1);
             titleCell.value = `LAPORAN BARANG REJECT MINGGUAN`;
-            titleCell.font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+            titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } }; // Putih
             titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } }; // Dark Slate
-            titleCell.alignment = { horizontal: 'center' };
+            titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
             const headerRow = sheet.getRow(2);
             const headerValues: any[] = ['NO', 'KODE', 'NAMA BARANG', 'SATUAN'];
@@ -228,12 +239,12 @@ export const RejectView: React.FC = () => {
             headerValues.push('TOTAL');
             headerRow.values = headerValues;
 
-            // Header Style
+            // Header Style (Explicit High Contrast)
             headerRow.height = 35;
             headerRow.eachCell((cell) => {
-                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF374151' } }; // Slate Gray
-                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                cell.font = { name: 'Arial', bold: true, color: { argb: 'FFFFFFFF' }, size: 10 }; // Putih Jelas
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF335157' } }; // Spectra / Deep Teal
+                cell.border = { top: {style:'thin', color: {argb:'FFFFFFFF'}}, left: {style:'thin', color: {argb:'FFFFFFFF'}}, bottom: {style:'thin', color: {argb:'FFFFFFFF'}}, right: {style:'thin', color: {argb:'FFFFFFFF'}} };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             });
 
@@ -243,51 +254,60 @@ export const RejectView: React.FC = () => {
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .forEach((item, idx) => {
                     const row = sheet.getRow(rowIdx++);
-                    const vals: (string | number | null)[] = [idx + 1, item.code, item.name, item.unit];
+                    const vals: (number | string | null)[] = [idx + 1, item.code, item.name, item.unit];
                     
-                    let rowTotal = 0;
+                    let rowTotal = new Decimal(0);
                     dateList.forEach(d => {
-                        const qty = item.dateValues.get(d) || 0;
+                        const qty = item.dateValues.get(d) || new Decimal(0);
                         // HILANGKAN ANGKA 0 DEFAULT (SUPPRESS ZEROS)
-                        vals.push(qty > 0 ? qty : null); 
-                        rowTotal += qty;
+                        // Gunakan toNumber() untuk memastikan Excel menerima angka bersih
+                        vals.push(qty.greaterThan(0) ? qty.toNumber() : null); 
+                        rowTotal = rowTotal.plus(qty);
                     });
-                    vals.push(rowTotal > 0 ? rowTotal : null);
+                    vals.push(rowTotal.greaterThan(0) ? rowTotal.toNumber() : null);
                     
                     row.values = vals as ExcelJS.CellValue[];
                     
-                    // Zebra Pattern & Border Style
+                    // Style
                     const isEven = rowIdx % 2 === 0;
                     row.eachCell((cell, colNum) => {
-                        // FIX: Move the color property inside each side definition (top, left, bottom, right).
                         cell.border = { 
                             top: { style: 'thin', color: { argb: 'FFD1D5DB' } }, 
                             left: { style: 'thin', color: { argb: 'FFD1D5DB' } }, 
                             bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } }, 
                             right: { style: 'thin', color: { argb: 'FFD1D5DB' } } 
                         };
-                        cell.font = { size: 9, color: { argb: 'FF374151' } };
-                        if (isEven) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } }; // Light Gray Zebra
+                        cell.font = { name: 'Arial', size: 9, color: { argb: 'FF111827' } }; // Hampir Hitam
+                        if (isEven) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; // Very Light Gray
                         
                         if (colNum >= 5) {
-                            cell.numFmt = '#,##0.####'; // Hanya format jika ada angka
-                            cell.alignment = { horizontal: 'center' };
-                            // Subtle highlight for non-empty cells
+                            // FORMAT CLEAN NUMBER
+                            // #,##0.### artinya:
+                            // - Gunakan pemisah ribuan
+                            // - Tampilkan desimal jika ada (hingga 3 digit)
+                            // - JANGAN tampilkan desimal jika bilangan bulat
+                            cell.numFmt = '#,##0.###;[Red]-#,##0.###'; 
+                            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                            
                             if (cell.value !== null) {
-                                cell.font = { bold: true, size: 9, color: { argb: 'FF111827' } };
+                                cell.font = { name: 'Arial', bold: true, size: 9, color: { argb: 'FF111827' } };
                             }
+                        } else {
+                            cell.alignment = { vertical: 'middle', horizontal: 'left' };
                         }
+                        
+                        // No & Satuan Center
+                        if (colNum === 1 || colNum === 4) cell.alignment = { horizontal: 'center', vertical: 'middle' };
                     });
                 });
 
             // 5. Formatting Columns
-            sheet.getColumn(1).width = 4;   // NO
+            sheet.getColumn(1).width = 5;   // NO
             sheet.getColumn(2).width = 15;  // Kode
             sheet.getColumn(3).width = 45;  // Nama
             sheet.getColumn(4).width = 8;   // Satuan
             dateList.forEach((_, i) => { sheet.getColumn(5 + i).width = 12; });
             sheet.getColumn(5 + dateList.length).width = 14;
-            sheet.getColumn(5 + dateList.length).font = { bold: true };
 
             // Freeze panes
             sheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 2 }];
@@ -301,7 +321,7 @@ export const RejectView: React.FC = () => {
             anchor.download = `Weekly_Reject_${exportStart}_${exportEnd}.xlsx`;
             anchor.click();
             window.URL.revokeObjectURL(url);
-            showToast("Matrix Berhasil Diunduh", "success");
+            showToast("Matrix Clean Format Berhasil Diunduh", "success");
 
         } catch (e) {
             console.error(e);
