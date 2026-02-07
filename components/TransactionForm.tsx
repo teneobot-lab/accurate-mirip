@@ -23,7 +23,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [partners, setPartners] = useState<Partner[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -40,7 +39,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingUnit, setPendingUnit] = useState('');
   const [pendingQty, setPendingQty] = useState<string>('');
+  const [pendingNote, setPendingNote] = useState('');
+  
+  const itemInputRef = useRef<any>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const noteInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     StorageService.fetchStocks().then(setStocks);
@@ -114,15 +117,46 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         if (conv) ratio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
     }
 
-    setLines([{ itemId: pendingItem.id, qty: Number(pendingQty), unit: pendingUnit, ratio, name: pendingItem.name, code: pendingItem.code }, ...lines]);
-    setPendingItem(null); setPendingQty('');
+    const newLine: TransactionItem = { 
+      itemId: pendingItem.id, 
+      qty: Number(pendingQty), 
+      unit: pendingUnit, 
+      ratio, 
+      name: pendingItem.name, 
+      code: pendingItem.code,
+      note: pendingNote
+    };
+
+    setLines([newLine, ...lines]);
+    
+    // Reset inputs
+    setPendingItem(null); 
+    setPendingQty('');
+    setPendingNote('');
+    itemInputRef.current?.clear();
+    itemInputRef.current?.focus();
   };
 
   const handleSubmit = async () => {
     if (lines.length === 0) return showToast("Item kosong", "warning");
     setIsSubmitting(true);
     try {
-        const txData = { date, referenceNo: refNo, type, sourceWarehouseId: selectedWh, partnerId: selectedPartnerId, items: lines.map(l => ({ item_id: l.itemId, qty: l.qty, unit: l.unit, conversionRatio: l.ratio, note: '' })), notes, attachments };
+        const txData = { 
+          date, 
+          referenceNo: refNo, 
+          type, 
+          sourceWarehouseId: selectedWh, 
+          partnerId: selectedPartnerId, 
+          items: lines.map(l => ({ 
+            item_id: l.itemId, 
+            qty: l.qty, 
+            unit: l.unit, 
+            conversionRatio: l.ratio, 
+            note: l.note 
+          })), 
+          notes, 
+          attachments 
+        };
         if (initialData) await StorageService.updateTransaction(initialData.id, txData as any);
         else await StorageService.commitTransaction({ ...txData, id: crypto.randomUUID() } as any);
         showToast("Tersimpan!", "success"); onSuccess();
@@ -185,11 +219,16 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             {/* ENTRY AREA */}
             <div className="bg-gable p-4 rounded-2xl border border-spectra shadow-inner space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                    <div className="sm:col-span-6 relative">
+                    <div className="sm:col-span-4 relative">
                          <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Cari Produk</label>
                          <SmartAutocomplete 
+                            ref={itemInputRef}
                             data={masterItems} searchKeys={['code', 'name']} placeholder="SKU / Nama..." 
-                            onSelect={(it: Item) => { setPendingItem(it); setPendingUnit(it.baseUnit); }}
+                            onSelect={(it: Item) => { 
+                              setPendingItem(it); 
+                              setPendingUnit(it.baseUnit); 
+                              setTimeout(() => qtyInputRef.current?.focus(), 10);
+                            }}
                             renderItem={(it: Item, sel: boolean, q: string) => (
                                 <div className="flex justify-between items-center w-full">
                                     <div className="min-w-0 pr-4">
@@ -201,15 +240,39 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             )}
                          />
                     </div>
-                    <div className="sm:col-span-3">
-                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Qty</label>
-                         <input ref={qtyInputRef} type="number" placeholder="0" value={pendingQty} onChange={e => setPendingQty(e.target.value)} className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-4 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-spectra" />
-                    </div>
                     <div className="sm:col-span-2">
+                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Qty</label>
+                         <input 
+                            ref={qtyInputRef} 
+                            type="number" 
+                            placeholder="0" 
+                            value={pendingQty} 
+                            onChange={e => setPendingQty(e.target.value)} 
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                if (pendingQty) handleAddLine();
+                                else showToast("Isi Qty", "warning");
+                              }
+                            }}
+                            className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-4 text-sm font-bold text-white outline-none focus:ring-1 focus:ring-spectra [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                         />
+                    </div>
+                    <div className="sm:col-span-1">
                          <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Unit</label>
                          <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-2 text-[10px] font-black uppercase text-white outline-none">
                             {pendingItem && [<option key="base" value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>, ...(pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>) || [])]}
                          </select>
+                    </div>
+                    <div className="sm:col-span-4">
+                         <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Keterangan</label>
+                         <input 
+                            ref={noteInputRef}
+                            type="text" 
+                            placeholder="Catatan baris..." 
+                            value={pendingNote} 
+                            onChange={e => setPendingNote(e.target.value)} 
+                            className="w-full h-10 bg-black/20 border border-spectra rounded-xl px-4 text-sm font-medium text-white outline-none focus:ring-1 focus:ring-spectra" 
+                         />
                     </div>
                     <div className="sm:col-span-1">
                         <button onClick={handleAddLine} className="w-full h-10 bg-spectra text-white rounded-xl flex items-center justify-center hover:bg-white hover:text-spectra transition-all shadow-lg active:scale-95"><Plus size={20}/></button>
@@ -218,12 +281,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
                 {/* ITEMS TABLE - HORIZONTAL SCROLL ON MOBILE */}
                 <div className="overflow-x-auto rounded-xl border border-spectra bg-daintree/30">
-                    <table className="w-full text-left border-collapse min-w-[600px]">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead className="bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest sticky top-0">
                             <tr>
                                 <th className="px-4 py-3">Deskripsi Barang</th>
                                 <th className="px-4 py-3 text-right w-24">Jumlah</th>
                                 <th className="px-4 py-3 text-center w-24">Satuan</th>
+                                <th className="px-4 py-3">Keterangan</th>
                                 <th className="px-4 py-3 text-right w-24">Total Base</th>
                                 <th className="px-4 py-3 w-12"></th>
                             </tr>
@@ -234,11 +298,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     <td className="px-4 py-3"><div className="font-bold text-white">{l.name}</div><div className="text-[9px] font-mono text-cutty">{l.code}</div></td>
                                     <td className="px-4 py-3 text-right font-black text-white">{l.qty}</td>
                                     <td className="px-4 py-3 text-center uppercase font-bold text-slate-500">{l.unit}</td>
+                                    <td className="px-4 py-3 italic text-slate-400">{l.note || '-'}</td>
                                     <td className="px-4 py-3 text-right font-mono text-cutty">{(l.qty * l.ratio).toLocaleString()}</td>
                                     <td className="px-4 py-3 text-center"><button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="p-1 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button></td>
                                 </tr>
                             ))}
-                            {lines.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-[10px] font-black text-slate-700 uppercase tracking-widest">Belum ada item ditambahkan</td></tr>}
+                            {lines.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-[10px] font-black text-slate-700 uppercase tracking-widest">Belum ada item ditambahkan</td></tr>}
                         </tbody>
                     </table>
                 </div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Search, Loader2, Package, Tag, ArrowRight, CornerDownLeft } from 'lucide-react';
 import { useFuseSearch } from '../search/useFuseSearch';
 import { highlightMatch } from '../search/highlightMatch';
@@ -14,20 +14,28 @@ interface SmartAutocompleteProps<T> {
   isLoading?: boolean;
 }
 
-export function SmartAutocomplete<T extends { id: string | number }>({
-  data,
-  searchKeys,
-  placeholder = "Cari...",
-  onSelect,
-  renderItem,
-  className = "",
-  isLoading = false
-}: SmartAutocompleteProps<T>) {
+export const SmartAutocomplete = forwardRef(<T extends { id: string | number }>(
+  {
+    data,
+    searchKeys,
+    placeholder = "Cari...",
+    onSelect,
+    renderItem,
+    className = "",
+    isLoading = false
+  }: SmartAutocompleteProps<T>,
+  ref: React.Ref<any>
+) => {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    clear: () => setQuery('')
+  }));
 
   const { search } = useFuseSearch(data, { keys: searchKeys, limit: 10 });
   const results = search(query);
@@ -71,9 +79,8 @@ export function SmartAutocomplete<T extends { id: string | number }>({
 
   const handleSelect = (item: T) => {
     onSelect(item);
-    setQuery('');
+    setQuery((item as any).name || (item as any).code || '');
     setIsOpen(false);
-    inputRef.current?.blur();
   };
 
   return (
@@ -132,4 +139,4 @@ export function SmartAutocomplete<T extends { id: string | number }>({
       )}
     </div>
   );
-}
+});
