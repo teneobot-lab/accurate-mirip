@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Transaction, Warehouse } from '../types';
 import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { useToast } from './Toast';
 
 interface Props {
@@ -82,23 +82,144 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         setExpandedTx(next);
     };
 
-    const handleExport = () => {
-        const data = filteredTransactions.flatMap(tx => tx.items.map(it => ({
-            "Tanggal": tx.date,
-            "No. Ref": tx.referenceNo,
-            "Tipe": tx.type,
-            "Gudang": warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Default',
-            "Partner": tx.partnerName || '-',
-            "Item Code": it.code,
-            "Item Name": it.name,
-            "Qty": it.qty,
-            "Unit": it.unit,
-            "Catatan": it.note || tx.notes || '-'
-        })));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Mutasi");
-        XLSX.writeFile(wb, `Laporan_Mutasi_${startDate}_${endDate}.xlsx`);
+    const handleExport = async () => {
+        if (filteredTransactions.length === 0) {
+            return showToast("Tidak ada data untuk diexport", "warning");
+        }
+
+        try {
+            showToast("Menyiapkan file Excel...", "info");
+            const workbook = new ExcelJS.Workbook();
+            const sheet = workbook.addWorksheet('Laporan Mutasi');
+
+            // 1. Setup Columns
+            sheet.columns = [
+                { header: 'TANGGAL', key: 'date', width: 12 },
+                { header: 'NO. REFERENSI', key: 'ref', width: 20 },
+                { header: 'TIPE', key: 'type', width: 10 },
+                { header: 'GUDANG', key: 'warehouse', width: 15 },
+                { header: 'PARTNER', key: 'partner', width: 20 },
+                { header: 'KODE ITEM', key: 'code', width: 15 },
+                { header: 'NAMA BARANG', key: 'itemName', width: 30 },
+                { header: 'QTY', key: 'qty', width: 10 },
+                { header: 'SATUAN', key: 'unit', width: 8 },
+                { header: 'TOTAL BASE', key: 'totalBase', width: 12 },
+                { header: 'CATATAN', key: 'note', width: 25 },
+            ];
+
+            // 2. Add Title Rows
+            sheet.insertRow(1, [`LAPORAN MUTASI GUDANGPRO`]);
+            sheet.insertRow(2, [`Periode: ${startDate} s/d ${endDate}`]);
+            sheet.insertRow(3, [`Filter Gudang: ${warehouses.find(w => w.id === filterWh)?.name || 'Semua Gudang'} | Tipe: ${filterType}`]);
+            sheet.insertRow(4, ['']); // Spacer
+
+            // Styling Title
+            sheet.mergeCells('A1:K1');
+            sheet.mergeCells('A2:K2');
+            sheet.mergeCells('A3:K3');
+            
+            const titleRow = sheet.getRow(1);
+            titleRow.font = { name: 'Arial', size: 16, bold: true };
+            titleRow.alignment = { horizontal: 'center' };
+
+            const subTitleRow = sheet.getRow(2);
+            subTitleRow.font = { name: 'Arial', size: 11, italic: true };
+            subTitleRow.alignment = { horizontal: 'center' };
+
+            const filterRow = sheet.getRow(3);
+            filterRow.font = { name: 'Arial', size: 10 };
+            filterRow.alignment = { horizontal: 'center' };
+
+            // 3. Styling Header Row (Row 5 because we inserted 4 rows)
+            const headerRow = sheet.getRow(5);
+            headerRow.values = sheet.columns.map(c => c.header);
+            headerRow.eachCell((cell) => {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF335157' } // Warna Spectra
+                };
+                cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+            headerRow.height = 24;
+
+            // 4. Populate Data (Using filteredTransactions to respect user filters)
+            const rows: any[] = [];
+            filteredTransactions.forEach(tx => {
+                const warehouseName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Unknown';
+                tx.items.forEach(item => {
+                    rows.push({
+                        date: tx.date,
+                        ref: tx.referenceNo,
+                        type: tx.type,
+                        warehouse: warehouseName,
+                        partner: tx.partnerName || '-',
+                        code: item.code,
+                        itemName: item.name,
+                        qty: item.qty,
+                        unit: item.unit,
+                        totalBase: item.qty * (item.ratio || 1),
+                        note: item.note || tx.notes || ''
+                    });
+                });
+            });
+
+            // Add rows starting from row 6
+            const addedRows = sheet.addRows(rows);
+
+            // 5. Styling Data Rows
+            addedRows.forEach(row => {
+                row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                    cell.alignment = { vertical: 'middle', wrapText: true };
+                    
+                    // Align Numbers to Right
+                    if ([8, 10].includes(colNumber)) { // Qty & TotalBase columns
+                         cell.alignment = { vertical: 'middle', horizontal: 'right' };
+                    }
+                    // Align Center items
+                    if ([1, 3, 9].includes(colNumber)) {
+                         cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    }
+                    
+                    // Colorize Transaction Type
+                    if (colNumber === 3) {
+                        const val = cell.value?.toString();
+                        if (val === 'IN') cell.font = { color: { argb: 'FF10B981' }, bold: true }; // Emerald
+                        else if (val === 'OUT') cell.font = { color: { argb: 'FFEF4444' }, bold: true }; // Red
+                    }
+                });
+            });
+
+            // 6. Generate Buffer & Download
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `Laporan_Mutasi_${startDate}_${endDate}.xlsx`;
+            anchor.click();
+            window.URL.revokeObjectURL(url);
+
+            showToast("Export berhasil!", "success");
+
+        } catch (error) {
+            console.error("Export Error", error);
+            showToast("Gagal export Excel", "error");
+        }
     };
 
     return (

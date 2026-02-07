@@ -188,8 +188,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     <div className="sm:col-span-6 relative">
                          <label className="text-[10px] font-black text-cutty uppercase tracking-widest mb-1.5 block text-slate-400">Cari Produk</label>
                          <SmartAutocomplete 
-                            data={masterItems} searchKeys={['code', 'name']} placeholder="SKU / Nama..." onSelect={it => { setPendingItem(it); setPendingUnit(it.baseUnit); }}
-                            renderItem={(it, sel, q) => (
+                            data={masterItems} searchKeys={['code', 'name']} placeholder="SKU / Nama..." 
+                            onSelect={(it: Item) => { setPendingItem(it); setPendingUnit(it.baseUnit); }}
+                            renderItem={(it: Item, sel: boolean, q: string) => (
                                 <div className="flex justify-between items-center w-full">
                                     <div className="min-w-0 pr-4">
                                         <div className="font-black text-xs text-white uppercase">{highlightMatch(it.code, q)}</div>

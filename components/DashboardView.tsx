@@ -52,7 +52,7 @@ export const DashboardView: React.FC = () => {
             });
 
             if (tx.type === 'OUT') {
-                new Set(tx.items.map(i => i.itemId)).forEach(itemId => {
+                new Set<string>(tx.items.map(i => i.itemId)).forEach((itemId: string) => {
                     outItemFrequencyMap.set(itemId, (outItemFrequencyMap.get(itemId) || 0) + 1);
                 });
             }
