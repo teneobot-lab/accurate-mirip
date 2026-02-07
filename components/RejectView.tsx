@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, Stock } from '../types';
-import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Tag, Edit3, Equal, Info, Box, Share2, Ruler, LayoutGrid, AlertCircle, Copy } from 'lucide-react';
+import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Building, Database, Tag, Edit3, Equal, Info, Box, Share2, Ruler, LayoutGrid, AlertCircle, Copy, FileSpreadsheet, Download } from 'lucide-react';
 import { useToast } from './Toast';
+import ExcelJS from 'exceljs';
 
 // --- PERFORMANCE HOOK ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -53,9 +54,14 @@ export const RejectView: React.FC = () => {
     const qtyInputRef = useRef<HTMLInputElement>(null);
     const reasonInputRef = useRef<HTMLInputElement>(null);
 
-    // History States
+    // History & Export States
     const [batches, setBatches] = useState<RejectBatch[]>([]);
     const [viewingBatch, setViewingBatch] = useState<RejectBatch | null>(null);
+    const [exportStart, setExportStart] = useState(() => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    });
+    const [exportEnd, setExportEnd] = useState(new Date().toISOString().split('T')[0]);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -126,7 +132,6 @@ export const RejectView: React.FC = () => {
             qty: conversionResult.baseQty, // DISIMPAN DALAM BASE QTY
             unit: pendingItem.baseUnit,    // DISIMPAN DALAM BASE UNIT
             baseQty: conversionResult.baseQty,
-            // LOGIC: Kita simpan input asli user di dalam string reason agar bisa di-reverse saat Copy Clipboard
             reason: `${pendingReason || ''} (Input: ${pendingQty} ${pendingUnit})` 
         };
 
@@ -151,6 +156,115 @@ export const RejectView: React.FC = () => {
         } catch (e) { showToast("Gagal simpan", "error"); }
     };
 
+    // --- EXPORT MATRIX ENGINE (EXCELJS) ---
+    const handleExportMatrix = async () => {
+        const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
+        if (filteredBatches.length === 0) return showToast("Tidak ada data di periode ini", "warning");
+
+        try {
+            showToast("Menyiapkan Matrix Excel...", "info");
+            const workbook = new ExcelJS.Workbook();
+            const sheet = workbook.addWorksheet('Matrix Reject');
+
+            // 1. Map Data for Matrix
+            // Rows: Items, Columns: Outlets
+            // FIX: Explicitly type uniqueOutlets as string[] to avoid 'unknown' inference in subsequent logic
+            const uniqueOutlets: string[] = Array.from(new Set(filteredBatches.map(b => b.outlet))).sort();
+            const itemMap = new Map<string, { code: string, name: string, unit: string, outletData: Map<string, number> }>();
+
+            filteredBatches.forEach(batch => {
+                batch.items.forEach(it => {
+                    if (!itemMap.has(it.itemId)) {
+                        itemMap.set(it.itemId, { 
+                            code: it.sku, 
+                            name: it.name, 
+                            unit: it.unit, 
+                            outletData: new Map() 
+                        });
+                    }
+                    const data = itemMap.get(it.itemId)!;
+                    const currentVal = data.outletData.get(batch.outlet) || 0;
+                    data.outletData.set(batch.outlet, currentVal + Number(it.baseQty));
+                });
+            });
+
+            // 2. Build Excel Structure
+            // Header Row 1: Title
+            sheet.mergeCells(1, 1, 1, 4 + uniqueOutlets.length);
+            const titleCell = sheet.getCell(1, 1);
+            titleCell.value = `LAPORAN MATRIX BARANG AFKIR (REJECT)`;
+            titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+            titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF335157' } };
+            titleCell.alignment = { horizontal: 'center' };
+
+            // Header Row 2: Subtitle
+            sheet.mergeCells(2, 1, 2, 4 + uniqueOutlets.length);
+            const subTitleCell = sheet.getCell(2, 1);
+            subTitleCell.value = `Periode: ${exportStart} s/d ${exportEnd} | Satuan: BASE UNIT`;
+            subTitleCell.font = { italic: true };
+            subTitleCell.alignment = { horizontal: 'center' };
+
+            // Header Row 4: Column Titles
+            const headCols = ['NO', 'SKU', 'NAMA BARANG', 'UNIT', ...uniqueOutlets, 'TOTAL'];
+            const headerRow = sheet.getRow(4);
+            headerRow.values = headCols;
+            headerRow.eachCell((cell) => {
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF496569' } };
+                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
+
+            // 3. Populate Rows
+            let rowIdx = 5;
+            Array.from(itemMap.values())
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach((item, idx) => {
+                    const row = sheet.getRow(rowIdx++);
+                    // FIX: Explicitly type vals array to avoid 'unknown' inference and fix potential line 227 error
+                    const vals: (string | number | null)[] = [idx + 1, item.code, item.name, item.unit];
+                    
+                    let rowTotal = 0;
+                    uniqueOutlets.forEach(o => {
+                        const qty = item.outletData.get(o) || 0;
+                        vals.push(qty || null); // Gunakan null agar cell kosong jika 0
+                        rowTotal += qty;
+                    });
+                    vals.push(rowTotal);
+                    
+                    // FIX: Ensure types are consistent with row.values setter (ExcelJS.CellValue[])
+                    row.values = vals as ExcelJS.CellValue[];
+                });
+
+            // 4. Formatting Columns
+            sheet.getColumn(1).width = 5;
+            sheet.getColumn(2).width = 15;
+            sheet.getColumn(3).width = 35;
+            sheet.getColumn(4).width = 8;
+            uniqueOutlets.forEach((_, i) => { sheet.getColumn(5 + i).width = 12; });
+            sheet.getColumn(5 + uniqueOutlets.length).width = 15;
+            sheet.getColumn(5 + uniqueOutlets.length).font = { bold: true };
+
+            // Freeze panes
+            sheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 4 }];
+
+            // 5. Generate and Download
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = `Matrix_Reject_${exportStart}_${exportEnd}.xlsx`;
+            anchor.click();
+            window.URL.revokeObjectURL(url);
+            showToast("Matrix Exported!", "success");
+
+        } catch (e) {
+            console.error(e);
+            showToast("Gagal Export Matrix", "error");
+        }
+    };
+
     const handleSaveMasterItem = async () => {
         if (!itemForm.code || !itemForm.name) return showToast("Kode & Nama wajib diisi", "warning");
         try {
@@ -161,47 +275,30 @@ export const RejectView: React.FC = () => {
         } catch (e) { showToast("Gagal simpan master", "error"); }
     };
 
-    // --- FITUR COPY CLIPBOARD (RESTORED) ---
     const handleCopyToClipboard = (batch: RejectBatch) => {
         const d = new Date(batch.date);
-        // Format Tanggal ddmmyy (050226)
         const dateStr = `${String(d.getDate()).padStart(2, '0')}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getFullYear()).slice(-2)}`;
-        
         let text = `Data Reject ${batch.outlet} ${dateStr}\n`;
 
         batch.items.forEach(it => {
-            let qtyDisplay = it.qty.toString(); // Default Base Qty
-            let unitDisplay = it.unit;          // Default Base Unit
+            let qtyDisplay = it.qty.toString();
+            let unitDisplay = it.unit;
             let reasonDisplay = it.reason || '';
-
-            // REGEX MAGIC: Ekstrak "Input: 2 DUS" dari string reason
             const inputMatch = it.reason ? it.reason.match(/\(Input:\s*([0-9.]+)\s*(.+?)\)/i) : null;
-            
             if (inputMatch) {
-                qtyDisplay = inputMatch[1]; // "2"
-                unitDisplay = inputMatch[2]; // "DUS"
-                
-                // Bersihkan reason agar tidak menampilkan log input lagi
+                qtyDisplay = inputMatch[1];
+                unitDisplay = inputMatch[2];
                 reasonDisplay = it.reason.replace(inputMatch[0], '').trim();
             }
-
-            // Bersihkan reason jika hanya sisa "-" atau kosong
             if (reasonDisplay === '-' || reasonDisplay === '') reasonDisplay = '';
-
-            // Format Output: - nama_barang qty unit alasan
             text += `- ${it.name.toLowerCase()} ${qtyDisplay} ${unitDisplay.toLowerCase()}`;
-            
-            if (reasonDisplay) {
-                text += ` ${reasonDisplay.toLowerCase()}`;
-            }
+            if (reasonDisplay) text += ` ${reasonDisplay.toLowerCase()}`;
             text += `\n`;
         });
 
         navigator.clipboard.writeText(text).then(() => {
             showToast("Tersalin (Satuan Input)", "success");
-        }).catch(() => {
-            showToast("Gagal menyalin", "error");
-        });
+        }).catch(() => showToast("Gagal menyalin", "error"));
     };
 
     const filteredMasterItems = useMemo(() => {
@@ -214,7 +311,7 @@ export const RejectView: React.FC = () => {
             {/* Header Tabs */}
             <div className="bg-gable p-2 rounded-2xl shadow-lg border border-spectra flex flex-wrap gap-2">
                 <TabBtn active={activeTab === 'NEW'} onClick={() => setActiveTab('NEW')} label="Entry Reject" icon={<Plus size={16}/>} />
-                <TabBtn active={activeTab === 'HISTORY'} onClick={() => setActiveTab('HISTORY')} label="Riwayat Reject" icon={<History size={16}/>} />
+                <TabBtn active={activeTab === 'HISTORY'} onClick={() => setActiveTab('HISTORY')} label="Riwayat & Matrix" icon={<History size={16}/>} />
                 <TabBtn active={activeTab === 'MASTER_ITEMS'} onClick={() => setActiveTab('MASTER_ITEMS')} label="Katalog Reject" icon={<Database size={16}/>} />
                 <TabBtn active={activeTab === 'MASTER'} onClick={() => setActiveTab('MASTER')} label="Master Outlet" icon={<MapPin size={16}/>} />
             </div>
@@ -262,7 +359,6 @@ export const RejectView: React.FC = () => {
                                         </tr>
                                     ))}
                                     
-                                    {/* INPUT ROW */}
                                     <tr className="bg-daintree/30 border-t border-spectra">
                                         <td className="p-3 relative">
                                             <input 
@@ -306,7 +402,7 @@ export const RejectView: React.FC = () => {
                                                 {pendingItem ? (
                                                     <>
                                                         <option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>
-                                                        {pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                                                        {pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>) || null}
                                                     </>
                                                 ) : <option value="">-</option>}
                                             </select>
@@ -331,36 +427,57 @@ export const RejectView: React.FC = () => {
                     </div>
                 </div>
             ) : activeTab === 'HISTORY' ? (
-                <div className="flex-1 bg-gable rounded-2xl border border-spectra overflow-auto shadow-sm">
-                    <table className="w-full text-left text-[11px]">
-                        <thead className="bg-daintree uppercase font-black text-cutty border-b border-spectra sticky top-0">
-                            <tr>
-                                <th className="px-4 py-3">ID Batch</th>
-                                <th className="px-4 py-3">Tanggal</th>
-                                <th className="px-4 py-3">Outlet</th>
-                                <th className="px-4 py-3 text-right">Total Item</th>
-                                <th className="px-4 py-3 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-spectra/20 text-white">
-                            {batches.map(b => (
-                                <tr key={b.id} className="hover:bg-white/5">
-                                    <td className="px-4 py-3 font-mono text-cutty">{b.id}</td>
-                                    <td className="px-4 py-3">{b.date}</td>
-                                    <td className="px-4 py-3 font-bold">{b.outlet}</td>
-                                    <td className="px-4 py-3 text-right font-black text-red-400">{b.items.length}</td>
-                                    <td className="px-4 py-3 text-center flex justify-center gap-2">
-                                        <button onClick={() => handleCopyToClipboard(b)} className="p-1.5 text-emerald-400 bg-emerald-900/20 rounded-lg hover:bg-emerald-900/40" title="Copy to Clipboard (Satuan Input)"><Copy size={14}/></button>
-                                        <button onClick={() => setViewingBatch(b)} className="p-1.5 text-blue-400 bg-blue-900/20 rounded-lg hover:bg-blue-900/40"><Eye size={14}/></button>
-                                        <button onClick={() => { if(confirm('Hapus riwayat ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1.5 text-red-400 bg-red-900/20 rounded-lg hover:bg-red-900/40"><Trash2 size={14}/></button>
-                                    </td>
+                <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                    {/* Filter & Export Bar */}
+                    <div className="bg-gable p-4 rounded-2xl border border-spectra flex flex-wrap items-end justify-between gap-4 shadow-sm">
+                        <div className="flex gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-cutty uppercase ml-1">Dari Tanggal</label>
+                                <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-daintree border border-spectra rounded-xl p-2.5 text-xs font-bold text-white outline-none" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-cutty uppercase ml-1">Sampai Tanggal</label>
+                                <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="bg-daintree border border-spectra rounded-xl p-2.5 text-xs font-bold text-white outline-none" />
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleExportMatrix}
+                            className="px-6 py-2.5 bg-emerald-900/20 text-emerald-400 border border-emerald-900/50 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-900/40 transition-all active:scale-95"
+                        >
+                            <FileSpreadsheet size={16}/> Export Matrix Pivot
+                        </button>
+                    </div>
+
+                    <div className="flex-1 bg-gable rounded-2xl border border-spectra overflow-auto shadow-sm">
+                        <table className="w-full text-left text-[11px]">
+                            <thead className="bg-daintree uppercase font-black text-cutty border-b border-spectra sticky top-0">
+                                <tr>
+                                    <th className="px-4 py-3">ID Batch</th>
+                                    <th className="px-4 py-3">Tanggal</th>
+                                    <th className="px-4 py-3">Outlet</th>
+                                    <th className="px-4 py-3 text-right">Total Item</th>
+                                    <th className="px-4 py-3 text-center">Action</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-spectra/20 text-white">
+                                {batches.filter(b => b.date >= exportStart && b.date <= exportEnd).map(b => (
+                                    <tr key={b.id} className="hover:bg-white/5">
+                                        <td className="px-4 py-3 font-mono text-cutty">{b.id}</td>
+                                        <td className="px-4 py-3 font-bold text-emerald-500">{b.date}</td>
+                                        <td className="px-4 py-3 font-bold">{b.outlet}</td>
+                                        <td className="px-4 py-3 text-right font-black text-red-400">{b.items.length}</td>
+                                        <td className="px-4 py-3 text-center flex justify-center gap-2">
+                                            <button onClick={() => handleCopyToClipboard(b)} className="p-1.5 text-emerald-400 bg-emerald-900/20 rounded-lg hover:bg-emerald-900/40" title="Copy to Clipboard (Satuan Input)"><Copy size={14}/></button>
+                                            <button onClick={() => setViewingBatch(b)} className="p-1.5 text-blue-400 bg-blue-900/20 rounded-lg hover:bg-blue-900/40"><Eye size={14}/></button>
+                                            <button onClick={() => { if(confirm('Hapus riwayat ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1.5 text-red-400 bg-red-900/20 rounded-lg hover:bg-red-900/40"><Trash2 size={14}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : activeTab === 'MASTER_ITEMS' ? (
-                /* ... (Kode Master Items tetap sama, disederhanakan untuk brevity XML) ... */
                 <div className="flex-1 flex flex-col gap-4 overflow-hidden">
                     <div className="bg-gable p-3 rounded-2xl border border-spectra flex justify-between items-center shadow-sm">
                         <div className="relative group">
@@ -412,7 +529,7 @@ export const RejectView: React.FC = () => {
                         <input type="text" placeholder="NAMA OUTLET BARU..." onKeyDown={e => {
                             if(e.key === 'Enter' && e.currentTarget.value) {
                                 StorageService.saveRejectOutlet(e.currentTarget.value).then(loadData);
-                                e.currentTarget.value = '';
+                                (e.target as HTMLInputElement).value = '';
                             }
                         }} className="flex-1 p-4 bg-daintree border border-spectra rounded-2xl outline-none text-xs font-bold text-white focus:ring-2 focus:ring-spectra" />
                         <button className="px-8 py-4 bg-spectra text-white rounded-2xl font-black text-xs shadow-lg hover:bg-white hover:text-spectra transition-all">TAMBAH</button>
@@ -462,7 +579,6 @@ export const RejectView: React.FC = () => {
                                  </div>
                              </div>
 
-                             {/* Multi Unit Table */}
                              <div className="space-y-4">
                                 <div className="flex justify-between items-center border-b border-spectra/50 pb-2">
                                     <h4 className="text-[10px] font-black uppercase text-cutty tracking-widest flex items-center gap-2"><LayoutGrid size={14}/> Tabel Konversi Satuan Input</h4>
