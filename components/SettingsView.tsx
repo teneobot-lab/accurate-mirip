@@ -31,9 +31,10 @@ export const SettingsView: React.FC = () => {
     const [editData, setEditData] = useState<any>(null);
 
     const [scriptUrl, setScriptUrl] = useState('');
+    // Fixed: Local Date for 1st of month
     const [syncStart, setSyncStart] = useState(() => {
         const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
     });
     const [syncEnd, setSyncEnd] = useState(new Date().toISOString().split('T')[0]);
     const [isSyncing, setIsSyncing] = useState(false);

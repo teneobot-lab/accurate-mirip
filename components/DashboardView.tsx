@@ -11,10 +11,10 @@ export const DashboardView: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Fixed: Local Date for 1st of month
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
-        // Default ke tanggal 1 bulan berjalan
-        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
     });
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 

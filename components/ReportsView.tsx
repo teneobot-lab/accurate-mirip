@@ -20,9 +20,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     const [filterWh, setFilterWh] = useState('ALL');
     const [filterType, setFilterType] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // Fixed: Local Date for 1st of month
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
     });
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 

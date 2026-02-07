@@ -15,10 +15,10 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Date Filter State
+  // Date Filter State - Fixed to Local Time 1st of Month
   const [startDate, setStartDate] = useState(() => {
       const d = new Date();
-      return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 

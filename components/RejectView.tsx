@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, Stock } from '../types';
@@ -67,9 +66,11 @@ export const RejectView: React.FC = () => {
     // History & Export States
     const [batches, setBatches] = useState<RejectBatch[]>([]);
     const [viewingBatch, setViewingBatch] = useState<RejectBatch | null>(null);
+    
+    // Fixed: Local Date for 1st of month (Export/History Filter)
     const [exportStart, setExportStart] = useState(() => {
         const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
     });
     const [exportEnd, setExportEnd] = useState(new Date().toISOString().split('T')[0]);
 
@@ -776,8 +777,8 @@ export const RejectView: React.FC = () => {
     );
 };
 
-const TabBtn = ({ active, onClick, label, icon }: any) => (
-    <button onClick={onClick} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 border transition-all duration-300 ${active ? 'bg-spectra text-white border-spectra shadow-[0_4px_15px_rgba(0,0,0,0.3)] translate-y-[-2px]' : 'text-slate-400 border-transparent hover:bg-daintree'}`}>
+const TabBtn = ({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) => (
+    <button onClick={onClick} className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${active ? 'bg-spectra text-white shadow-lg shadow-black/20 border border-spectra/50' : 'text-slate-400 hover:bg-daintree hover:text-white border border-transparent'}`}>
         {icon} {label}
     </button>
 );
