@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Transaction, Warehouse } from '../types';
-import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal } from 'lucide-react';
+import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal, MapPin } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useToast } from './Toast';
 
@@ -88,72 +88,69 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         }
 
         try {
-            showToast("Menyiapkan file Excel...", "info");
+            showToast("Menyiapkan file Excel Enterprise...", "info");
             const workbook = new ExcelJS.Workbook();
             const sheet = workbook.addWorksheet('Laporan Mutasi');
 
-            // 1. Setup Columns
+            // 1. Standard Column Widths (Ideal Geometry)
             sheet.columns = [
-                { header: 'TANGGAL', key: 'date', width: 12 },
-                { header: 'NO. REFERENSI', key: 'ref', width: 20 },
+                { header: 'TANGGAL', key: 'date', width: 14 },
+                { header: 'NO. REFERENSI', key: 'ref', width: 22 },
                 { header: 'TIPE', key: 'type', width: 10 },
-                { header: 'GUDANG', key: 'warehouse', width: 15 },
-                { header: 'PARTNER', key: 'partner', width: 20 },
-                { header: 'KODE ITEM', key: 'code', width: 15 },
-                { header: 'NAMA BARANG', key: 'itemName', width: 30 },
+                { header: 'GUDANG / LOKASI', key: 'warehouse', width: 20 },
+                { header: 'PARTNER', key: 'partner', width: 25 },
+                { header: 'KODE SKU', key: 'code', width: 18 },
+                { header: 'DESKRIPSI BARANG', key: 'itemName', width: 45 },
                 { header: 'QTY', key: 'qty', width: 10 },
-                { header: 'SATUAN', key: 'unit', width: 8 },
-                { header: 'TOTAL BASE', key: 'totalBase', width: 12 },
-                { header: 'CATATAN', key: 'note', width: 25 },
+                { header: 'SATUAN', key: 'unit', width: 10 },
+                { header: 'TOTAL BASE', key: 'totalBase', width: 15 },
+                { header: 'CATATAN', key: 'note', width: 35 },
             ];
 
-            // 2. Add Title Rows
-            // FIX: Cast to ExcelJS.CellValue[] to satisfy type check for insertRow values.
+            // 2. Add Title & Metadata Rows
             sheet.insertRow(1, [`LAPORAN MUTASI GUDANGPRO`] as ExcelJS.CellValue[]);
-            sheet.insertRow(2, [`Periode: ${startDate} s/d ${endDate}`] as ExcelJS.CellValue[]);
-            sheet.insertRow(3, [`Filter Gudang: ${warehouses.find(w => w.id === filterWh)?.name || 'Semua Gudang'} | Tipe: ${filterType}`] as ExcelJS.CellValue[]);
-            sheet.insertRow(4, [''] as ExcelJS.CellValue[]); // Spacer
+            sheet.insertRow(2, [`Periode: ${startDate} s/d ${endDate} | Tipe: ${filterType}`] as ExcelJS.CellValue[]);
+            sheet.insertRow(3, [`Gudang: ${warehouses.find(w => w.id === filterWh)?.name || 'Semua Gudang'}`] as ExcelJS.CellValue[]);
+            sheet.insertRow(4, [''] as ExcelJS.CellValue[]); 
 
-            // Styling Title
-            sheet.mergeCells('A1:K1');
-            sheet.mergeCells('A2:K2');
-            sheet.mergeCells('A3:K3');
-            
-            const titleRow = sheet.getRow(1);
-            titleRow.font = { name: 'Arial', size: 16, bold: true };
-            titleRow.alignment = { horizontal: 'center' };
-
-            const subTitleRow = sheet.getRow(2);
-            subTitleRow.font = { name: 'Arial', size: 11, italic: true };
-            subTitleRow.alignment = { horizontal: 'center' };
-
-            const filterRow = sheet.getRow(3);
-            filterRow.font = { name: 'Arial', size: 10 };
-            filterRow.alignment = { horizontal: 'center' };
-
-            // 3. Styling Header Row (Row 5 because we inserted 4 rows)
+            // Header Row (Fixed at Row 5)
             const headerRow = sheet.getRow(5);
-            // FIX: Map column headers to string safely as headerRow.values expects CellValue[]. 
-            // sheet.columns[].header can be string | string[] | undefined.
             headerRow.values = (sheet.columns || []).map(c => (Array.isArray(c.header) ? c.header.join(' ') : (c.header || '')) as ExcelJS.CellValue);
+            
+            // 3. APPLY ENTERPRISE LOOK
+            // Set Row Heights uniformly
+            for (let i = 1; i <= 3; i++) sheet.getRow(i).height = 24;
+            headerRow.height = 30;
+
+            // Enable Auto Filter per Column
+            sheet.autoFilter = {
+                from: { row: 5, column: 1 },
+                to: { row: 5, column: 11 }
+            };
+
+            // Title Styling
+            sheet.mergeCells('A1:K1');
+            sheet.getCell('A1').font = { name: 'Arial', size: 16, bold: true };
+            sheet.getCell('A1').alignment = { horizontal: 'center' };
+            sheet.mergeCells('A2:K2');
+            sheet.getCell('A2').alignment = { horizontal: 'center' };
+            sheet.mergeCells('A3:K3');
+            sheet.getCell('A3').alignment = { horizontal: 'center' };
+
+            // Header Styling
             headerRow.eachCell((cell) => {
-                cell.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FF335157' } // Warna Spectra
-                };
-                cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } }; // Dark Slate
+                cell.font = { name: 'Arial', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
                 cell.alignment = { vertical: 'middle', horizontal: 'center' };
                 cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
+                    top: { style: 'thin', color: { argb: 'FF374151' } },
+                    left: { style: 'thin', color: { argb: 'FF374151' } },
+                    bottom: { style: 'thin', color: { argb: 'FF374151' } },
+                    right: { style: 'thin', color: { argb: 'FF374151' } }
                 };
             });
-            headerRow.height = 24;
 
-            // 4. Populate Data (Using filteredTransactions to respect user filters)
+            // 4. Populate & Style Data
             const rows: any[] = [];
             filteredTransactions.forEach(tx => {
                 const warehouseName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Unknown';
@@ -174,50 +171,42 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 });
             });
 
-            // Add rows starting from row 6
-            const addedRows = sheet.addRows(rows);
-
-            // 5. Styling Data Rows
-            addedRows.forEach(row => {
+            const dataRows = sheet.addRows(rows);
+            dataRows.forEach((row, idx) => {
+                row.height = 22; // Uniform Row Height
+                const isEven = idx % 2 === 0;
                 row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    cell.font = { name: 'Arial', size: 9 };
+                    if (isEven) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
                     cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
+                        top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                        bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                        right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
                     };
-                    cell.alignment = { vertical: 'middle', wrapText: true };
+                    cell.alignment = { vertical: 'middle' };
                     
-                    // Align Numbers to Right
-                    if ([8, 10].includes(colNumber)) { // Qty & TotalBase columns
-                         cell.alignment = { vertical: 'middle', horizontal: 'right' };
-                    }
-                    // Align Center items
-                    if ([1, 3, 9].includes(colNumber)) {
-                         cell.alignment = { vertical: 'middle', horizontal: 'center' };
-                    }
+                    if ([8, 10].includes(colNumber)) cell.alignment = { vertical: 'middle', horizontal: 'right' };
+                    if ([1, 3, 9].includes(colNumber)) cell.alignment = { vertical: 'middle', horizontal: 'center' };
                     
-                    // Colorize Transaction Type
                     if (colNumber === 3) {
                         const val = cell.value?.toString();
-                        if (val === 'IN') cell.font = { color: { argb: 'FF10B981' }, bold: true }; // Emerald
-                        else if (val === 'OUT') cell.font = { color: { argb: 'FFEF4444' }, bold: true }; // Red
+                        if (val === 'IN') cell.font = { color: { argb: 'FF059669' }, bold: true, size: 9 };
+                        else cell.font = { color: { argb: 'FFDC2626' }, bold: true, size: 9 };
                     }
                 });
             });
 
-            // 6. Generate Buffer & Download
+            // 5. Build Buffer
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            
             const url = window.URL.createObjectURL(blob);
             const anchor = document.createElement('a');
             anchor.href = url;
-            anchor.download = `Laporan_Mutasi_${startDate}_${endDate}.xlsx`;
+            anchor.download = `MUTASI_GUDANGPRO_${startDate}_${endDate}.xlsx`;
             anchor.click();
             window.URL.revokeObjectURL(url);
-
-            showToast("Export berhasil!", "success");
+            showToast("Laporan Enterprise Exported!", "success");
 
         } catch (error) {
             console.error("Export Error", error);
@@ -227,7 +216,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
 
     return (
         <div className="flex flex-col h-full bg-daintree p-4 gap-4 overflow-hidden font-sans">
-            {/* Header & Filter Bar - Comfortable Layout */}
+            {/* Filter Bar */}
             <div className="bg-gable p-4 rounded-xl border border-spectra flex flex-wrap gap-5 items-end shadow-sm">
                 <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Periode Laporan</span>
@@ -263,7 +252,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     <span className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Pencarian Global</span>
                     <div className="relative group">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-spectra transition-colors"/>
-                        <input type="text" placeholder="Cari No. Referensi, Nama Partner, atau Nama Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-daintree border border-spectra/50 rounded-lg px-3 py-2 pl-10 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra transition-all placeholder:text-slate-600 shadow-inner" />
+                        <input type="text" placeholder="Cari No. Referensi, Partner, atau Nama Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-daintree border border-spectra/50 rounded-lg px-3 py-2 pl-10 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra transition-all placeholder:text-slate-600 shadow-inner" />
                     </div>
                 </div>
 
@@ -273,17 +262,18 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 </div>
             </div>
 
-            {/* Table - Comfortable Style */}
+            {/* Table */}
             <div className="flex-1 rounded-xl border border-spectra overflow-hidden flex flex-col bg-gable shadow-md">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-daintree text-[11px] font-black text-cutty uppercase tracking-widest sticky top-0 z-10 shadow-md">
                             <tr>
                                 <th className="px-4 py-3 w-12 text-center border-b border-spectra">#</th>
-                                <th className="px-4 py-3 w-32 border-b border-spectra">Tanggal</th>
-                                <th className="px-4 py-3 w-48 border-b border-spectra">No. Referensi</th>
-                                <th className="px-4 py-3 w-24 text-center border-b border-spectra">Tipe</th>
-                                <th className="px-4 py-3 border-b border-spectra">Partner & Lokasi</th>
+                                <th className="px-4 py-3 w-28 border-b border-spectra">Tanggal</th>
+                                <th className="px-4 py-3 w-40 border-b border-spectra">No. Referensi</th>
+                                <th className="px-4 py-3 w-20 text-center border-b border-spectra">Tipe</th>
+                                <th className="px-4 py-3 border-b border-spectra">Partner</th>
+                                <th className="px-4 py-3 border-b border-spectra">Gudang / Lokasi</th>
                                 <th className="px-4 py-3 w-24 text-right border-b border-spectra">Total Item</th>
                                 <th className="px-4 py-3 w-32 text-center border-b border-spectra">Aksi</th>
                             </tr>
@@ -297,21 +287,21 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                 {expandedTx.has(tx.id) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                                             </button>
                                         </td>
-                                        <td className="px-4 py-3 font-mono text-emerald-500 font-bold text-xs">{tx.date}</td>
-                                        <td className="px-4 py-3 font-bold text-white">{tx.referenceNo}</td>
+                                        <td className="px-4 py-3 font-mono text-emerald-500 font-bold text-[10px]">{tx.date}</td>
+                                        <td className="px-4 py-3 font-bold text-white text-xs">{tx.referenceNo}</td>
                                         <td className="px-4 py-3 text-center">
-                                             <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${tx.type === 'IN' ? 'text-emerald-400 bg-emerald-900/20 border-emerald-900/50' : 'text-red-400 bg-red-900/20 border-red-900/50'}`}>{tx.type}</span>
+                                             <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border ${tx.type === 'IN' ? 'text-emerald-400 bg-emerald-900/20 border-emerald-900/50' : 'text-red-400 bg-red-900/20 border-red-900/50'}`}>{tx.type}</span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="flex flex-col justify-center">
-                                                <div className="font-bold text-slate-200 flex items-center gap-2">
-                                                    <User size={12} className="text-cutty"/>
-                                                    {tx.partnerName || '-'}
-                                                </div>
-                                                <div className="text-[10px] text-cutty uppercase font-bold flex items-center gap-2 mt-0.5">
-                                                    <Box size={12}/>
-                                                    {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}
-                                                </div>
+                                            <div className="flex items-center gap-2 text-slate-200 font-bold text-xs uppercase">
+                                                <User size={12} className="text-cutty"/>
+                                                {tx.partnerName || '-'}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2 text-cutty font-black text-[10px] uppercase">
+                                                <MapPin size={12}/>
+                                                {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-right font-mono text-white font-bold">{tx.items.length}</td>
@@ -325,7 +315,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                      </tr>
                                      {expandedTx.has(tx.id) && (
                                          <tr className="bg-black/20 animate-in fade-in slide-in-from-top-1">
-                                             <td colSpan={7} className="p-0 border-b border-spectra/50">
+                                             <td colSpan={8} className="p-0 border-b border-spectra/50">
                                                  <div className="p-4 pl-16">
                                                      <div className="rounded-lg border border-spectra/30 overflow-hidden bg-daintree shadow-inner">
                                                         <table className="w-full text-xs">
