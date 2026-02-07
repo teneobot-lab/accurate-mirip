@@ -2,11 +2,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, Loader2, CheckSquare, Square, Filter, Columns, Edit3, Database, Tag, ShieldCheck, ChevronDown, Package, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, Loader2, CheckSquare, Square, Filter, Columns, Edit3, Database, Tag, ShieldCheck, ChevronDown, Package, AlertTriangle, ToggleLeft, ToggleRight, Eye } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
-export const InventoryView: React.FC = () => {
+interface InventoryViewProps {
+    onViewItem?: (item: Item) => void;
+}
+
+export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
     const { showToast } = useToast();
     const [items, setItems] = useState<Item[]>([]);
     const [stocks, setStocks] = useState<Stock[]>([]);
@@ -14,9 +18,7 @@ export const InventoryView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(false);
-    const [isImporting, setIsImporting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
+    
     const [showItemModal, setShowItemModal] = useState(false);
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [itemForm, setItemForm] = useState<Partial<Item>>({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, isActive: true, conversions: [] });
@@ -75,7 +77,7 @@ export const InventoryView: React.FC = () => {
                                 <th className="px-4 py-3 w-32 text-right">Sisa Stok</th>
                                 <th className="px-4 py-3 w-20 text-center">Unit</th>
                                 <th className="px-4 py-3 w-24 text-center">Status</th>
-                                <th className="px-4 py-3 w-16 text-center"></th>
+                                <th className="px-4 py-3 w-24 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-spectra/10">
@@ -95,7 +97,12 @@ export const InventoryView: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-center">
-                                        <button onClick={() => { setEditingItem(item); setItemForm(item); setShowItemModal(true); }} className="p-1.5 text-slate-500 hover:text-white transition-colors"><Edit3 size={14}/></button>
+                                        <div className="flex items-center justify-center gap-2">
+                                            {onViewItem && (
+                                                <button onClick={() => onViewItem(item)} className="p-1.5 text-slate-500 hover:text-spectra transition-colors" title="Lihat Kartu Stok"><Eye size={14}/></button>
+                                            )}
+                                            <button onClick={() => { setEditingItem(item); setItemForm(item); setShowItemModal(true); }} className="p-1.5 text-slate-500 hover:text-white transition-colors" title="Edit Master Item"><Edit3 size={14}/></button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

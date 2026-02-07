@@ -7,14 +7,14 @@ import { ReportsView } from './components/ReportsView';
 import { DashboardView } from './components/DashboardView';
 import { SettingsView } from './components/SettingsView';
 import { RejectView } from './components/RejectView';
-import { StockCardModal } from './components/StockCardModal';
+import { StockCardView } from './components/StockCardModal'; // Renamed import conceptually
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { LowStockAlert } from './components/LowStockAlert';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, X } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, X, ArrowLeft } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
@@ -23,14 +23,16 @@ function App() {
   const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default closed for mobile flexibility
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
   
   const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  
+  // STATE VIEW LOGIC: If viewingItem is set, it overrides the activeTab content
   const [viewingItem, setViewingItem] = useState<Item | null>(null);
 
   const refreshData = () => {
-    // This function can be used to trigger data refreshes across the app if needed
+    // Trigger data refresh if needed
   };
 
   useEffect(() => {
@@ -56,6 +58,7 @@ function App() {
       setIsLoggedIn(false);
       setCurrentUser(null);
       setActiveTab('DASHBOARD');
+      setViewingItem(null);
       StorageService.clearSession();
   };
 
@@ -63,17 +66,18 @@ function App() {
     <button
       onClick={() => {
           setActiveTab(id);
-          if (window.innerWidth < 1024) setIsSidebarOpen(false); // Auto close on mobile
+          setViewingItem(null); // Reset detail view when changing tabs
+          if (window.innerWidth < 1024) setIsSidebarOpen(false); 
       }}
       className={`flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all ${
-        activeTab === id 
+        activeTab === id && !viewingItem
         ? 'bg-spectra text-white shadow-lg shadow-black/20 border border-cutty/30' 
         : 'text-slate-400 hover:bg-spectra/50 hover:text-slate-100'
       }`}
     >
       <Icon size={18} className="mr-3 flex-shrink-0" />
       <span className="whitespace-nowrap">{label}</span>
-      {activeTab === id && <ChevronRight size={16} className="ml-auto opacity-50" />}
+      {activeTab === id && !viewingItem && <ChevronRight size={16} className="ml-auto opacity-50" />}
     </button>
   );
 
@@ -139,13 +143,13 @@ function App() {
                   </div>
                   
                   <div className="p-4 border-t border-spectra/30 bg-daintree text-[10px] text-slate-500 flex justify-between items-center font-bold">
-                      <span>v1.2.0-FLEX</span>
+                      <span>v1.3.0-STATE</span>
                       <span className="text-spectra uppercase">Enterprise</span>
                   </div>
               </aside>
 
               <main className="flex-1 flex flex-col overflow-hidden relative">
-                  {/* HEADER - ADAPTIVE */}
+                  {/* HEADER */}
                   <header className="h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-4 lg:px-6 shadow-sm z-30 shrink-0">
                       <div className="flex items-center gap-2 lg:gap-4 overflow-hidden">
                           <button 
@@ -155,22 +159,33 @@ function App() {
                               <Menu size={20} />
                           </button>
                           <div className="flex-col hidden sm:flex">
-                              <h2 className="text-sm lg:text-base font-bold text-white leading-none truncate">
-                                  {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
-                                  {activeTab === 'INVENTORY' && 'Inventory Master'}
-                                  {activeTab === 'REPORTS' && 'Reports'}
-                                  {activeTab === 'REJECT' && 'Reject Management'}
-                                  {activeTab === 'SETTINGS' && 'System Config'}
+                              <h2 className="text-sm lg:text-base font-bold text-white leading-none truncate flex items-center gap-2">
+                                  {viewingItem ? (
+                                      <>
+                                        <button onClick={() => setViewingItem(null)} className="hover:text-spectra transition-colors"><ArrowLeft size={16}/></button>
+                                        <span className="text-spectra">Stock Card Detail</span>
+                                      </>
+                                  ) : (
+                                      <>
+                                        {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
+                                        {activeTab === 'INVENTORY' && 'Inventory Master'}
+                                        {activeTab === 'REPORTS' && 'Reports'}
+                                        {activeTab === 'REJECT' && 'Reject Management'}
+                                        {activeTab === 'SETTINGS' && 'System Config'}
+                                      </>
+                                  )}
                               </h2>
                           </div>
                       </div>
                       
-                      <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg mx-2 lg:mx-4">
-                          <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
-                      </div>
+                      {/* Search disembunyikan jika sedang mode Stock Card agar lebih bersih, atau bisa tetap ada */}
+                      {!viewingItem && (
+                          <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg mx-2 lg:mx-4">
+                              <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
+                          </div>
+                      )}
 
                       <div className="flex items-center gap-1 lg:gap-3 shrink-0">
-                          {/* Restored Features */}
                           <div className="flex items-center gap-1 lg:gap-2">
                             <LowStockAlert />
                             <MusicPlayer />
@@ -184,13 +199,19 @@ function App() {
                       </div>
                   </header>
 
-                  {/* CONTENT AREA */}
+                  {/* CONTENT AREA - State View Logic */}
                   <div className="flex-1 overflow-auto bg-daintree relative">
-                      {activeTab === 'DASHBOARD' && <DashboardView />}
-                      {activeTab === 'INVENTORY' && <InventoryView />}
-                      {activeTab === 'REPORTS' && <ReportsView onEditTransaction={(tx) => { setEditingTransaction(tx); setShowTransactionModal(tx.type); }} />}
-                      {activeTab === 'SETTINGS' && <SettingsView />}
-                      {activeTab === 'REJECT' && <RejectView />}
+                      {viewingItem ? (
+                          <StockCardView item={viewingItem} onBack={() => setViewingItem(null)} />
+                      ) : (
+                          <>
+                            {activeTab === 'DASHBOARD' && <DashboardView />}
+                            {activeTab === 'INVENTORY' && <InventoryView onViewItem={(item) => setViewingItem(item)} />}
+                            {activeTab === 'REPORTS' && <ReportsView onEditTransaction={(tx) => { setEditingTransaction(tx); setShowTransactionModal(tx.type); }} />}
+                            {activeTab === 'SETTINGS' && <SettingsView />}
+                            {activeTab === 'REJECT' && <RejectView />}
+                          </>
+                      )}
                   </div>
 
                   {showTransactionModal && (
@@ -200,10 +221,6 @@ function App() {
                           onClose={() => { setShowTransactionModal(null); setEditingTransaction(null); }} 
                           onSuccess={() => { setShowTransactionModal(null); setEditingTransaction(null); refreshData(); }}
                       />
-                  )}
-
-                  {viewingItem && (
-                      <StockCardModal item={viewingItem} onClose={() => setViewingItem(null)} />
                   )}
               </main>
           </div>
