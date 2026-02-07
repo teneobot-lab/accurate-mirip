@@ -21,6 +21,12 @@ const cleanNum = (val: string | number): number => {
     return isNaN(num) ? 0 : parseFloat(num.toFixed(4));
 };
 
+// Helper untuk mendapatkan nama hari Indonesia
+const getDayNameID = (dateStr: string) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return days[new Date(dateStr).getDay()];
+};
+
 export const RejectView: React.FC = () => {
     const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'MASTER_ITEMS' | 'MASTER'>('NEW');
@@ -162,15 +168,21 @@ export const RejectView: React.FC = () => {
         if (filteredBatches.length === 0) return showToast("Tidak ada data di periode ini", "warning");
 
         try {
-            showToast("Menyiapkan Matrix Excel...", "info");
+            showToast("Menyiapkan Laporan Mingguan...", "info");
             const workbook = new ExcelJS.Workbook();
-            const sheet = workbook.addWorksheet('Matrix Reject');
+            const sheet = workbook.addWorksheet('Laporan Reject Mingguan');
 
-            // 1. Map Data for Matrix
-            // Rows: Items, Columns: Outlets
-            // FIX: Explicitly type uniqueOutlets as string[] to avoid 'unknown' inference in subsequent logic
-            const uniqueOutlets: string[] = Array.from(new Set(filteredBatches.map(b => b.outlet))).sort();
-            const itemMap = new Map<string, { code: string, name: string, unit: string, outletData: Map<string, number> }>();
+            // 1. Generate List of Dates (Horizontal Columns)
+            const dateList: string[] = [];
+            let curr = new Date(exportStart);
+            const end = new Date(exportEnd);
+            while (curr <= end) {
+                dateList.push(curr.toISOString().split('T')[0]);
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            // 2. Map Data: ItemID -> Date -> TotalBaseQty
+            const itemMap = new Map<string, { code: string, name: string, unit: string, dateValues: Map<string, number> }>();
 
             filteredBatches.forEach(batch => {
                 batch.items.forEach(it => {
@@ -178,86 +190,108 @@ export const RejectView: React.FC = () => {
                         itemMap.set(it.itemId, { 
                             code: it.sku, 
                             name: it.name, 
-                            unit: it.unit, 
-                            outletData: new Map() 
+                            unit: it.unit, // Ini dipastikan Base Unit dari saat input
+                            dateValues: new Map() 
                         });
                     }
                     const data = itemMap.get(it.itemId)!;
-                    const currentVal = data.outletData.get(batch.outlet) || 0;
-                    data.outletData.set(batch.outlet, currentVal + Number(it.baseQty));
+                    const currentVal = data.dateValues.get(batch.date) || 0;
+                    data.dateValues.set(batch.date, currentVal + Number(it.baseQty));
                 });
             });
 
-            // 2. Build Excel Structure
-            // Header Row 1: Title
-            sheet.mergeCells(1, 1, 1, 4 + uniqueOutlets.length);
+            // 3. Build Header Structure
+            // Row 1: Main Title
+            sheet.mergeCells(1, 1, 1, 5 + dateList.length);
             const titleCell = sheet.getCell(1, 1);
-            titleCell.value = `LAPORAN MATRIX BARANG AFKIR (REJECT)`;
+            titleCell.value = `LAPORAN BARANG REJECT MINGGUAN`;
             titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
             titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF335157' } };
             titleCell.alignment = { horizontal: 'center' };
 
-            // Header Row 2: Subtitle
-            sheet.mergeCells(2, 1, 2, 4 + uniqueOutlets.length);
-            const subTitleCell = sheet.getCell(2, 1);
-            subTitleCell.value = `Periode: ${exportStart} s/d ${exportEnd} | Satuan: BASE UNIT`;
-            subTitleCell.font = { italic: true };
-            subTitleCell.alignment = { horizontal: 'center' };
+            // Row 2: Header Labels
+            const headerRow = sheet.getRow(2);
+            const headerValues: any[] = ['NO', 'Kode Barang', 'Nama Barang', 'Satuan'];
+            dateList.forEach(d => {
+                headerValues.push(`${getDayNameID(d)}\n${d.split('-').reverse().slice(0, 2).join('/')}`);
+            });
+            headerValues.push('TOTAL');
+            headerRow.values = headerValues;
 
-            // Header Row 4: Column Titles
-            const headCols = ['NO', 'SKU', 'NAMA BARANG', 'UNIT', ...uniqueOutlets, 'TOTAL'];
-            const headerRow = sheet.getRow(4);
-            headerRow.values = headCols;
-            headerRow.eachCell((cell) => {
-                cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            // Header Styling
+            headerRow.height = 32;
+            headerRow.eachCell((cell, colNum) => {
+                cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
                 cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF496569' } };
                 cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                
+                // Color formatting for Saturday/Sunday
+                if (colNum > 4 && colNum <= 4 + dateList.length) {
+                    const dateIdx = colNum - 5;
+                    const dName = getDayNameID(dateList[dateIdx]);
+                    if (dName === 'Minggu') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEF4444' } };
+                    if (dName === 'Sabtu') cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+                }
             });
 
-            // 3. Populate Rows
-            let rowIdx = 5;
+            // 4. Populate Data Rows
+            let rowIdx = 3;
             Array.from(itemMap.values())
                 .sort((a, b) => a.name.localeCompare(b.name))
                 .forEach((item, idx) => {
                     const row = sheet.getRow(rowIdx++);
-                    // FIX: Explicitly type vals array to avoid 'unknown' inference and fix potential line 227 error
                     const vals: (string | number | null)[] = [idx + 1, item.code, item.name, item.unit];
                     
                     let rowTotal = 0;
-                    uniqueOutlets.forEach(o => {
-                        const qty = item.outletData.get(o) || 0;
-                        vals.push(qty || null); // Gunakan null agar cell kosong jika 0
+                    dateList.forEach(d => {
+                        const qty = item.dateValues.get(d) || 0;
+                        vals.push(qty || 0); // Tampilkan 0 sesuai layout
                         rowTotal += qty;
                     });
                     vals.push(rowTotal);
                     
-                    // FIX: Ensure types are consistent with row.values setter (ExcelJS.CellValue[])
                     row.values = vals as ExcelJS.CellValue[];
+                    
+                    // Style Data Cells
+                    row.eachCell((cell, colNum) => {
+                        cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                        cell.font = { size: 9 };
+                        if (colNum >= 5) {
+                            cell.numFmt = '#,##0.####';
+                            cell.alignment = { horizontal: 'right' };
+                            // Highlight non-zero values with yellow like screenshot
+                            if (Number(cell.value) > 0) {
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+                                cell.font = { bold: true, size: 9 };
+                            }
+                        }
+                        if (colNum <= 2 || colNum === 4) cell.alignment = { horizontal: 'center' };
+                    });
                 });
 
-            // 4. Formatting Columns
-            sheet.getColumn(1).width = 5;
-            sheet.getColumn(2).width = 15;
-            sheet.getColumn(3).width = 35;
-            sheet.getColumn(4).width = 8;
-            uniqueOutlets.forEach((_, i) => { sheet.getColumn(5 + i).width = 12; });
-            sheet.getColumn(5 + uniqueOutlets.length).width = 15;
-            sheet.getColumn(5 + uniqueOutlets.length).font = { bold: true };
+            // 5. Formatting Columns
+            sheet.getColumn(1).width = 4;   // NO
+            sheet.getColumn(2).width = 15;  // Kode
+            sheet.getColumn(3).width = 40;  // Nama
+            sheet.getColumn(4).width = 8;   // Satuan
+            dateList.forEach((_, i) => { sheet.getColumn(5 + i).width = 10; });
+            sheet.getColumn(5 + dateList.length).width = 12;
+            sheet.getColumn(5 + dateList.length).font = { bold: true, size: 9 };
 
-            // Freeze panes
-            sheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 4 }];
+            // Freeze panes to keep item info visible
+            sheet.views = [{ state: 'frozen', xSplit: 4, ySplit: 2 }];
 
-            // 5. Generate and Download
+            // 6. Generate and Download
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = window.URL.createObjectURL(blob);
             const anchor = document.createElement('a');
             anchor.href = url;
-            anchor.download = `Matrix_Reject_${exportStart}_${exportEnd}.xlsx`;
+            anchor.download = `Laporan_Reject_Mingguan_${exportStart}_${exportEnd}.xlsx`;
             anchor.click();
             window.URL.revokeObjectURL(url);
-            showToast("Matrix Exported!", "success");
+            showToast("Laporan Exported!", "success");
 
         } catch (e) {
             console.error(e);
@@ -444,7 +478,7 @@ export const RejectView: React.FC = () => {
                             onClick={handleExportMatrix}
                             className="px-6 py-2.5 bg-emerald-900/20 text-emerald-400 border border-emerald-900/50 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-emerald-900/40 transition-all active:scale-95"
                         >
-                            <FileSpreadsheet size={16}/> Export Matrix Pivot
+                            <FileSpreadsheet size={16}/> Export Laporan Mingguan
                         </button>
                     </div>
 
