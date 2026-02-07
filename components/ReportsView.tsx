@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Transaction, Warehouse } from '../types';
-import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal, MapPin } from 'lucide-react';
+import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal, MapPin, MessageSquare } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useToast } from './Toast';
 
@@ -52,6 +52,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         return transactions.filter(tx => 
             tx.referenceNo.toLowerCase().includes(lower) || 
             (tx.partnerName && tx.partnerName.toLowerCase().includes(lower)) ||
+            (tx.notes && tx.notes.toLowerCase().includes(lower)) ||
             tx.items.some(it => it.name?.toLowerCase().includes(lower) || it.code?.toLowerCase().includes(lower))
         );
     }, [transactions, searchQuery]);
@@ -99,12 +100,13 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 { header: 'TIPE', key: 'type', width: 10 },
                 { header: 'GUDANG / LOKASI', key: 'warehouse', width: 20 },
                 { header: 'PARTNER', key: 'partner', width: 25 },
+                { header: 'KETERANGAN GLOBAL', key: 'globalNote', width: 35 },
                 { header: 'KODE SKU', key: 'code', width: 18 },
                 { header: 'DESKRIPSI BARANG', key: 'itemName', width: 45 },
                 { header: 'QTY', key: 'qty', width: 10 },
                 { header: 'SATUAN', key: 'unit', width: 10 },
                 { header: 'TOTAL BASE', key: 'totalBase', width: 15 },
-                { header: 'CATATAN', key: 'note', width: 35 },
+                { header: 'CATATAN BARIS', key: 'itemNote', width: 30 },
             ];
 
             // 2. Add Title & Metadata Rows
@@ -118,28 +120,21 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             headerRow.values = (sheet.columns || []).map(c => (Array.isArray(c.header) ? c.header.join(' ') : (c.header || '')) as ExcelJS.CellValue);
             
             // 3. APPLY ENTERPRISE LOOK
-            // Set Row Heights uniformly
             for (let i = 1; i <= 3; i++) sheet.getRow(i).height = 24;
             headerRow.height = 30;
 
-            // Enable Auto Filter per Column
-            sheet.autoFilter = {
-                from: { row: 5, column: 1 },
-                to: { row: 5, column: 11 }
-            };
+            sheet.autoFilter = { from: { row: 5, column: 1 }, to: { row: 5, column: 12 } };
 
-            // Title Styling
-            sheet.mergeCells('A1:K1');
+            sheet.mergeCells('A1:L1');
             sheet.getCell('A1').font = { name: 'Arial', size: 16, bold: true };
             sheet.getCell('A1').alignment = { horizontal: 'center' };
-            sheet.mergeCells('A2:K2');
+            sheet.mergeCells('A2:L2');
             sheet.getCell('A2').alignment = { horizontal: 'center' };
-            sheet.mergeCells('A3:K3');
+            sheet.mergeCells('A3:L3');
             sheet.getCell('A3').alignment = { horizontal: 'center' };
 
-            // Header Styling
             headerRow.eachCell((cell) => {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } }; // Dark Slate
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
                 cell.font = { name: 'Arial', color: { argb: 'FFFFFFFF' }, bold: true, size: 9 };
                 cell.alignment = { vertical: 'middle', horizontal: 'center' };
                 cell.border = {
@@ -161,19 +156,20 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                         type: tx.type,
                         warehouse: warehouseName,
                         partner: tx.partnerName || '-',
+                        globalNote: tx.notes || '-',
                         code: item.code,
                         itemName: item.name,
                         qty: item.qty,
                         unit: item.unit,
                         totalBase: item.qty * (item.ratio || 1),
-                        note: item.note || tx.notes || ''
+                        itemNote: item.note || ''
                     });
                 });
             });
 
             const dataRows = sheet.addRows(rows);
             dataRows.forEach((row, idx) => {
-                row.height = 22; // Uniform Row Height
+                row.height = 22;
                 const isEven = idx % 2 === 0;
                 row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                     cell.font = { name: 'Arial', size: 9 };
@@ -186,8 +182,8 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     };
                     cell.alignment = { vertical: 'middle' };
                     
-                    if ([8, 10].includes(colNumber)) cell.alignment = { vertical: 'middle', horizontal: 'right' };
-                    if ([1, 3, 9].includes(colNumber)) cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    if ([9, 11].includes(colNumber)) cell.alignment = { vertical: 'middle', horizontal: 'right' };
+                    if ([1, 3, 10].includes(colNumber)) cell.alignment = { vertical: 'middle', horizontal: 'center' };
                     
                     if (colNumber === 3) {
                         const val = cell.value?.toString();
@@ -197,7 +193,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 });
             });
 
-            // 5. Build Buffer
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = window.URL.createObjectURL(blob);
@@ -252,7 +247,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                     <span className="text-[10px] font-black text-cutty uppercase tracking-widest ml-1">Pencarian Global</span>
                     <div className="relative group">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-spectra transition-colors"/>
-                        <input type="text" placeholder="Cari No. Referensi, Partner, atau Nama Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-daintree border border-spectra/50 rounded-lg px-3 py-2 pl-10 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra transition-all placeholder:text-slate-600 shadow-inner" />
+                        <input type="text" placeholder="Cari No. Referensi, Partner, Keterangan, atau Nama Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-daintree border border-spectra/50 rounded-lg px-3 py-2 pl-10 text-xs font-bold text-white outline-none focus:ring-1 focus:ring-spectra transition-all placeholder:text-slate-600 shadow-inner" />
                     </div>
                 </div>
 
@@ -262,20 +257,21 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 </div>
             </div>
 
-            {/* Table */}
+            {/* Table - Refactored with Global Notes Column */}
             <div className="flex-1 rounded-xl border border-spectra overflow-hidden flex flex-col bg-gable shadow-md">
                 <div className="overflow-auto flex-1 scrollbar-thin">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse table-fixed">
                         <thead className="bg-daintree text-[11px] font-black text-cutty uppercase tracking-widest sticky top-0 z-10 shadow-md">
                             <tr>
-                                <th className="px-4 py-3 w-12 text-center border-b border-spectra">#</th>
+                                <th className="px-4 py-3 w-10 text-center border-b border-spectra">#</th>
                                 <th className="px-4 py-3 w-28 border-b border-spectra">Tanggal</th>
-                                <th className="px-4 py-3 w-40 border-b border-spectra">No. Referensi</th>
+                                <th className="px-4 py-3 w-36 border-b border-spectra">No. Referensi</th>
                                 <th className="px-4 py-3 w-20 text-center border-b border-spectra">Tipe</th>
-                                <th className="px-4 py-3 border-b border-spectra">Partner</th>
-                                <th className="px-4 py-3 border-b border-spectra">Gudang / Lokasi</th>
-                                <th className="px-4 py-3 w-24 text-right border-b border-spectra">Total Item</th>
-                                <th className="px-4 py-3 w-32 text-center border-b border-spectra">Aksi</th>
+                                <th className="px-4 py-3 w-40 border-b border-spectra">Partner</th>
+                                <th className="px-4 py-3 w-32 border-b border-spectra">Gudang</th>
+                                <th className="px-4 py-3 border-b border-spectra">Keterangan Transaksi</th>
+                                <th className="px-4 py-3 w-20 text-right border-b border-spectra">Item</th>
+                                <th className="px-4 py-3 w-24 text-center border-b border-spectra">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm text-slate-300 divide-y divide-spectra/20">
@@ -284,41 +280,48 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                      <tr className={`hover:bg-spectra/10 transition-colors group ${expandedTx.has(tx.id) ? 'bg-spectra/5' : ''}`}>
                                         <td className="px-4 py-3 text-center">
                                             <button onClick={() => toggleExpand(tx.id)} className={`p-1 rounded-full transition-colors ${expandedTx.has(tx.id) ? 'bg-spectra text-white' : 'text-slate-500 hover:bg-daintree hover:text-white'}`}>
-                                                {expandedTx.has(tx.id) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+                                                {expandedTx.has(tx.id) ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
                                             </button>
                                         </td>
                                         <td className="px-4 py-3 font-mono text-emerald-500 font-bold text-[10px]">{tx.date}</td>
-                                        <td className="px-4 py-3 font-bold text-white text-xs">{tx.referenceNo}</td>
+                                        <td className="px-4 py-3 font-bold text-white text-[11px] truncate" title={tx.referenceNo}>{tx.referenceNo}</td>
                                         <td className="px-4 py-3 text-center">
-                                             <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border ${tx.type === 'IN' ? 'text-emerald-400 bg-emerald-900/20 border-emerald-900/50' : 'text-red-400 bg-red-900/20 border-red-900/50'}`}>{tx.type}</span>
+                                             <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${tx.type === 'IN' ? 'text-emerald-400 bg-emerald-900/20 border-emerald-900/50' : 'text-red-400 bg-red-900/20 border-red-900/50'}`}>{tx.type}</span>
                                         </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2 text-slate-200 font-bold text-xs uppercase">
-                                                <User size={12} className="text-cutty"/>
-                                                {tx.partnerName || '-'}
+                                        <td className="px-4 py-3 truncate">
+                                            <div className="flex items-center gap-2 text-slate-200 font-bold text-[11px] uppercase">
+                                                <User size={10} className="text-cutty shrink-0"/>
+                                                <span className="truncate">{tx.partnerName || '-'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 truncate">
                                             <div className="flex items-center gap-2 text-cutty font-black text-[10px] uppercase">
-                                                <MapPin size={12}/>
-                                                {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}
+                                                <MapPin size={10} className="shrink-0"/>
+                                                <span className="truncate">{warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3 text-right font-mono text-white font-bold">{tx.items.length}</td>
+                                        {/* KOLOM KETERANGAN GLOBAL BARU */}
+                                        <td className="px-4 py-3">
+                                            <div className="flex items-start gap-2 text-[10px] text-slate-400 italic">
+                                                <MessageSquare size={10} className="shrink-0 mt-0.5 text-spectra"/>
+                                                <span className="line-clamp-1 group-hover:line-clamp-none transition-all">{tx.notes || '-'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-white font-bold text-xs">{tx.items.length}</td>
                                         <td className="px-4 py-3 text-center">
-                                            <div className="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleCopyCurl(tx.id)} className="p-2 text-yellow-500 hover:bg-yellow-900/30 rounded-lg transition-colors border border-transparent hover:border-yellow-900/50" title="Salin Perintah CURL"><Terminal size={14}/></button>
-                                                <button onClick={() => onEditTransaction(tx)} className="p-2 text-blue-400 hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-900/50"><Edit3 size={14}/></button>
-                                                <button onClick={() => handleDelete(tx.id)} className="p-2 text-red-400 hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-900/50"><Trash2 size={14}/></button>
+                                            <div className="flex justify-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleCopyCurl(tx.id)} className="p-1.5 text-yellow-500 hover:bg-yellow-900/30 rounded transition-colors" title="CURL"><Terminal size={12}/></button>
+                                                <button onClick={() => onEditTransaction(tx)} className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded transition-colors"><Edit3 size={12}/></button>
+                                                <button onClick={() => handleDelete(tx.id)} className="p-1.5 text-red-400 hover:bg-red-900/30 rounded transition-colors"><Trash2 size={12}/></button>
                                             </div>
                                         </td>
                                      </tr>
                                      {expandedTx.has(tx.id) && (
                                          <tr className="bg-black/20 animate-in fade-in slide-in-from-top-1">
-                                             <td colSpan={8} className="p-0 border-b border-spectra/50">
-                                                 <div className="p-4 pl-16">
+                                             <td colSpan={9} className="p-0 border-b border-spectra/50">
+                                                 <div className="p-4 pl-12">
                                                      <div className="rounded-lg border border-spectra/30 overflow-hidden bg-daintree shadow-inner">
-                                                        <table className="w-full text-xs">
+                                                        <table className="w-full text-[11px]">
                                                             <thead className="text-cutty uppercase bg-black/20 font-bold border-b border-spectra/30">
                                                                 <tr>
                                                                     <th className="px-4 py-2 w-32">Kode SKU</th>
@@ -334,17 +337,21 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                                         <td className="px-4 py-2 font-mono text-emerald-500 font-bold">{it.code}</td>
                                                                         <td className="px-4 py-2 text-slate-300">{it.name}</td>
                                                                         <td className="px-4 py-2 text-right font-bold text-white">{it.qty.toLocaleString()}</td>
-                                                                        <td className="px-4 py-2 text-center text-slate-500 font-bold bg-black/10">{it.unit}</td>
+                                                                        <td className="px-4 py-2 text-center text-slate-500 font-bold bg-black/10 uppercase">{it.unit}</td>
                                                                         <td className="px-4 py-2 text-right font-mono text-slate-400">{(it.qty * (it.ratio || 1)).toLocaleString()}</td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
                                                         </table>
                                                      </div>
-                                                     {tx.notes && (
-                                                         <div className="mt-2 flex items-start gap-2 text-xs text-slate-500 bg-yellow-900/10 p-2 rounded border border-yellow-900/30">
-                                                             <span className="font-bold uppercase text-yellow-600">Catatan:</span> 
-                                                             <span className="italic text-yellow-500/80">{tx.notes}</span>
+                                                     {/* Lampiran Foto Preview jika ada */}
+                                                     {tx.attachments && tx.attachments.length > 0 && (
+                                                         <div className="mt-3 flex gap-2">
+                                                            {tx.attachments.map((img, i) => (
+                                                                <div key={i} className="w-12 h-12 rounded border border-spectra/50 overflow-hidden bg-black/40">
+                                                                    <img src={img} className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity cursor-pointer" />
+                                                                </div>
+                                                            ))}
                                                          </div>
                                                      )}
                                                  </div>
