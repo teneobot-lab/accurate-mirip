@@ -93,7 +93,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
             const workbook = new ExcelJS.Workbook();
             const sheet = workbook.addWorksheet('Laporan Mutasi');
 
-            // 1. Standard Column Widths (Ideal Geometry)
             sheet.columns = [
                 { header: 'TANGGAL', key: 'date', width: 14 },
                 { header: 'NO. REFERENSI', key: 'ref', width: 22 },
@@ -109,17 +108,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 { header: 'CATATAN BARIS', key: 'itemNote', width: 30 },
             ];
 
-            // 2. Add Title & Metadata Rows
             sheet.insertRow(1, [`LAPORAN MUTASI GUDANGPRO`] as ExcelJS.CellValue[]);
             sheet.insertRow(2, [`Periode: ${startDate} s/d ${endDate} | Tipe: ${filterType}`] as ExcelJS.CellValue[]);
             sheet.insertRow(3, [`Gudang: ${warehouses.find(w => w.id === filterWh)?.name || 'Semua Gudang'}`] as ExcelJS.CellValue[]);
             sheet.insertRow(4, [''] as ExcelJS.CellValue[]); 
 
-            // Header Row (Fixed at Row 5)
             const headerRow = sheet.getRow(5);
             headerRow.values = (sheet.columns || []).map(c => (Array.isArray(c.header) ? c.header.join(' ') : (c.header || '')) as ExcelJS.CellValue);
             
-            // 3. APPLY ENTERPRISE LOOK
             for (let i = 1; i <= 3; i++) sheet.getRow(i).height = 24;
             headerRow.height = 30;
 
@@ -145,7 +141,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 };
             });
 
-            // 4. Populate & Style Data
             const rows: any[] = [];
             filteredTransactions.forEach(tx => {
                 const warehouseName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Unknown';
@@ -257,7 +252,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                 </div>
             </div>
 
-            {/* Table - Refactored with Global Notes Column */}
+            {/* Table - Optimized with Keterangan Column */}
             <div className="flex-1 rounded-xl border border-spectra overflow-hidden flex flex-col bg-gable shadow-md">
                 <div className="overflow-auto flex-1 scrollbar-thin">
                     <table className="w-full text-left border-collapse table-fixed">
@@ -269,7 +264,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                 <th className="px-4 py-3 w-20 text-center border-b border-spectra">Tipe</th>
                                 <th className="px-4 py-3 w-40 border-b border-spectra">Partner</th>
                                 <th className="px-4 py-3 w-32 border-b border-spectra">Gudang</th>
-                                <th className="px-4 py-3 border-b border-spectra">Keterangan Transaksi</th>
+                                <th className="px-4 py-3 border-b border-spectra">Keterangan</th>
                                 <th className="px-4 py-3 w-20 text-right border-b border-spectra">Item</th>
                                 <th className="px-4 py-3 w-24 text-center border-b border-spectra">Aksi</th>
                             </tr>
@@ -300,7 +295,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                 <span className="truncate">{warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}</span>
                                             </div>
                                         </td>
-                                        {/* KOLOM KETERANGAN GLOBAL BARU */}
+                                        {/* KOLOM KETERANGAN GLOBAL */}
                                         <td className="px-4 py-3">
                                             <div className="flex items-start gap-2 text-[10px] text-slate-400 italic">
                                                 <MessageSquare size={10} className="shrink-0 mt-0.5 text-spectra"/>
@@ -344,7 +339,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
                                                             </tbody>
                                                         </table>
                                                      </div>
-                                                     {/* Lampiran Foto Preview jika ada */}
                                                      {tx.attachments && tx.attachments.length > 0 && (
                                                          <div className="mt-3 flex gap-2">
                                                             {tx.attachments.map((img, i) => (
