@@ -7,14 +7,14 @@ import { ReportsView } from './components/ReportsView';
 import { DashboardView } from './components/DashboardView';
 import { SettingsView } from './components/SettingsView';
 import { RejectView } from './components/RejectView';
-import { StockCardView } from './components/StockCardModal'; // Renamed import conceptually
+import { StockCardView } from './components/StockCardModal';
 import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { LowStockAlert } from './components/LowStockAlert';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Warehouse as WhIcon, Settings, AlertOctagon, Menu, LogOut, User as UserIcon, X, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
@@ -25,15 +25,9 @@ function App() {
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
   
-  const [showTransactionModal, setShowTransactionModal] = useState<TransactionType | null>(null);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  
-  // STATE VIEW LOGIC: If viewingItem is set, it overrides the activeTab content
+  // FULL VIEW STATES
+  const [activeTransaction, setActiveTransaction] = useState<{ type: TransactionType, data?: Transaction | null } | null>(null);
   const [viewingItem, setViewingItem] = useState<Item | null>(null);
-
-  const refreshData = () => {
-    // Trigger data refresh if needed
-  };
 
   useEffect(() => {
     StorageService.init();
@@ -44,21 +38,15 @@ function App() {
         setIsLoggedIn(true);
     }
     setIsLoadingSession(false);
-
     if (window.innerWidth >= 1024) setIsSidebarOpen(true);
   }, []);
-
-  const handleLogin = (user: any) => {
-      setCurrentUser(user);
-      setIsLoggedIn(true);
-      StorageService.saveSession(user);
-  };
 
   const handleLogout = () => {
       setIsLoggedIn(false);
       setCurrentUser(null);
       setActiveTab('DASHBOARD');
       setViewingItem(null);
+      setActiveTransaction(null);
       StorageService.clearSession();
   };
 
@@ -66,43 +54,32 @@ function App() {
     <button
       onClick={() => {
           setActiveTab(id);
-          setViewingItem(null); // Reset detail view when changing tabs
+          setViewingItem(null);
+          setActiveTransaction(null);
           if (window.innerWidth < 1024) setIsSidebarOpen(false); 
       }}
       className={`flex items-center w-full p-3 mb-1 text-sm font-medium rounded-lg transition-all ${
-        activeTab === id && !viewingItem
-        ? 'bg-spectra text-white shadow-lg shadow-black/20 border border-cutty/30' 
+        activeTab === id && !viewingItem && !activeTransaction
+        ? 'bg-spectra text-white shadow-lg border border-cutty/30' 
         : 'text-slate-400 hover:bg-spectra/50 hover:text-slate-100'
       }`}
     >
       <Icon size={18} className="mr-3 flex-shrink-0" />
       <span className="whitespace-nowrap">{label}</span>
-      {activeTab === id && !viewingItem && <ChevronRight size={16} className="ml-auto opacity-50" />}
     </button>
   );
 
   if (isLoadingSession) return <div className="min-h-screen bg-daintree"></div>;
-  if (!isLoggedIn) return <LoginPage onLogin={handleLogin} />;
+  if (!isLoggedIn) return <LoginPage onLogin={(user) => { setCurrentUser(user); setIsLoggedIn(true); StorageService.saveSession(user); }} />;
 
   return (
     <ToastProvider>
       <SearchProvider>
         <div className="min-h-screen bg-daintree relative overflow-hidden">
-          {/* MOBILE OVERLAY */}
-          {isSidebarOpen && (
-              <div 
-                  className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
-                  onClick={() => setIsSidebarOpen(false)}
-              ></div>
-          )}
+          {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
 
           <div className="flex bg-daintree font-sans text-slate-200 h-screen overflow-hidden">
-              {/* ASIDE - RESPONSIVE DRAWER */}
-              <aside className={`
-                  fixed inset-y-0 left-0 z-50 w-72 bg-gable flex-col text-slate-300 shadow-2xl transition-transform duration-300 ease-in-out border-r border-spectra/30
-                  lg:relative lg:translate-x-0 flex
-                  ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-              `}>
+              <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-gable flex-col text-slate-300 shadow-2xl transition-transform duration-300 lg:relative lg:translate-x-0 flex ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                   <div className="h-20 flex items-center justify-between px-6 border-b border-spectra/30 bg-daintree">
                       <div className="flex flex-col leading-none">
                           <div className="flex items-center">
@@ -111,9 +88,7 @@ function App() {
                           </div>
                           <div className="text-[10px] font-bold text-slate-500 tracking-[0.3em] mt-1 uppercase">Management</div>
                       </div>
-                      <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white">
-                          <X size={20}/>
-                      </button>
+                      <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white"><X size={20}/></button>
                   </div>
 
                   <div className="p-4 flex-1 overflow-y-auto scrollbar-hide">
@@ -123,13 +98,13 @@ function App() {
                       <NavItem id="REPORTS" label="Mutation Reports" icon={FileBarChart} />
                       <NavItem id="REJECT" label="Reject / Afkir" icon={AlertOctagon} />
                       
-                      <div className="mt-8 text-[10px] font-black text-slate-600 uppercase mb-4 px-3 tracking-widest">Quick Actions</div>
+                      <div className="mt-8 text-[10px] font-black text-slate-600 uppercase mb-4 px-3 tracking-widest">Transaction Entry</div>
                       <div className="space-y-2">
-                          <button onClick={() => { setShowTransactionModal('IN'); setEditingTransaction(null); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></div> Inbound
+                          <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-emerald-400 hover:bg-emerald-950/30 rounded-lg flex items-center transition-colors border border-emerald-900/20">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3 animate-pulse"></div> Input Inbound (Masuk)
                           </button>
-                          <button onClick={() => { setShowTransactionModal('OUT'); setEditingTransaction(null); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-spectra/30 rounded-lg flex items-center transition-colors">
-                              <div className="w-2 h-2 rounded-full bg-red-500 mr-3"></div> Outbound
+                          <button onClick={() => { setActiveTransaction({ type: 'OUT' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2.5 text-sm text-red-400 hover:bg-red-950/30 rounded-lg flex items-center transition-colors border border-red-900/20">
+                              <div className="w-2 h-2 rounded-full bg-red-500 mr-3 animate-pulse"></div> Input Outbound (Keluar)
                           </button>
                       </div>
                       
@@ -141,87 +116,58 @@ function App() {
                           </button>
                       </div>
                   </div>
-                  
-                  <div className="p-4 border-t border-spectra/30 bg-daintree text-[10px] text-slate-500 flex justify-between items-center font-bold">
-                      <span>v1.3.0-STATE</span>
-                      <span className="text-spectra uppercase">Enterprise</span>
-                  </div>
               </aside>
 
               <main className="flex-1 flex flex-col overflow-hidden relative">
-                  {/* HEADER */}
                   <header className="h-16 bg-gable border-b border-spectra/50 flex items-center justify-between px-4 lg:px-6 shadow-sm z-30 shrink-0">
-                      <div className="flex items-center gap-2 lg:gap-4 overflow-hidden">
-                          <button 
-                              onClick={() => setIsSidebarOpen(true)}
-                              className={`p-2 rounded-lg text-slate-400 hover:bg-spectra/50 transition-colors lg:${isSidebarOpen ? 'hidden' : 'block'}`}
-                          >
-                              <Menu size={20} />
-                          </button>
-                          <div className="flex-col hidden sm:flex">
-                              <h2 className="text-sm lg:text-base font-bold text-white leading-none truncate flex items-center gap-2">
-                                  {viewingItem ? (
-                                      <>
-                                        <button onClick={() => setViewingItem(null)} className="hover:text-spectra transition-colors"><ArrowLeft size={16}/></button>
-                                        <span className="text-spectra">Stock Card Detail</span>
-                                      </>
-                                  ) : (
-                                      <>
-                                        {activeTab === 'DASHBOARD' && 'Executive Dashboard'}
-                                        {activeTab === 'INVENTORY' && 'Inventory Master'}
-                                        {activeTab === 'REPORTS' && 'Reports'}
-                                        {activeTab === 'REJECT' && 'Reject Management'}
-                                        {activeTab === 'SETTINGS' && 'System Config'}
-                                      </>
-                                  )}
-                              </h2>
-                          </div>
+                      <div className="flex items-center gap-4">
+                          <button onClick={() => setIsSidebarOpen(true)} className={`p-2 rounded-lg text-slate-400 hover:bg-spectra/50 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={20} /></button>
+                          <h2 className="text-sm lg:text-base font-bold text-white flex items-center gap-2">
+                              {(viewingItem || activeTransaction) ? (
+                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="p-1.5 hover:bg-white/5 rounded-lg text-spectra flex items-center gap-2">
+                                      <ArrowLeft size={18}/> <span className="text-slate-400 font-medium">Kembali</span>
+                                  </button>
+                              ) : (
+                                  activeTab
+                              )}
+                          </h2>
                       </div>
                       
-                      {/* Search disembunyikan jika sedang mode Stock Card agar lebih bersih, atau bisa tetap ada */}
-                      {!viewingItem && (
-                          <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg mx-2 lg:mx-4">
+                      {!activeTransaction && !viewingItem && (
+                          <div className="flex-1 max-w-xs md:max-w-md lg:max-w-lg mx-4">
                               <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
                           </div>
                       )}
 
-                      <div className="flex items-center gap-1 lg:gap-3 shrink-0">
-                          <div className="flex items-center gap-1 lg:gap-2">
-                            <LowStockAlert />
-                            <MusicPlayer />
-                          </div>
-                          
-                          <div className="hidden sm:flex items-center gap-3 pl-3 border-l border-spectra">
-                            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-spectra to-daintree flex items-center justify-center text-white font-bold border border-cutty shadow-md text-xs lg:text-sm">
-                                {currentUser?.name.substring(0,2).toUpperCase()}
-                            </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                          <LowStockAlert />
+                          <MusicPlayer />
+                          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-spectra to-daintree flex items-center justify-center text-white font-bold border border-cutty shadow-md text-xs">
+                              {currentUser?.name.substring(0,2).toUpperCase()}
                           </div>
                       </div>
                   </header>
 
-                  {/* CONTENT AREA - State View Logic */}
                   <div className="flex-1 overflow-auto bg-daintree relative">
-                      {viewingItem ? (
+                      {activeTransaction ? (
+                          <TransactionForm 
+                              type={activeTransaction.type} 
+                              initialData={activeTransaction.data}
+                              onClose={() => setActiveTransaction(null)} 
+                              onSuccess={() => setActiveTransaction(null)}
+                          />
+                      ) : viewingItem ? (
                           <StockCardView item={viewingItem} onBack={() => setViewingItem(null)} />
                       ) : (
                           <>
                             {activeTab === 'DASHBOARD' && <DashboardView />}
                             {activeTab === 'INVENTORY' && <InventoryView onViewItem={(item) => setViewingItem(item)} />}
-                            {activeTab === 'REPORTS' && <ReportsView onEditTransaction={(tx) => { setEditingTransaction(tx); setShowTransactionModal(tx.type); }} />}
+                            {activeTab === 'REPORTS' && <ReportsView onEditTransaction={(tx) => setActiveTransaction({ type: tx.type, data: tx })} />}
                             {activeTab === 'SETTINGS' && <SettingsView />}
                             {activeTab === 'REJECT' && <RejectView />}
                           </>
                       )}
                   </div>
-
-                  {showTransactionModal && (
-                      <TransactionForm 
-                          type={showTransactionModal} 
-                          initialData={editingTransaction}
-                          onClose={() => { setShowTransactionModal(null); setEditingTransaction(null); }} 
-                          onSuccess={() => { setShowTransactionModal(null); setEditingTransaction(null); refreshData(); }}
-                      />
-                  )}
               </main>
           </div>
         </div>
