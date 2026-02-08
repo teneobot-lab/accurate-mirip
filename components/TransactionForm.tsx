@@ -5,8 +5,9 @@ import { StorageService } from '../services/storage';
 import { useGlobalData } from '../search/SearchProvider';
 import { useFuseSearch } from '../search/useFuseSearch';
 import { highlightMatch } from '../search/highlightMatch';
-import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check } from 'lucide-react';
+import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Upload } from 'lucide-react';
 import { useToast } from './Toast';
+import * as XLSX from 'xlsx';
 
 interface Props {
   type: TransactionType;
@@ -17,7 +18,7 @@ interface Props {
 
 export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, onSuccess }) => {
   const { showToast } = useToast();
-  const { masterItems, warehouses: globalWh, partners: globalPts } = useGlobalData();
+  const { masterItems, warehouses: globalWh, partners: globalPts, refreshAll } = useGlobalData();
   
   const [partners, setPartners] = useState<Partner[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
@@ -32,7 +33,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [lines, setLines] = useState<TransactionItem[]>(initialData?.items || []);
   
-  // PENDING INPUT STATE (The in-line entry row)
+  // PENDING INPUT STATE
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingQty, setPendingQty] = useState<string>('');
   const [pendingNote, setPendingNote] = useState('');
@@ -41,6 +42,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const searchInputRef = useRef<HTMLInputElement>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const inlineSearchTriggerRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { search } = useFuseSearch(masterItems, { keys: ['code', 'name'], limit: 10 });
   const searchResults = search(searchQuery);
@@ -51,7 +53,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     if (globalWh.length > 0 && !selectedWh) setSelectedWh(globalWh[0].id);
   }, [globalPts, globalWh, type]);
 
-  // Handle Focus Transitions
   useEffect(() => {
     if (isSearching) {
       setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -68,7 +69,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setPendingItem(item);
     setIsSearching(false);
     setSearchQuery('');
-    // Auto focus to Qty field after selection
     setTimeout(() => qtyInputRef.current?.focus(), 50);
   };
 
@@ -89,8 +89,85 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setPendingItem(null);
     setPendingQty('');
     setPendingNote('');
-    // Focus back to search bar to start new entry
     setTimeout(() => inlineSearchTriggerRef.current?.focus(), 50);
+  };
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+        try {
+            const bstr = evt.target?.result;
+            const wb = XLSX.read(bstr, { type: 'binary' });
+            const wsname = wb.SheetNames[0];
+            const ws = wb.Sheets[wsname];
+            const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+            if (data.length === 0) return showToast("File Excel kosong", "warning");
+
+            showToast(`Memproses ${data.length} baris data...`, "info");
+            
+            const newItemsToCreate: Item[] = [];
+            const importLines: TransactionItem[] = [];
+
+            // 1. Validasi SKU & Persiapan Master Data
+            for (const row of data) {
+                const sku = String(row.sku || row.SKU || '').trim().toUpperCase();
+                const name = String(row.nama || row['nama barang'] || row.Name || '').trim();
+                const qty = Number(row.qty || row.jumlah || row.Quantity || 0);
+                const unit = String(row.satuan || row.unit || row.Unit || 'Pcs').trim();
+
+                if (!sku || qty <= 0) continue;
+
+                let item = masterItems.find(mi => mi.code === sku) || newItemsToCreate.find(ni => ni.code === sku);
+
+                if (!item) {
+                    // Auto-Create Item Object
+                    const newItem: Item = {
+                        id: crypto.randomUUID(),
+                        code: sku,
+                        name: name || `Auto-Created ${sku}`,
+                        category: 'IMPORTED',
+                        baseUnit: unit,
+                        conversions: [],
+                        minStock: 0,
+                        isActive: true
+                    };
+                    newItemsToCreate.push(newItem);
+                    item = newItem;
+                }
+
+                importLines.push({
+                    itemId: item.id,
+                    qty,
+                    unit: item.baseUnit,
+                    ratio: 1,
+                    name: item.name,
+                    code: item.code,
+                    note: 'Imported via Excel'
+                });
+            }
+
+            // 2. Commit New Items to DB if any
+            if (newItemsToCreate.length > 0) {
+                await StorageService.bulkSaveItems(newItemsToCreate);
+                await refreshAll(); // Sync global state
+                showToast(`${newItemsToCreate.length} SKU baru otomatis didaftarkan`, "success");
+            }
+
+            setLines([...lines, ...importLines]);
+            showToast(`${importLines.length} baris barang berhasil diimpor`, "success");
+            
+            // Clear input
+            e.target.value = '';
+        } catch (err) {
+            console.error(err);
+            showToast("Gagal membaca file Excel. Pastikan format benar (sku, nama barang, qty, satuan)", "error");
+        }
+    };
+    reader.readAsBinaryString(file);
   };
 
   const updateLine = (index: number, field: keyof TransactionItem, value: any) => {
@@ -169,6 +246,14 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               </div>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
+              <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-white dark:bg-daintree hover:bg-slate-50 dark:hover:bg-spectra text-spectra dark:text-white border border-slate-300 dark:border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2"
+              >
+                  <FileSpreadsheet size={14}/> Import Excel
+              </button>
+              <div className="w-px h-8 bg-slate-300 dark:bg-spectra/50 mx-1 hidden sm:block"></div>
               <button onClick={onClose} className="px-4 py-2 bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase transition-all">Batal</button>
               <button 
                 onClick={() => handleSave(true)} 
@@ -283,7 +368,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                               );
                           })}
 
-                          {/* IN-LINE ENTRY ROW (The Accurate Way) */}
+                          {/* IN-LINE ENTRY ROW */}
                           <tr className="bg-white dark:bg-black/10 h-8 border-b-2 border-slate-300 dark:border-spectra/50">
                               <td className="px-2 text-center text-spectra font-black text-[10px] border-r border-slate-200 dark:border-spectra/20">NEW</td>
                               <td className="px-1 border-r border-slate-200 dark:border-spectra/20 relative">
@@ -340,7 +425,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                               </td>
                           </tr>
                           
-                          {/* FILLER ROWS FOR AESTHETICS */}
+                          {/* FILLER ROWS */}
                           {[...Array(Math.max(0, 15 - lines.length))].map((_, i) => (
                               <tr key={`filler-${i}`} className="h-7 opacity-20">
                                   <td className="border-r border-slate-200 dark:border-spectra/20"></td>
@@ -371,12 +456,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </div>
                </div>
                <div className="text-[9px] font-bold text-slate-400 uppercase italic">
-                  GudangPro Enterprise Grid v2.1 • Press Enter to Commit Row
+                  GudangPro Enterprise Grid v2.5 • Excel Format: sku, nama barang, qty, satuan
                </div>
           </div>
       </div>
 
-      {/* COMMAND PALETTE SEARCH (CENTER SCREEN) */}
+      {/* COMMAND PALETTE SEARCH */}
       {isSearching && (
           <div className="fixed inset-0 z-[100] flex items-start justify-center pt-32 px-4 bg-slate-900/60 dark:bg-daintree/80 backdrop-blur-sm animate-in fade-in duration-200">
               <div className="w-full max-w-xl bg-white dark:bg-gable rounded-2xl shadow-2xl border border-slate-300 dark:border-spectra overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
