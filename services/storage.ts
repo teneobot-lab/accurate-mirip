@@ -122,20 +122,33 @@ export const StorageService = {
   saveTheme: (theme: string) => isBrowser && localStorage.setItem(STORAGE_KEYS.THEME, theme),
 
   async syncToGoogleSheets(scriptUrl: string, startDate: string, endDate: string) {
-    const [transactions, items, rejectBatches, rejectMasterItems] = await Promise.all([
+    const [transactions, items, rejectBatches, rejectMasterItems, warehouses] = await Promise.all([
         this.fetchTransactions({ start: startDate, end: endDate }),
         this.fetchItems(),
         this.fetchRejectBatches(),
-        this.fetchRejectMasterItems()
+        this.fetchRejectMasterItems(),
+        this.fetchWarehouses()
     ]);
     
-    // 1. Proses Transaksi Biasa
-    const txRows = transactions.flatMap(tx => tx.items.map(line => ([
-        tx.date, tx.referenceNo, tx.type,
-        items.find(i => i.id === line.itemId)?.code || '?',
-        items.find(i => i.id === line.itemId)?.name || '?',
-        cleanNum(line.qty), line.unit, line.note || tx.notes || '-'
-    ])));
+    // 1. Proses Transaksi Biasa dengan Header Baru
+    const txRows = transactions.flatMap(tx => {
+        const warehouseName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Unknown';
+        const partnerName = tx.partnerName || '-';
+        const globalNote = tx.notes || '-';
+        
+        return tx.items.map(line => ([
+            tx.date, 
+            tx.referenceNo, 
+            tx.type,
+            warehouseName,
+            partnerName,
+            items.find(i => i.id === line.itemId)?.code || '?',
+            items.find(i => i.id === line.itemId)?.name || '?',
+            cleanNum(line.qty), 
+            line.unit, 
+            `Global: ${globalNote} | Line: ${line.note || '-'}`
+        ]));
+    });
 
     // 2. Proses Agregasi Reject (Force Base Qty)
     const filteredRejects = rejectBatches.filter(b => b.date >= startDate && b.date <= endDate);
@@ -155,7 +168,6 @@ export const StorageService = {
             }
 
             const record = rejectAggMap.get(key)!;
-            // Support baik camelCase maupun snake_case dari API lama
             const bQty = Number(it.baseQty !== undefined ? it.baseQty : (it.base_qty || 0));
             record.totalBaseQty += bQty;
             if (it.reason) record.reasons.add(it.reason);

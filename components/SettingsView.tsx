@@ -40,10 +40,9 @@ export const SettingsView: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    // ... (rest of the GS_CODE_BOILERPLATE remains the same)
     const GS_CODE_BOILERPLATE = `/**
- * GudangPro - Smart Sync v4.0
- * Supports: Separate Sheets (Mutasi & Reject), Clean Numbers, Idempotency
+ * GudangPro - Smart Sync v5.0 (Enterprise Ready)
+ * Supports: Partner, Warehouse, Global Notes, Multi-Sheet, Deduplication
  */
 function doPost(e) {
   try {
@@ -55,7 +54,8 @@ function doPost(e) {
       
       // 1. Process Transactions (Sheet: Mutasi GudangPro)
       if (contents.transactions && contents.transactions.length > 0) {
-         results.push(processSheet("Mutasi GudangPro", contents.transactions, ["Tanggal", "Ref No", "Tipe", "Kode", "Nama", "Qty", "Satuan", "Ket"]));
+         // Header mapping v5: Tanggal, Ref, Tipe, Gudang, Partner, SKU, Nama, Qty, Satuan, Keterangan
+         results.push(processSheet("Mutasi GudangPro", contents.transactions, ["Tanggal", "Ref No", "Tipe", "Gudang", "Partner", "Kode", "Nama", "Qty", "Satuan", "Keterangan"]));
       }
       
       // 2. Process Rejects (Sheet: Laporan Reject)
@@ -66,7 +66,6 @@ function doPost(e) {
       return ContentService.createTextOutput(JSON.stringify({status: "success", details: results})).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Fallback for old calls
     return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid action version"}))
       .setMimeType(ContentService.MimeType.JSON);
       
@@ -85,7 +84,7 @@ function processSheet(sheetName, newRows, headers) {
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
     sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length).setBackground("#1e293b").setFontColor("#ffffff").setFontWeight("bold");
+    sheet.getRange(1, 1, 1, headers.length).setBackground("#335157").setFontColor("#ffffff").setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
   
@@ -191,7 +190,7 @@ function processSheet(sheetName, newRows, headers) {
             await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
             showToast("Sync Selesai. Cek Sheet 'Mutasi' dan 'Reject'.", "success");
         } catch (e: any) {
-            showToast("Gagal Sync. Pastikan script V4.0 sudah di-update.", "error");
+            showToast("Gagal Sync. Pastikan script V5.0 sudah di-update.", "error");
         } finally {
             setIsSyncing(false);
         }
@@ -208,7 +207,6 @@ function processSheet(sheetName, newRows, headers) {
 
     return (
         <div className="flex h-full bg-daintree transition-colors font-sans">
-            {/* Sidebar Tab */}
             <div className="w-60 bg-gable border-r border-spectra flex flex-col p-3 gap-1 shadow-lg z-10">
                 <div className="p-3 text-[10px] font-black text-cutty uppercase tracking-widest border-b border-spectra mb-3">Konfigurasi Sistem</div>
                 <TabBtn active={activeTab === 'WAREHOUSE'} onClick={() => setActiveTab('WAREHOUSE')} icon={<Building2 size={16}/>} label="Warehouses" />
@@ -290,13 +288,12 @@ function processSheet(sheetName, newRows, headers) {
                         </div>
                     </div>
                 ) : (
-                    /* EXTERNAL SYNC VIEW */
                     <div className="flex-1 overflow-auto p-8 bg-daintree">
                          <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="bg-gable p-8 rounded-[24px] shadow-sm border border-spectra space-y-6">
                                 <div className="flex items-center gap-5 mb-4">
                                     <div className="p-4 bg-emerald-900/30 rounded-2xl text-emerald-400 shadow-inner border border-emerald-900"><FileSpreadsheet size={32}/></div>
-                                    <div><h3 className="text-xl font-black text-white">Google Sync V4</h3><p className="text-xs text-cutty font-bold uppercase tracking-wider">Multi-Sheet Sync</p></div>
+                                    <div><h3 className="text-xl font-black text-white">Google Sync V5</h3><p className="text-xs text-cutty font-bold uppercase tracking-wider">Enterprise Multi-Sheet Sync</p></div>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-2">
@@ -329,7 +326,7 @@ function processSheet(sheetName, newRows, headers) {
                             </div>
                             <div className="bg-daintree rounded-[24px] border border-spectra flex flex-col h-[500px] shadow-2xl overflow-hidden">
                                 <div className="p-4 bg-gable flex justify-between items-center border-b border-spectra">
-                                    <span className="text-[10px] font-black text-cutty uppercase tracking-widest">Update Google Apps Script (V4.0)</span>
+                                    <span className="text-[10px] font-black text-cutty uppercase tracking-widest">Update Google Apps Script (V5.0)</span>
                                     <button onClick={() => { navigator.clipboard.writeText(GS_CODE_BOILERPLATE); setCopied(true); setTimeout(()=>setCopied(false),2000); }} className="px-4 py-1.5 bg-spectra/20 hover:bg-spectra/50 rounded-lg text-[10px] font-black text-white flex items-center gap-2 border border-spectra transition-colors">
                                         {copied ? <Check size={14} className="text-emerald-400"/> : <Copy size={14}/>} {copied ? 'COPIED' : 'COPY CODE'}
                                     </button>
