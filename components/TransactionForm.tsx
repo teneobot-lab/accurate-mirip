@@ -5,7 +5,7 @@ import { StorageService } from '../services/storage';
 import { useGlobalData } from '../search/SearchProvider';
 import { useFuseSearch } from '../search/useFuseSearch';
 import { highlightMatch } from '../search/highlightMatch';
-import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Upload } from 'lucide-react';
+import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Download, Info } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -33,7 +33,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [lines, setLines] = useState<TransactionItem[]>(initialData?.items || []);
   
-  // PENDING INPUT STATE
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingQty, setPendingQty] = useState<string>('');
   const [pendingNote, setPendingNote] = useState('');
@@ -92,6 +91,37 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setTimeout(() => inlineSearchTriggerRef.current?.focus(), 50);
   };
 
+  // --- NEW: Download Template Function ---
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        sku: 'CONTOH-SKU-001',
+        nama_barang: 'Contoh Barang ABC',
+        qty: 10,
+        satuan: 'Pcs'
+      },
+      {
+        sku: 'BARU-002',
+        nama_barang: 'Barang Belum Terdaftar (Auto Create)',
+        qty: 5,
+        satuan: 'Box'
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Import");
+    
+    // Auto-size columns for better looks
+    const wscols = [
+      {wch: 15}, {wch: 35}, {wch: 10}, {wch: 10}
+    ];
+    ws['!cols'] = wscols;
+
+    XLSX.writeFile(wb, `Template_Import_${type}.xlsx`);
+    showToast("Template berhasil diunduh", "success");
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -107,29 +137,30 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
             if (data.length === 0) return showToast("File Excel kosong", "warning");
 
-            showToast(`Memproses ${data.length} baris data...`, "info");
+            showToast(`Membaca ${data.length} baris data...`, "info");
             
             const newItemsToCreate: Item[] = [];
             const importLines: TransactionItem[] = [];
 
-            // 1. Validasi SKU & Persiapan Master Data
             for (const row of data) {
-                const sku = String(row.sku || row.SKU || '').trim().toUpperCase();
-                const name = String(row.nama || row['nama barang'] || row.Name || '').trim();
+                // Support multiple header variations
+                const sku = String(row.sku || row.SKU || row.KODE || '').trim().toUpperCase();
+                const name = String(row.nama || row.nama_barang || row['nama barang'] || row.Name || '').trim();
                 const qty = Number(row.qty || row.jumlah || row.Quantity || 0);
                 const unit = String(row.satuan || row.unit || row.Unit || 'Pcs').trim();
 
-                if (!sku || qty <= 0) continue;
+                if (!sku || isNaN(qty) || qty <= 0) continue;
 
+                // Cek di master data yang sudah ada ATAU di list yang akan dibuat
                 let item = masterItems.find(mi => mi.code === sku) || newItemsToCreate.find(ni => ni.code === sku);
 
                 if (!item) {
-                    // Auto-Create Item Object
+                    // Auto-Create Logic
                     const newItem: Item = {
                         id: crypto.randomUUID(),
                         code: sku,
                         name: name || `Auto-Created ${sku}`,
-                        category: 'IMPORTED',
+                        category: 'AUTO-IMPORT',
                         baseUnit: unit,
                         conversions: [],
                         minStock: 0,
@@ -150,21 +181,18 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 });
             }
 
-            // 2. Commit New Items to DB if any
             if (newItemsToCreate.length > 0) {
                 await StorageService.bulkSaveItems(newItemsToCreate);
-                await refreshAll(); // Sync global state
-                showToast(`${newItemsToCreate.length} SKU baru otomatis didaftarkan`, "success");
+                await refreshAll();
+                showToast(`${newItemsToCreate.length} SKU baru otomatis ditambahkan ke Master`, "success");
             }
 
             setLines([...lines, ...importLines]);
-            showToast(`${importLines.length} baris barang berhasil diimpor`, "success");
-            
-            // Clear input
+            showToast(`${importLines.length} item berhasil diimpor`, "success");
             e.target.value = '';
         } catch (err) {
             console.error(err);
-            showToast("Gagal membaca file Excel. Pastikan format benar (sku, nama barang, qty, satuan)", "error");
+            showToast("Format file tidak didukung atau rusak", "error");
         }
     };
     reader.readAsBinaryString(file);
@@ -246,10 +274,16 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               </div>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
+              <button 
+                onClick={handleDownloadTemplate}
+                className="px-4 py-2 bg-slate-100 dark:bg-daintree hover:bg-slate-200 dark:hover:bg-spectra text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2"
+              >
+                  <Download size={14}/> Template
+              </button>
               <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-white dark:bg-daintree hover:bg-slate-50 dark:hover:bg-spectra text-spectra dark:text-white border border-slate-300 dark:border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-white dark:bg-spectra/10 hover:bg-spectra/20 text-spectra dark:text-emerald-400 border border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2"
               >
                   <FileSpreadsheet size={14}/> Import Excel
               </button>
@@ -455,8 +489,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                         <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">{lines.reduce((acc, l) => acc + (l.qty * l.ratio), 0).toLocaleString()}</span>
                     </div>
                </div>
-               <div className="text-[9px] font-bold text-slate-400 uppercase italic">
-                  GudangPro Enterprise Grid v2.5 • Excel Format: sku, nama barang, qty, satuan
+               <div className="text-[9px] font-bold text-slate-400 uppercase italic flex items-center gap-2">
+                  <Info size={12}/> GudangPro Enterprise Grid v2.6 • SKU tidak dikenal akan otomatis didaftarkan saat import.
                </div>
           </div>
       </div>
