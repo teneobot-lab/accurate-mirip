@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
-import { ArrowLeft, Package, TrendingUp, History, MapPin, Box, Calendar, RefreshCw, FileText } from 'lucide-react';
+import { ArrowLeft, Package, TrendingUp, History, MapPin, Box, Calendar, RefreshCw, FileText, ArrowDownLeft, ArrowUpRight, Calculator } from 'lucide-react';
 
 interface Props {
   item: Item;
@@ -55,19 +55,26 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
     return { total, breakdown };
   }, [item, stocks, warehouses]);
 
-  // Get recent history for this item with Date Filtering
-  const history = useMemo(() => {
+  // Get filtered history and summary metrics
+  const { history, summary } = useMemo(() => {
     const relevantTx = transactions.filter(tx => 
         tx.items.some(ti => ti.itemId === item.id) &&
         tx.date >= startDate &&
         tx.date <= endDate
     );
     
-    // Sort desc
-    return relevantTx
+    let totalIn = 0;
+    let totalOut = 0;
+
+    const mappedHistory = relevantTx
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .map(tx => {
             const line = tx.items.find(ti => ti.itemId === item.id);
+            const qtyInBase = line ? line.qty * (line.ratio || 1) : 0;
+            
+            if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') totalIn += qtyInBase;
+            else if (tx.type === 'OUT' || tx.type === 'TRANSFER') totalOut += qtyInBase;
+
             return {
                 id: tx.id,
                 date: tx.date,
@@ -79,6 +86,11 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
                 note: tx.notes || line?.note || '-'
             };
         });
+
+    return { 
+        history: mappedHistory,
+        summary: { totalIn, totalOut, balance: totalIn - totalOut }
+    };
   }, [item, transactions, warehouses, startDate, endDate]);
 
   return (
@@ -126,7 +138,7 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
                     </div>
                     <div className="relative z-10">
                         <div className="text-xs font-black text-cutty uppercase mb-2 tracking-widest flex items-center gap-2">
-                             <TrendingUp size={16}/> Total Inventory
+                             <TrendingUp size={16}/> Saldo Stok Saat Ini
                         </div>
                         <div className={`text-5xl font-mono font-black tracking-tighter ${stockData.total <= item.minStock ? 'text-red-400' : 'text-white'}`}>
                             {stockData.total.toLocaleString()}
@@ -135,7 +147,7 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
                             <span className="text-sm font-bold text-slate-500">{item.baseUnit}</span>
                             {stockData.total <= item.minStock && (
                                 <span className="bg-red-900/30 text-red-400 px-2 py-1 rounded text-[10px] font-black border border-red-900/50 animate-pulse">
-                                    ⚠️ BELOW MIN ({item.minStock})
+                                    ⚠️ DI BAWAH MIN ({item.minStock})
                                 </span>
                             )}
                         </div>
@@ -170,19 +182,6 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-
-                {/* Conversions */}
-                <div className="bg-gable p-5 rounded-2xl border border-spectra shadow-sm">
-                    <div className="text-xs font-black text-cutty uppercase mb-3 tracking-widest">Konversi Satuan</div>
-                    <div className="space-y-2">
-                        {item.conversions.length > 0 ? item.conversions.map((c, i) => (
-                            <div key={i} className="text-xs flex justify-between items-center bg-daintree p-2 rounded-lg border border-spectra/30">
-                                <span className="font-bold text-slate-300">1 {c.name}</span>
-                                <span className="font-mono font-black text-emerald-400">= {c.ratio} {item.baseUnit}</span>
-                            </div>
-                        )) : <div className="text-[10px] text-slate-500 italic p-2 bg-black/20 rounded border border-white/5">Tidak ada konversi unit tambahan</div>}
                     </div>
                 </div>
             </div>
@@ -239,6 +238,33 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* SUMMARY FOOTER PANEL */}
+                <div className="bg-daintree p-4 border-t border-spectra grid grid-cols-3 gap-4 shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><ArrowDownLeft size={10} className="text-emerald-500"/> Total Mutasi Masuk</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-mono font-black text-emerald-400">{summary.totalIn.toLocaleString()}</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.baseUnit}</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-1 border-x border-spectra px-4">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><ArrowUpRight size={10} className="text-red-400"/> Total Mutasi Keluar</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-lg font-mono font-black text-red-400">{summary.totalOut.toLocaleString()}</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.baseUnit}</span>
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-1 pl-4">
+                        <span className="text-[9px] font-black text-spectra uppercase tracking-widest flex items-center gap-1.5"><Calculator size={10}/> Netto Mutasi Periode</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className={`text-lg font-mono font-black ${summary.balance >= 0 ? 'text-white' : 'text-red-500'}`}>
+                                {summary.balance >= 0 ? '+' : ''}{summary.balance.toLocaleString()}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.baseUnit}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

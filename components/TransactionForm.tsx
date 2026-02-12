@@ -5,7 +5,7 @@ import { StorageService } from '../services/storage';
 import { useGlobalData } from '../search/SearchProvider';
 import { useFuseSearch } from '../search/useFuseSearch';
 import { highlightMatch } from '../search/highlightMatch';
-import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Download, Info } from 'lucide-react';
+import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Download, Info, AlertCircle } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -91,37 +91,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setTimeout(() => inlineSearchTriggerRef.current?.focus(), 50);
   };
 
-  // --- NEW: Download Template Function ---
+  // --- DOWNLOAD TEMPLATE EXCEL ---
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        sku: 'CONTOH-SKU-001',
-        nama_barang: 'Contoh Barang ABC',
-        qty: 10,
-        satuan: 'Pcs'
-      },
-      {
-        sku: 'BARU-002',
-        nama_barang: 'Barang Belum Terdaftar (Auto Create)',
-        qty: 5,
-        satuan: 'Box'
-      }
+    const templateHeaders = [
+      { sku: 'KODE-BARANG-01', nama_barang: 'Contoh Produk A', qty: 10, satuan: 'Pcs', catatan: 'Urgent' },
+      { sku: 'KODE-BARANG-02', nama_barang: 'Contoh Produk B', qty: 5, satuan: 'Box', catatan: '' }
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
+    const ws = XLSX.utils.json_to_sheet(templateHeaders);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template_Import");
+    XLSX.utils.book_append_sheet(wb, ws, "Template_GudangPro");
     
-    // Auto-size columns for better looks
-    const wscols = [
-      {wch: 15}, {wch: 35}, {wch: 10}, {wch: 10}
-    ];
-    ws['!cols'] = wscols;
+    // Set column widths
+    ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 10 }, { wch: 25 }];
 
     XLSX.writeFile(wb, `Template_Import_${type}.xlsx`);
-    showToast("Template berhasil diunduh", "success");
+    showToast("Template berhasil diunduh. Silakan isi data SKU Anda.", "success");
   };
 
+  // --- SMART EXCEL IMPORT WITH AUTO-CREATE ---
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -131,43 +119,48 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         try {
             const bstr = evt.target?.result;
             const wb = XLSX.read(bstr, { type: 'binary' });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
+            const ws = wb.Sheets[wb.SheetNames[0]];
             const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-            if (data.length === 0) return showToast("File Excel kosong", "warning");
+            if (data.length === 0) return showToast("File Excel tidak berisi data", "warning");
 
-            showToast(`Membaca ${data.length} baris data...`, "info");
+            showToast(`Memproses ${data.length} baris data...`, "info");
             
             const newItemsToCreate: Item[] = [];
             const importLines: TransactionItem[] = [];
 
             for (const row of data) {
-                // Support multiple header variations
-                const sku = String(row.sku || row.SKU || row.KODE || '').trim().toUpperCase();
-                const name = String(row.nama || row.nama_barang || row['nama barang'] || row.Name || '').trim();
-                const qty = Number(row.qty || row.jumlah || row.Quantity || 0);
+                // Mendukung berbagai variasi header (ERP fleksibilitas)
+                const sku = String(row.sku || row.SKU || row.KODE || row.kode || '').trim().toUpperCase();
+                const name = String(row.nama_barang || row.nama || row.Nama || row['Nama Barang'] || '').trim();
+                const qty = Number(row.qty || row.QTY || row.jumlah || row.Kuantitas || 0);
                 const unit = String(row.satuan || row.unit || row.Unit || 'Pcs').trim();
+                const note = String(row.catatan || row.keterangan || row.note || '').trim();
 
                 if (!sku || isNaN(qty) || qty <= 0) continue;
 
-                // Cek di master data yang sudah ada ATAU di list yang akan dibuat
-                let item = masterItems.find(mi => mi.code === sku) || newItemsToCreate.find(ni => ni.code === sku);
+                // Cari apakah SKU sudah ada di Master Data
+                let item = masterItems.find(mi => mi.code === sku);
 
                 if (!item) {
-                    // Auto-Create Logic
-                    const newItem: Item = {
-                        id: crypto.randomUUID(),
-                        code: sku,
-                        name: name || `Auto-Created ${sku}`,
-                        category: 'AUTO-IMPORT',
-                        baseUnit: unit,
-                        conversions: [],
-                        minStock: 0,
-                        isActive: true
-                    };
-                    newItemsToCreate.push(newItem);
-                    item = newItem;
+                    // Cek apakah sudah masuk ke antrean pembuatan di batch ini
+                    item = newItemsToCreate.find(ni => ni.code === sku);
+                    
+                    if (!item) {
+                        // Logika Selalu Auto-Create SKU Baru
+                        const newItem: Item = {
+                            id: crypto.randomUUID(),
+                            code: sku,
+                            name: name || `Imported SKU ${sku}`, // Fallback jika nama kosong
+                            category: 'AUTO-IMPORT',
+                            baseUnit: unit,
+                            conversions: [],
+                            minStock: 0,
+                            isActive: true
+                        };
+                        newItemsToCreate.push(newItem);
+                        item = newItem;
+                    }
                 }
 
                 importLines.push({
@@ -177,22 +170,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     ratio: 1,
                     name: item.name,
                     code: item.code,
-                    note: 'Imported via Excel'
+                    note: note || 'Imported via Excel'
                 });
             }
 
+            // Simpan SKU baru ke Database jika ada
             if (newItemsToCreate.length > 0) {
                 await StorageService.bulkSaveItems(newItemsToCreate);
-                await refreshAll();
-                showToast(`${newItemsToCreate.length} SKU baru otomatis ditambahkan ke Master`, "success");
+                await refreshAll(); // Sinkronkan ulang data global
+                showToast(`${newItemsToCreate.length} SKU baru otomatis didaftarkan`, "success");
             }
 
             setLines([...lines, ...importLines]);
-            showToast(`${importLines.length} item berhasil diimpor`, "success");
+            showToast(`${importLines.length} baris barang berhasil dimuat ke grid`, "success");
+            
+            // Reset input file agar bisa import file yang sama lagi jika perlu
             e.target.value = '';
         } catch (err) {
             console.error(err);
-            showToast("Format file tidak didukung atau rusak", "error");
+            showToast("Gagal membaca file. Gunakan template yang disediakan.", "error");
         }
     };
     reader.readAsBinaryString(file);
@@ -278,12 +274,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 onClick={handleDownloadTemplate}
                 className="px-4 py-2 bg-slate-100 dark:bg-daintree hover:bg-slate-200 dark:hover:bg-spectra text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2"
               >
-                  <Download size={14}/> Template
+                  <Download size={14}/> Unduh Template
               </button>
               <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-white dark:bg-spectra/10 hover:bg-spectra/20 text-spectra dark:text-emerald-400 border border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2"
+                className="px-4 py-2 bg-white dark:bg-spectra/10 hover:bg-spectra/20 text-spectra dark:text-emerald-400 border border-spectra rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-2 shadow-sm"
               >
                   <FileSpreadsheet size={14}/> Import Excel
               </button>
@@ -322,7 +318,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               </div>
               <div className="space-y-1">
                   <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><User size={10}/> {type === 'IN' ? 'Pemasok / Supplier' : 'Pelanggan / Customer'}</label>
-                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-300 dark:border-spectra/30 rounded-lg p-2 text-xs font-bold text-slate-700 dark:text-white outline-none">
+                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 border border-spectra/30 rounded-lg p-2 text-xs font-bold text-slate-700 dark:text-white outline-none">
                       <option value="">-- Pilih Partner --</option>
                       {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
@@ -490,7 +486,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     </div>
                </div>
                <div className="text-[9px] font-bold text-slate-400 uppercase italic flex items-center gap-2">
-                  <Info size={12}/> GudangPro Enterprise Grid v2.6 • SKU tidak dikenal akan otomatis didaftarkan saat import.
+                  <Info size={12}/> GudangPro Enterprise Grid v2.7 • SKU tidak dikenal akan otomatis didaftarkan saat import.
                </div>
           </div>
       </div>
