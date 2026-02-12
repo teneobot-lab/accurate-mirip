@@ -164,7 +164,12 @@ function App() {
                           <>
                             {activeTab === 'DASHBOARD' && <DashboardView />}
                             {activeTab === 'INVENTORY' && <InventoryView onViewItem={(item) => setViewingItem(item)} />}
-                            {activeTab === 'REPORTS' && <ReportsView onEditTransaction={(tx) => setActiveTransaction({ type: tx.type, data: tx })} />}
+                            {activeTab === 'REPORTS' && (
+                                <ReportsView 
+                                    onEditTransaction={(tx) => setActiveTransaction({ type: tx.type, data: tx })} 
+                                    onCreateTransaction={(type) => setActiveTransaction({ type })}
+                                />
+                            )}
                             {activeTab === 'SETTINGS' && <SettingsView />}
                             {activeTab === 'REJECT' && <RejectView />}
                           </>
