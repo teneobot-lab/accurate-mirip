@@ -20,6 +20,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const { showToast } = useToast();
   const { masterItems, warehouses: globalWh, partners: globalPts, refreshAll } = useGlobalData();
   
+  // Track edit mode locally to allow switching to 'Create' on "Save & New"
+  const [isEditMode, setIsEditMode] = useState(!!initialData);
+
   const [partners, setPartners] = useState<Partner[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -180,14 +183,29 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           items: lines.map(l => ({ item_id: l.itemId, qty: l.qty, unit: l.unit, conversionRatio: l.ratio, note: l.note })), 
           notes, attachments: [] 
         };
-        if (initialData) await StorageService.updateTransaction(initialData.id, txData as any);
-        else await StorageService.commitTransaction({ ...txData, id: crypto.randomUUID() } as any);
+        
+        if (isEditMode && initialData) {
+            await StorageService.updateTransaction(initialData.id, txData as any);
+        } else {
+            await StorageService.commitTransaction({ ...txData, id: crypto.randomUUID() } as any);
+        }
+
         showToast("Transaksi Berhasil Disimpan", "success");
         if (keepOpen) {
-            setLines([]); setNotes('');
+            // Reset Form Logic
+            setLines([]); 
+            setNotes('');
+            setSelectedPartnerId(''); // Reset Partner
+            setPendingItem(null); 
+            setPendingQty(''); 
+            setPendingNote('');
+            
+            // Switch to Create Mode for subsequent saves
+            setIsEditMode(false);
+
             setRefNo(`${type === 'IN' ? 'RI' : 'DO'}.${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}.${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`);
             StorageService.fetchStocks().then(setStocks);
-            inlineSearchTriggerRef.current?.focus();
+            setTimeout(() => inlineSearchTriggerRef.current?.focus(), 100);
         } else {
             onSuccess();
         }
@@ -210,6 +228,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               <div>
                   <h1 className="text-lg font-black text-slate-900 tracking-tight leading-none uppercase">Formulir {type === 'IN' ? 'Penerimaan' : 'Pengiriman'}</h1>
                   <span className="text-xs font-mono font-bold text-slate-400 uppercase mt-1 inline-block">{refNo}</span>
+                  {isEditMode && <span className="ml-2 text-[9px] font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded border border-amber-200 uppercase">Edit Mode</span>}
               </div>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
