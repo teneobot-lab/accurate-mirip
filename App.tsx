@@ -59,7 +59,7 @@ function App() {
       }}
       className={`flex items-center w-full p-3 mb-1 text-sm font-semibold rounded-xl transition-all ${
         activeTab === id && !viewingItem && !activeTransaction
-        ? 'bg-brand text-white shadow-md' 
+        ? 'bg-white text-slate-900 shadow-md' 
         : 'text-slate-400 hover:bg-white/10 hover:text-white'
       }`}
     >
@@ -78,23 +78,44 @@ function App() {
           {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
 
           <div className="flex h-screen overflow-hidden">
-              <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] flex flex-col text-slate-300 shadow-xl transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                  <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 bg-[#0f172a]">
-                      <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-brand rounded-lg flex items-center justify-center text-white font-black text-lg">G</div>
-                          <span className="text-white font-extrabold text-xl tracking-tighter">Gudang<span className="text-brand">Pro</span></span>
+              <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] flex flex-col text-slate-300 shadow-xl transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                  {/* BRAND HEADER */}
+                  <div className="h-20 flex items-center justify-between px-6 border-b border-white/10 bg-[#0a0a0a]">
+                      <div className="flex items-center gap-3">
+                          {/* Custom Molecule Logo SVG */}
+                          <div className="w-9 h-9 flex items-center justify-center">
+                              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                                  <circle cx="50" cy="50" r="14" fill="white"/>
+                                  <circle cx="50" cy="15" r="7" fill="white"/>
+                                  <circle cx="80.3" cy="32.5" r="7" fill="white"/>
+                                  <circle cx="80.3" cy="67.5" r="7" fill="white"/>
+                                  <circle cx="50" cy="85" r="7" fill="white"/>
+                                  <circle cx="19.7" cy="67.5" r="7" fill="white"/>
+                                  <circle cx="19.7" cy="32.5" r="7" fill="white"/>
+                                  <path d="M50 36V22" stroke="white" strokeWidth="4"/>
+                                  <path d="M62.1 43L74.2 36" stroke="white" strokeWidth="4"/>
+                                  <path d="M62.1 57L74.2 64" stroke="white" strokeWidth="4"/>
+                                  <path d="M50 64V78" stroke="white" strokeWidth="4"/>
+                                  <path d="M37.9 57L25.8 64" stroke="white" strokeWidth="4"/>
+                                  <path d="M37.9 43L25.8 36" stroke="white" strokeWidth="4"/>
+                              </svg>
+                          </div>
+                          <div className="flex flex-col justify-center">
+                              <span className="text-white font-bold text-base tracking-[0.1em] leading-none">RESEARCH</span>
+                              <span className="text-white font-light text-base tracking-[0.1em] leading-none mt-0.5">CENTRE</span>
+                          </div>
                       </div>
                       <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white"><X size={20}/></button>
                   </div>
 
                   <div className="p-4 flex-1 overflow-y-auto">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-[0.2em]">Menu Utama</div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-[0.2em] mt-2">LABORATORY CONCEPT</div>
                       <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
                       <NavItem id="INVENTORY" label="Stok Barang" icon={Package} />
                       <NavItem id="REPORTS" label="Mutasi Stok" icon={FileBarChart} />
                       <NavItem id="REJECT" label="Barang Reject" icon={AlertOctagon} />
                       
-                      <div className="mt-8 text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-[0.2em]">Input Transaksi</div>
+                      <div className="mt-8 text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-[0.2em]">TRANSACTIONS</div>
                       <div className="space-y-2">
                           <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2.5 text-xs font-bold text-emerald-400 hover:bg-emerald-400/10 rounded-xl flex items-center transition-all border border-emerald-400/20">
                               <Plus size={16} className="mr-3"/> Penerimaan (Masuk)
@@ -104,7 +125,7 @@ function App() {
                           </button>
                       </div>
                       
-                      <div className="mt-auto border-t border-white/5 pt-4">
+                      <div className="mt-auto border-t border-white/10 pt-4">
                           <NavItem id="SETTINGS" label="Pengaturan" icon={Settings} />
                           <button onClick={handleLogout} className="flex items-center w-full p-3 text-sm font-semibold rounded-xl transition-all text-rose-400 hover:bg-rose-400/10 mt-2">
                               <LogOut size={20} className="mr-3 flex-shrink-0" />
@@ -120,7 +141,7 @@ function App() {
                           <button onClick={() => setIsSidebarOpen(true)} className={`p-2 rounded-lg text-slate-500 hover:bg-slate-100 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={20} /></button>
                           <h2 className="text-sm lg:text-base font-bold text-slate-800 flex items-center gap-2">
                               {(viewingItem || activeTransaction) ? (
-                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-brand hover:underline">
+                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-slate-800 hover:underline">
                                       <ArrowLeft size={18}/> <span className="font-semibold uppercase tracking-tight text-xs">Kembali Ke List</span>
                                   </button>
                               ) : (
@@ -143,7 +164,7 @@ function App() {
                                   <p className="text-xs font-bold text-slate-800 leading-none">{currentUser?.name}</p>
                                   <p className="text-[10px] text-slate-500 font-medium uppercase mt-1">{currentUser?.role}</p>
                               </div>
-                              <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-brand font-black shadow-sm">
+                              <div className="w-10 h-10 rounded-full bg-slate-900 text-white border border-slate-200 flex items-center justify-center font-black shadow-sm">
                                   {currentUser?.name.substring(0,2).toUpperCase()}
                               </div>
                           </div>
