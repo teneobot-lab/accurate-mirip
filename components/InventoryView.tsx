@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse } from '../types';
-import { Search, Upload, Download, Trash2, Box, RefreshCw, Plus, X, Loader2, CheckSquare, Square, Filter, Columns, Edit3, Database, Tag, ShieldCheck, ChevronDown, Package, AlertTriangle, ToggleLeft, ToggleRight, Eye } from 'lucide-react';
+import { Search, Trash2, RefreshCw, Plus, Edit3, Eye, Package, Square, CheckSquare } from 'lucide-react';
 import { useToast } from './Toast';
-import * as XLSX from 'xlsx';
 
 interface InventoryViewProps {
     onViewItem?: (item: Item) => void;
@@ -16,13 +15,8 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isLoading, setIsLoading] = useState(false);
     
-    const [showItemModal, setShowItemModal] = useState(false);
-    const [editingItem, setEditingItem] = useState<Item | null>(null);
-    const [itemForm, setItemForm] = useState<Partial<Item>>({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, isActive: true, conversions: [] });
-
     const loadData = async () => {
         setIsLoading(true);
         try {
@@ -33,7 +27,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
             ]);
             setItems(fetchedItems || []); setWarehouses(fetchedWh || []); setStocks(fetchedStocks || []);
         } catch (error) {
-            showToast("Database Offline", "error");
+            showToast("Gagal memuat database.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -49,59 +43,62 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
     }, [items, stocks, searchTerm]);
 
     return (
-        <div className="flex flex-col h-full p-2 lg:p-4 gap-4">
-            {/* TOOLBAR - ADAPTIVE STACK */}
-            <div className="bg-gable p-3 rounded-2xl border border-spectra flex flex-col sm:flex-row justify-between gap-4 shadow-lg">
-                <div className="relative group w-full sm:w-80">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                    <input type="text" placeholder="Cari Kode / Nama..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-daintree border border-spectra rounded-xl text-xs font-bold text-white outline-none" />
+        <div className="flex flex-col h-full p-6 lg:p-8 gap-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="relative w-full sm:w-96">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input 
+                        type="text" placeholder="Cari Master Barang..." value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                        className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 outline-none shadow-sm focus:ring-2 focus:ring-brand/5 focus:border-brand" 
+                    />
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
-                    {selectedIds.size > 0 && (
-                        <button onClick={() => {}} className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[10px] font-black border border-red-900/30 uppercase"><Trash2 size={14}/> ({selectedIds.size})</button>
-                    )}
-                    <button onClick={loadData} className="p-2.5 bg-daintree border border-spectra rounded-xl text-slate-400 hover:text-white shrink-0"><RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/></button>
-                    <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', category: '', baseUnit: 'Pcs', minStock: 10, isActive: true, conversions: [] }); setShowItemModal(true); }} className="shrink-0 flex items-center gap-2 px-6 py-2.5 bg-spectra text-white rounded-xl text-[10px] font-black shadow-lg uppercase tracking-widest active:scale-95"><Plus size={16}/> Item Baru</button>
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <button onClick={loadData} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-brand hover:border-brand shadow-sm transition-all"><RefreshCw size={18} className={isLoading ? 'animate-spin' : ''}/></button>
+                    <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-8 py-3 bg-brand text-white rounded-xl text-xs font-bold shadow-lg shadow-brand/20 uppercase tracking-widest active:scale-95 transition-all"><Plus size={18}/> Item Baru</button>
                 </div>
             </div>
 
-            {/* DATA TABLE - FLEXIBLE CONTAINER */}
-            <div className="flex-1 bg-gable rounded-2xl border border-spectra overflow-hidden flex flex-col shadow-sm">
-                <div className="overflow-auto flex-1 scrollbar-thin">
-                    <table className="w-full text-left border-collapse min-w-[800px]">
-                        <thead className="bg-daintree text-[10px] font-black text-cutty uppercase tracking-widest sticky top-0 z-10 border-b border-spectra">
+            <div className="flex-1 bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-sm">
+                <div className="overflow-auto flex-1">
+                    <table className="w-full text-left border-collapse min-w-[900px]">
+                        <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] sticky top-0 z-10 border-b border-slate-200">
                             <tr>
-                                <th className="px-4 py-3 w-12 text-center"><Square size={16} className="opacity-20"/></th>
-                                <th className="px-4 py-3 w-40">Kode Ref</th>
-                                <th className="px-4 py-3">Deskripsi Barang</th>
-                                <th className="px-4 py-3 w-32 text-right">Sisa Stok</th>
-                                <th className="px-4 py-3 w-20 text-center">Unit</th>
-                                <th className="px-4 py-3 w-24 text-center">Status</th>
-                                <th className="px-4 py-3 w-24 text-center">Aksi</th>
+                                <th className="px-6 py-4 w-12 text-center"><Square size={18} className="text-slate-300"/></th>
+                                <th className="px-6 py-4 w-48">Kode SKU</th>
+                                <th className="px-6 py-4">Informasi Barang</th>
+                                <th className="px-6 py-4 w-40 text-right">Stok Total</th>
+                                <th className="px-6 py-4 w-28 text-center">Base Unit</th>
+                                <th className="px-6 py-4 w-32 text-center">Status</th>
+                                <th className="px-6 py-4 w-28 text-center">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-spectra/10">
+                        <tbody className="divide-y divide-slate-100">
                             {inventoryData.map(item => (
-                                <tr key={item.id} className={`hover:bg-white/5 transition-colors ${!item.isActive ? 'opacity-50 grayscale' : ''}`}>
-                                    <td className="px-4 py-2 text-center"><Square size={16} className="text-slate-700"/></td>
-                                    <td className="px-4 py-2 font-mono font-bold text-slate-400 text-xs uppercase">{item.code}</td>
-                                    <td className="px-4 py-2">
-                                        <div className="font-bold text-white text-xs">{item.name}</div>
-                                        <div className="text-[9px] text-cutty font-black uppercase">{item.category}</div>
+                                <tr key={item.id} className={`hover:bg-slate-50/50 transition-colors group ${!item.isActive ? 'opacity-40 grayscale' : ''}`}>
+                                    <td className="px-6 py-4 text-center"><Square size={18} className="text-slate-200 group-hover:text-slate-300 transition-colors"/></td>
+                                    <td className="px-6 py-4 font-mono font-bold text-slate-500 text-xs tracking-wider uppercase">{item.code}</td>
+                                    <td className="px-6 py-4">
+                                        <div className="font-extrabold text-slate-800 text-sm mb-0.5">{item.name}</div>
+                                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.category}</div>
                                     </td>
-                                    <td className={`px-4 py-2 text-right font-black font-mono text-sm ${item.totalStock <= item.minStock ? 'text-red-400' : 'text-emerald-400'}`}>{item.totalStock.toLocaleString()}</td>
-                                    <td className="px-4 py-2 text-center"><span className="px-2 py-0.5 rounded bg-daintree text-[9px] font-black text-slate-500 border border-spectra uppercase">{item.baseUnit}</span></td>
-                                    <td className="px-4 py-2 text-center">
-                                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${item.isActive ? 'bg-emerald-900/20 text-emerald-400 border-emerald-900/50' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
-                                            {item.isActive ? 'Aktif' : 'Off'}
+                                    <td className={`px-6 py-4 text-right font-black font-mono text-base ${item.totalStock <= item.minStock ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                        {item.totalStock.toLocaleString()}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="px-3 py-1 rounded-full bg-slate-100 text-[10px] font-bold text-slate-600 border border-slate-200 uppercase">{item.baseUnit}</span>
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${item.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                                            {item.isActive ? 'Aktif' : 'Nonaktif'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-2 text-center">
-                                        <div className="flex items-center justify-center gap-2">
+                                    <td className="px-6 py-4 text-center">
+                                        <div className="flex items-center justify-center gap-1">
                                             {onViewItem && (
-                                                <button onClick={() => onViewItem(item)} className="p-1.5 text-slate-500 hover:text-spectra transition-colors" title="Lihat Kartu Stok"><Eye size={14}/></button>
+                                                <button onClick={() => onViewItem(item)} className="p-2 text-slate-400 hover:text-brand transition-colors"><Eye size={16}/></button>
                                             )}
-                                            <button onClick={() => { setEditingItem(item); setItemForm(item); setShowItemModal(true); }} className="p-1.5 text-slate-500 hover:text-white transition-colors" title="Edit Master Item"><Edit3 size={14}/></button>
+                                            <button className="p-2 text-slate-400 hover:text-slate-900 transition-colors"><Edit3 size={16}/></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -110,11 +107,6 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                     </table>
                 </div>
             </div>
-            
-            <style>{`
-                .scrollbar-thin::-webkit-scrollbar { width: 4px; height: 4px; }
-                .scrollbar-thin::-webkit-scrollbar-thumb { background: #335157; border-radius: 10px; }
-            `}</style>
         </div>
     );
 };

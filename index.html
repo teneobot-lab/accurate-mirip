@@ -15,91 +15,75 @@
               slate: {
                 950: '#020617',
               },
-              // Custom Palette
-              cutty: '#496569',
-              spectra: '#335157',
-              gable: '#193338',
-              daintree: '#02272c',
+              // Professional Palette
+              cutty: '#475569', // Slate 600
+              spectra: '#0f172a', // Slate 900
+              gable: '#ffffff', // White
+              daintree: '#f8fafc', // Slate 50 (Main Canvas)
+              brand: '#0369a1', // Sky 700
             },
             fontFamily: {
-              sans: ['Helvetica', 'Arial', 'sans-serif'],
+              sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
             }
           }
         }
       }
     </script>
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      .dark ::-webkit-scrollbar-track {
-        background: #02272c;
+        background: #f1f5f9; 
       }
       ::-webkit-scrollbar-thumb {
-        background: #496569; 
-        border-radius: 4px;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #335157;
+        background: #cbd5e1; 
+        border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #335157; 
+        background: #94a3b8; 
       }
       
       /* Global Transitions */
       * {
-        transition-property: background-color, border-color, color, fill, stroke;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-        transition-duration: 150ms;
+        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
       }
       
-      /* HD Text Rendering */
       body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        background-color: #f8fafc;
+        color: #1e293b;
       }
 
-      /* Global Input Reset */
-      :root {
-        color-scheme: dark;
-      }
-      
+      /* Global Input Overrides for Clarity */
       input, select, textarea {
-        background-color: #0b1619 !important;
-        border-color: #335157 !important;
-        color: #f1f5f9 !important;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
+        font-weight: 500 !important;
       }
       
-      input:disabled, select:disabled, textarea:disabled {
-        background-color: #0f2429 !important;
-        color: #64748b !important;
-        cursor: not-allowed;
+      input:focus, select:focus, textarea:focus {
+        border-color: #0369a1 !important;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1) !important;
+      }
+      
+      input::placeholder {
+        color: #94a3b8 !important;
+        font-weight: 400 !important;
       }
 
-      input::placeholder, textarea::placeholder {
-        color: #6c868a !important;
-        opacity: 1;
-        font-weight: 500;
-      }
-
-      select option {
-        background-color: #0b1619;
-        color: white;
-        padding: 8px;
-      }
-
-      /* Highlight Animation */
       .search-highlight {
-        background-color: rgba(51, 81, 87, 0.6);
-        color: white;
-        font-weight: 800;
-        padding: 0 1px;
+        background-color: #fef08a;
+        color: #854d0e;
+        font-weight: 700;
+        padding: 0 2px;
         border-radius: 2px;
       }
     </style>
@@ -124,7 +108,7 @@
 }
 </script>
 </head>
-  <body class="bg-[#eff3f8] dark:bg-daintree text-daintree dark:text-slate-200 antialiased overflow-hidden font-sans">
+  <body class="bg-daintree text-slate-800 antialiased overflow-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
