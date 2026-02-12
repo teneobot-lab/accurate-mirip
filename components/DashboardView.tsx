@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, Stock, Transaction } from '../types';
-import { TrendingUp, Package, Activity, Loader2, RefreshCw, Repeat, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, Package, Activity, Loader2, RefreshCw, Repeat, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
@@ -59,6 +59,7 @@ export const DashboardView: React.FC = () => {
             .map(([id, val]) => ({
                 name: items.find(i => i.id === id)?.name || 'Unknown Item',
                 code: items.find(i => i.id === id)?.code || '???',
+                unit: items.find(i => i.id === id)?.baseUnit || '',
                 value: val
             }));
 
@@ -66,73 +67,166 @@ export const DashboardView: React.FC = () => {
     }, [items, stocks, transactions, startDate, endDate]);
 
     if (isLoading) return (
-        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-4">
-            <Loader2 className="animate-spin text-brand" size={40} />
-            <div className="text-[10px] font-bold uppercase tracking-[0.3em]">Memproses Data Dashboard...</div>
+        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+            <Loader2 className="animate-spin text-slate-300" size={32} />
+            <div className="text-sm font-medium text-slate-500">Memuat data dashboard...</div>
         </div>
     );
 
     return (
-        <div className="p-8 space-y-10 animate-in fade-in duration-500">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div className="p-8 space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-slate-100 pb-6">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Performa Operasional</h2>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">GudangPro Analytics Engine</p>
+                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Ringkasan Operasional</h2>
+                    <p className="text-sm text-slate-500 mt-1 font-medium">Pantau pergerakan stok dan performa gudang secara real-time.</p>
                 </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto p-1 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent border-none p-2 text-xs font-bold text-slate-800 outline-none" />
-                    <span className="text-slate-300">-</span>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent border-none p-2 text-xs font-bold text-slate-800 outline-none" />
-                    <button onClick={loadData} className="p-2.5 text-slate-400 hover:text-brand transition-all"><RefreshCw size={18}/></button>
+                
+                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                        <Calendar size={14} className="text-slate-400 mr-2"/>
+                        <input 
+                            type="date" 
+                            value={startDate} 
+                            onChange={e => setStartDate(e.target.value)} 
+                            className="bg-transparent border-none p-0 text-xs font-semibold text-slate-700 outline-none w-24" 
+                        />
+                        <span className="text-slate-300 mx-2">s/d</span>
+                        <input 
+                            type="date" 
+                            value={endDate} 
+                            onChange={e => setEndDate(e.target.value)} 
+                            className="bg-transparent border-none p-0 text-xs font-semibold text-slate-700 outline-none w-24" 
+                        />
+                    </div>
+                    <button onClick={loadData} className="p-2 text-slate-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-all" title="Refresh Data">
+                        <RefreshCw size={16}/>
+                    </button>
                 </div>
             </div>
 
+            {/* Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Pengiriman Keluar" value={stats.totalOut} icon={<ArrowUpRight/>} trend="+12%" color="text-rose-600" />
-                <StatCard title="Penerimaan Masuk" value={stats.totalIn} icon={<ArrowDownRight/>} trend="+8%" color="text-emerald-600" />
-                <StatCard title="Status Stok Aktif" value={stats.totalStockCount} icon={<Package/>} trend="Optimum" color="text-brand" />
-                <StatCard title="Katalog Barang" value={stats.activeItems} icon={<Repeat/>} trend="Aktif" color="text-slate-800" />
+                <StatCard 
+                    title="Pengiriman Keluar" 
+                    value={stats.totalOut} 
+                    icon={<ArrowUpRight size={20}/>} 
+                    color="text-rose-600" 
+                    bg="bg-rose-50"
+                    desc="Total item keluar periode ini"
+                />
+                <StatCard 
+                    title="Penerimaan Masuk" 
+                    value={stats.totalIn} 
+                    icon={<ArrowDownRight size={20}/>} 
+                    color="text-emerald-600" 
+                    bg="bg-emerald-50"
+                    desc="Total item masuk periode ini"
+                />
+                <StatCard 
+                    title="Total Stok Fisik" 
+                    value={stats.totalStockCount} 
+                    icon={<Package size={20}/>} 
+                    color="text-blue-600" 
+                    bg="bg-blue-50"
+                    desc="Akumulasi seluruh gudang"
+                />
+                <StatCard 
+                    title="Database Item" 
+                    value={stats.activeItems} 
+                    icon={<Repeat size={20}/>} 
+                    color="text-slate-700" 
+                    bg="bg-slate-100"
+                    desc="SKU aktif terdaftar"
+                />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-slate-200 shadow-sm">
-                    <div className="flex justify-between items-center mb-10">
-                        <h3 className="font-black text-slate-900 uppercase tracking-widest text-xs flex items-center gap-2">
-                            <TrendingUp size={16} className="text-brand"/> Ringkasan Barang Keluar Terbanyak
+                {/* Top Items List */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                            <TrendingUp size={18} className="text-slate-400"/> 
+                            Frekuensi Barang Keluar
                         </h3>
+                        <span className="text-xs font-medium text-slate-400 px-2 py-1 bg-slate-50 rounded-md">Top 5 Item</span>
                     </div>
-                    <div className="space-y-6">
-                        {stats.topOutboundItems.map((item, idx) => (
-                            <div key={idx} className="group">
-                                <div className="flex justify-between items-end mb-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-slate-800 truncate">{item.name}</span>
-                                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-tighter">{item.code}</span>
-                                    </div>
-                                    <span className="text-xs font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-full">{item.value}x Transaksi</span>
-                                </div>
-                                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-brand rounded-full transition-all duration-1000 group-hover:bg-sky-500 shadow-sm"
-                                        style={{ width: `${(item.value / (stats.topOutboundItems[0]?.value || 1)) * 100}%` }}
-                                    ></div>
-                                </div>
+                    
+                    <div className="space-y-5 flex-1">
+                        {stats.topOutboundItems.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 min-h-[200px]">
+                                <Package size={32} className="opacity-20"/>
+                                <span className="text-sm">Belum ada transaksi keluar periode ini</span>
                             </div>
-                        ))}
-                        {stats.topOutboundItems.length === 0 && (
-                            <div className="py-20 text-center text-slate-300 font-bold uppercase tracking-widest italic text-xs">Belum ada mutasi keluar</div>
+                        ) : (
+                            stats.topOutboundItems.map((item, idx) => {
+                                const maxVal = stats.topOutboundItems[0]?.value || 1;
+                                const percent = (item.value / maxVal) * 100;
+                                
+                                return (
+                                    <div key={idx} className="group">
+                                        <div className="flex justify-between items-center mb-1.5">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${idx === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {idx + 1}
+                                                </span>
+                                                <div>
+                                                    <div className="text-sm font-semibold text-slate-700 group-hover:text-brand transition-colors">{item.name}</div>
+                                                    <div className="text-[10px] text-slate-400 font-mono">{item.code}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-sm font-bold text-slate-800">{item.value}x</span>
+                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">Transaksi</span>
+                                            </div>
+                                        </div>
+                                        <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full rounded-full transition-all duration-1000 ${idx === 0 ? 'bg-amber-400' : 'bg-slate-300 group-hover:bg-brand'}`}
+                                                style={{ width: `${percent}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
                 </div>
                 
-                <div className="bg-[#0f172a] p-8 rounded-[32px] text-white flex flex-col items-center justify-center text-center shadow-xl shadow-slate-200 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                    <div className="relative z-10">
-                        <Activity size={48} className="text-brand mb-6 mx-auto"/>
-                        <h3 className="text-lg font-black tracking-tight mb-2">Sistem Integrasi</h3>
-                        <p className="text-xs text-slate-400 font-medium leading-relaxed mb-8">Data diperbarui secara otomatis dari seluruh outlet yang terhubung.</p>
-                        <div className="inline-block px-4 py-2 bg-white/10 rounded-2xl border border-white/5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">
-                           ● Sistem Online
+                {/* System Status / Mini Widget */}
+                <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
+                        {/* Decorative Circles */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-brand/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
+                        
+                        <div className="relative z-10">
+                            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm">
+                                <Activity size={20} className="text-emerald-400"/>
+                            </div>
+                            <h3 className="text-lg font-bold mb-1">Status Sistem</h3>
+                            <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                                Semua layanan berjalan normal. Sinkronisasi data real-time aktif.
+                            </p>
+                            
+                            <div className="flex items-center gap-2 text-[10px] font-medium bg-black/20 p-2 rounded-lg w-fit border border-white/5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Online & Connected
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                        <h4 className="text-sm font-bold text-slate-700 mb-4">Akses Cepat</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center cursor-pointer hover:bg-brand/5 hover:border-brand/20 transition-all group">
+                                <span className="text-2xl mb-1 block group-hover:scale-110 transition-transform">📦</span>
+                                <span className="text-[10px] font-bold text-slate-600">Cek Stok</span>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center cursor-pointer hover:bg-brand/5 hover:border-brand/20 transition-all group">
+                                <span className="text-2xl mb-1 block group-hover:scale-110 transition-transform">📄</span>
+                                <span className="text-[10px] font-bold text-slate-600">Laporan</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -141,17 +235,21 @@ export const DashboardView: React.FC = () => {
     );
 };
 
-const StatCard = ({ title, value, icon, trend, color }: any) => (
-    <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-slate-50 ${color}`}>
+// Elegant Stat Card Component
+const StatCard = ({ title, value, icon, bg, color, desc }: any) => (
+    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all duration-300">
+        <div className="flex justify-between items-start mb-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg} ${color}`}>
                 {icon}
             </div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{trend}</span>
+            {/* Optional Trend Indicator could go here */}
         </div>
         <div>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">{title}</p>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">{value.toLocaleString()}</h3>
+            <div className="text-3xl font-bold text-slate-800 tracking-tight mb-1">
+                {value.toLocaleString()}
+            </div>
+            <div className="text-sm font-medium text-slate-600">{title}</div>
+            <div className="text-[10px] text-slate-400 mt-1">{desc}</div>
         </div>
     </div>
 );
