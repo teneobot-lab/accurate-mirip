@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Item, Warehouse, Transaction, TransactionType, TransactionItem, Partner, Stock } from '../types';
+import { Item, Transaction, TransactionType, TransactionItem, Partner, Stock } from '../types';
 import { StorageService } from '../services/storage';
 import { useGlobalData } from '../search/SearchProvider';
 import { useFuseSearch } from '../search/useFuseSearch';
 import { highlightMatch } from '../search/highlightMatch';
-import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Download, Info, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Save, X, Loader2, Building2, User, Calendar, FileText, Search, CornerDownLeft, Package, Check, FileSpreadsheet, Download, Info } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
 
@@ -20,33 +20,40 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const { showToast } = useToast();
   const { masterItems, warehouses: globalWh, partners: globalPts, refreshAll } = useGlobalData();
   
-  // Track edit mode locally to allow switching to 'Create' on "Save & New"
   const [isEditMode, setIsEditMode] = useState(!!initialData);
-
   const [partners, setPartners] = useState<Partner[]>([]);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   
+  // Header State
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [refNo, setRefNo] = useState(initialData?.referenceNo || `${type === 'IN' ? 'RI' : 'DO'}.${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}.${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`);
   const [selectedPartnerId, setSelectedPartnerId] = useState(initialData?.partnerId || '');
   const [selectedWh, setSelectedWh] = useState(initialData?.sourceWarehouseId || '');
   const [notes, setNotes] = useState(initialData?.notes || '');
+  
+  // Lines State
   const [lines, setLines] = useState<TransactionItem[]>(initialData?.items || []);
   
+  // New Entry State
   const [pendingItem, setPendingItem] = useState<Item | null>(null);
   const [pendingQty, setPendingQty] = useState<string>('');
   const [pendingNote, setPendingNote] = useState('');
-
+  
+  // Search State
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Refs for Navigation
+  const inlineSearchTriggerRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const inlineSearchTriggerRef = useRef<HTMLInputElement>(null);
+  const noteInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchDropdownRef = useRef<HTMLDivElement>(null);
 
-  const { search } = useFuseSearch(masterItems, { keys: ['code', 'name'], limit: 10 });
+  const { search } = useFuseSearch(masterItems, { keys: ['code', 'name'], limit: 8 });
   const searchResults = search(searchQuery);
 
   useEffect(() => {
@@ -55,12 +62,17 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     if (globalWh.length > 0 && !selectedWh) setSelectedWh(globalWh[0].id);
   }, [globalPts, globalWh, type]);
 
+  // Click Outside to close search dropdown
   useEffect(() => {
-    if (isSearching) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-      setSelectedIndex(0);
-    }
-  }, [isSearching]);
+    const handleClickOutside = (event: MouseEvent) => {
+        if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node) && 
+            inlineSearchTriggerRef.current && !inlineSearchTriggerRef.current.contains(event.target as Node)) {
+            setIsSearching(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getStockQty = (itemId: string) => {
       const stock = stocks.find(s => s.itemId === itemId && s.warehouseId === selectedWh);
@@ -70,12 +82,19 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const handleSelectItem = (item: Item) => {
     setPendingItem(item);
     setIsSearching(false);
-    setSearchQuery('');
+    setSearchQuery(''); // Keep display clean
+    setSelectedIndex(0);
+    // Focus Qty after select
     setTimeout(() => qtyInputRef.current?.focus(), 50);
   };
 
   const handleCommitLine = () => {
-    if (!pendingItem || !pendingQty || Number(pendingQty) <= 0) return;
+    if (!pendingItem) return;
+    if (!pendingQty || Number(pendingQty) <= 0) {
+        // If qty empty but item selected, focus qty
+        qtyInputRef.current?.focus();
+        return;
+    }
 
     const newLine: TransactionItem = { 
         itemId: pendingItem.id, 
@@ -88,12 +107,83 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     };
 
     setLines([...lines, newLine]);
+    
+    // Reset New Entry
     setPendingItem(null);
     setPendingQty('');
     setPendingNote('');
-    setTimeout(() => inlineSearchTriggerRef.current?.focus(), 50);
+    
+    // Focus back to Item Search for next entry
+    setTimeout(() => {
+        inlineSearchTriggerRef.current?.focus();
+    }, 50);
   };
 
+  // --- NAVIGATION LOGIC ---
+  const handleGridKeyDown = (e: React.KeyboardEvent, rowIndex: number, field: string) => {
+    // Arrow Up: Move to prev row same column
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (rowIndex > 0) {
+            const el = document.getElementById(`input-${rowIndex - 1}-${field}`);
+            el?.focus();
+        }
+    }
+    // Arrow Down: Move to next row same column OR New Entry row
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (rowIndex < lines.length - 1) {
+            const el = document.getElementById(`input-${rowIndex + 1}-${field}`);
+            el?.focus();
+        } else {
+            // Move to New Entry Row
+            if (field === 'qty') qtyInputRef.current?.focus();
+            else if (field === 'note') noteInputRef.current?.focus();
+            else inlineSearchTriggerRef.current?.focus(); // Default fallback
+        }
+    }
+    
+    // Enter on Last Field (Note) -> Focus next row Qty or New Entry
+    if (e.key === 'Enter' && field === 'note') {
+        e.preventDefault();
+        if (rowIndex < lines.length - 1) {
+            const el = document.getElementById(`input-${rowIndex + 1}-qty`); // Go to next line qty? Or stay in note? Convention varies.
+            el?.focus();
+        } else {
+            inlineSearchTriggerRef.current?.focus();
+        }
+    }
+  };
+
+  const handleNewEntryKeyDown = (e: React.KeyboardEvent, field: 'search' | 'qty' | 'note') => {
+      // Arrow Up from New Entry -> Go to last row of existing lines
+      if (e.key === 'ArrowUp') {
+          if (lines.length > 0) {
+              e.preventDefault();
+              const targetField = field === 'search' ? 'qty' : field; // Search maps to nothing in grid usually, but lets map to note or qty?
+              // Map Search -> Code (Not editable usually), Qty -> Qty, Note -> Note
+              const mappedField = field === 'search' ? 'note' : field; 
+              const el = document.getElementById(`input-${lines.length - 1}-${mappedField}`);
+              el?.focus();
+          }
+      }
+
+      // Arrow Down on New Entry Qty/Note -> COMMIT
+      if (e.key === 'ArrowDown' && (field === 'qty' || field === 'note')) {
+          e.preventDefault();
+          handleCommitLine();
+      }
+      
+      // Enter on Search -> handled by Autocomplete logic
+      // Enter on Qty/Note -> Commit
+      if (e.key === 'Enter' && (field === 'qty' || field === 'note')) {
+          e.preventDefault();
+          handleCommitLine();
+      }
+  };
+
+
+  // --- TEMPLATE & IMPORT LOGIC (Kept Same) ---
   const handleDownloadTemplate = () => {
     const templateHeaders = [
       { sku: 'KODE-BARANG-01', nama_barang: 'Contoh Produk A', qty: 10, satuan: 'Pcs', catatan: 'Urgent' },
@@ -118,7 +208,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             const ws = wb.Sheets[wb.SheetNames[0]];
             const data = XLSX.utils.sheet_to_json(ws) as any[];
             if (data.length === 0) return showToast("File Excel tidak berisi data", "warning");
-            showToast(`Memproses ${data.length} baris data...`, "info");
+            
             const newItemsToCreate: Item[] = [];
             const importLines: TransactionItem[] = [];
             for (const row of data) {
@@ -146,7 +236,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             if (newItemsToCreate.length > 0) {
                 await StorageService.bulkSaveItems(newItemsToCreate);
                 await refreshAll();
-                showToast(`${newItemsToCreate.length} SKU baru otomatis didaftarkan`, "success");
             }
             setLines([...lines, ...importLines]);
             showToast(`${importLines.length} item berhasil diimpor`, "success");
@@ -160,15 +249,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
   const updateLine = (index: number, field: keyof TransactionItem, value: any) => {
     const newLines = [...lines];
-    const item = masterItems.find(i => i.id === newLines[index].itemId);
-    if (field === 'unit') {
-        let ratio = 1;
-        if (value !== item?.baseUnit) {
-            const conv = item?.conversions?.find(c => c.name === value);
-            if (conv) ratio = conv.operator === '/' ? 1 / conv.ratio : conv.ratio;
-        }
-        newLines[index].ratio = ratio;
-    }
     (newLines[index] as any)[field] = value;
     setLines(newLines);
   };
@@ -192,17 +272,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
         showToast("Transaksi Berhasil Disimpan", "success");
         if (keepOpen) {
-            // Reset Form Logic
             setLines([]); 
             setNotes('');
-            setSelectedPartnerId(''); // Reset Partner
-            setPendingItem(null); 
-            setPendingQty(''); 
-            setPendingNote('');
-            
-            // Switch to Create Mode for subsequent saves
+            setSelectedPartnerId(''); 
+            setPendingItem(null); setPendingQty(''); setPendingNote(''); setSearchQuery('');
             setIsEditMode(false);
-
             setRefNo(`${type === 'IN' ? 'RI' : 'DO'}.${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}.${String(Math.floor(Math.random()*9999)).padStart(4,'0')}`);
             StorageService.fetchStocks().then(setStocks);
             setTimeout(() => inlineSearchTriggerRef.current?.focus(), 100);
@@ -217,270 +291,260 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] animate-in fade-in duration-300">
+    <div className="flex flex-col h-full bg-[#f8fafc] animate-in fade-in duration-300 font-sans">
       
-      {/* HEADER ACTION BAR */}
-      <div className="bg-white px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} border border-current/10`}>
-                  <Package size={24}/>
+      {/* 1. COMPACT HEADER ACTION BAR */}
+      <div className="bg-white px-4 py-2 border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0">
+          <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                  <Package size={18}/>
               </div>
               <div>
-                  <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none uppercase">Formulir {type === 'IN' ? 'Penerimaan' : 'Pengiriman'}</h1>
-                  <span className="text-xs font-mono font-medium text-slate-500 uppercase mt-1 inline-block">{refNo}</span>
-                  {isEditMode && <span className="ml-2 text-[10px] font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded border border-amber-200 uppercase">Edit Mode</span>}
+                  <h1 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{type === 'IN' ? 'Penerimaan Barang' : 'Pengiriman Barang'}</h1>
+                  <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono font-medium text-slate-500 bg-slate-100 px-1.5 rounded">{refNo}</span>
+                      {isEditMode && <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 rounded uppercase">Edit Mode</span>}
+                  </div>
               </div>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={handleDownloadTemplate} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded-xl text-xs font-semibold uppercase transition-all flex items-center gap-2">
-                  <Download size={16}/> Template
-              </button>
+          <div className="flex gap-2">
               <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
-              <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-brand border border-brand/30 rounded-xl text-xs font-semibold uppercase transition-all flex items-center gap-2">
-                  <FileSpreadsheet size={16}/> Import
+              <button onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded text-xs font-bold transition-all flex items-center gap-1.5">
+                  <FileSpreadsheet size={14}/> Import
               </button>
-              <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
-              <button onClick={() => handleSave(true)} disabled={isSubmitting} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold uppercase transition-all flex items-center gap-2 disabled:opacity-50">
-                  <Plus size={16}/> Simpan & Baru
+              <div className="w-px h-6 bg-slate-300 mx-1"></div>
+              <button onClick={() => handleSave(true)} disabled={isSubmitting} className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50">
+                  <Plus size={14}/> Simpan & Baru
               </button>
-              <button onClick={() => handleSave(false)} disabled={isSubmitting} className="px-6 py-2.5 bg-brand text-white rounded-xl text-xs font-semibold uppercase shadow-lg shadow-brand/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Simpan Selesai
+              <button onClick={() => handleSave(false)} disabled={isSubmitting} className="px-4 py-1.5 bg-brand hover:bg-brand/90 text-white rounded text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50">
+                  {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Simpan
               </button>
+              <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded text-slate-400"><X size={18}/></button>
           </div>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           
-          {/* INFO SECTION - COMPACT & ELEGANT */}
-          <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6 bg-slate-50/50 border-b border-slate-200 shadow-inner">
-              <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Calendar size={12}/> Tanggal</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all" />
+          {/* 2. COMPACT FORM HEADER */}
+          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 border-b border-slate-200 text-xs shrink-0">
+              <div className="space-y-0.5">
+                  <label className="font-bold text-slate-500 uppercase text-[10px]">Tanggal</label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand" />
               </div>
-              <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Building2 size={12}/> Gudang</label>
-                  <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all">
+              <div className="space-y-0.5">
+                  <label className="font-bold text-slate-500 uppercase text-[10px]">Gudang</label>
+                  <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand">
                       {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
               </div>
-              <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><User size={12}/> {type === 'IN' ? 'Supplier' : 'Customer'}</label>
-                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all">
-                      <option value="">-- Pilih Partner --</option>
+              <div className="space-y-0.5">
+                  <label className="font-bold text-slate-500 uppercase text-[10px]">{type === 'IN' ? 'Supplier' : 'Customer'}</label>
+                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand">
+                      <option value="">-- Pilih --</option>
                       {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
               </div>
-              <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><FileText size={12}/> Catatan Global</label>
-                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Tulis catatan di sini..." className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all" />
+              <div className="space-y-0.5">
+                  <label className="font-bold text-slate-500 uppercase text-[10px]">Catatan Global</label>
+                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand" placeholder="Keterangan..." />
               </div>
           </div>
 
-          {/* DENSE GRID SECTION - ACCURATE STYLE REFINED */}
-          <div className="flex-1 flex flex-col bg-white overflow-hidden">
-              <div className="overflow-x-auto overflow-y-auto flex-1">
-                  <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
-                      <thead className="bg-slate-50 text-xs font-semibold text-slate-600 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
-                          <tr>
-                              <th className="px-4 py-3 w-12 text-center">#</th>
-                              <th className="px-4 py-3">Barang & SKU</th>
-                              <th className="px-4 py-3 w-32 text-right">Stok</th>
-                              <th className="px-4 py-3 w-32 text-right">Kuantitas</th>
-                              <th className="px-4 py-3 w-28 text-center">Satuan</th>
-                              <th className="px-4 py-3 w-32 text-right">Total Base</th>
-                              <th className="px-4 py-3">Catatan Baris</th>
-                              <th className="px-4 py-3 w-12"></th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-sm">
-                          {lines.map((l, i) => {
-                              const itemMaster = masterItems.find(it => it.id === l.itemId);
-                              return (
-                                <tr key={i} className="hover:bg-slate-50 transition-colors group h-10">
-                                    <td className="px-4 text-center text-slate-400 font-medium text-xs border-r border-slate-100">{i + 1}</td>
-                                    <td className="px-4 border-r border-slate-100 truncate">
-                                        <span className="font-semibold text-slate-800 mr-2">{l.name}</span>
-                                        <span className="text-xs font-mono text-slate-500">{l.code}</span>
-                                    </td>
-                                    <td className="px-4 text-right border-r border-slate-100 font-mono text-xs text-slate-500">
-                                        {getStockQty(l.itemId).toLocaleString()}
-                                    </td>
-                                    <td className="px-1 border-r border-slate-100">
-                                        <input type="number" value={l.qty} onChange={e => updateLine(i, 'qty', Number(e.target.value))} className="w-full bg-transparent border-none p-2 text-right font-medium text-slate-800 outline-none focus:bg-slate-50 transition-colors" />
-                                    </td>
-                                    <td className="px-1 border-r border-slate-100">
-                                        <select value={l.unit} onChange={e => updateLine(i, 'unit', e.target.value)} className="w-full bg-transparent border-none p-2 text-center font-medium text-slate-700 outline-none text-xs appearance-none cursor-pointer focus:bg-slate-50 transition-colors">
-                                            <option value={itemMaster?.baseUnit}>{itemMaster?.baseUnit}</option>
-                                            {itemMaster?.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                                        </select>
-                                    </td>
-                                    <td className="px-4 text-right border-r border-slate-100 font-mono font-medium text-xs text-slate-600">
-                                        {(l.qty * l.ratio).toLocaleString()}
-                                    </td>
-                                    <td className="px-2">
-                                        <input type="text" value={l.note || ''} onChange={e => updateLine(i, 'note', e.target.value)} placeholder="..." className="w-full bg-transparent border-none p-1 text-slate-600 italic outline-none text-xs placeholder:text-slate-300 focus:bg-slate-50 transition-colors" />
-                                    </td>
-                                    <td className="px-2 text-center">
-                                        <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
-                                    </td>
-                                </tr>
-                              );
-                          })}
+          {/* 3. DENSE SPREADSHEET GRID */}
+          <div className="flex-1 bg-white overflow-auto">
+              <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
+                  <thead className="bg-slate-100 text-[10px] font-bold text-slate-600 sticky top-0 z-10 border-b border-slate-300 h-8">
+                      <tr>
+                          <th className="px-2 w-8 text-center border-r border-slate-200">#</th>
+                          <th className="px-2 border-r border-slate-200">Nama Barang / SKU</th>
+                          <th className="px-2 w-20 text-right border-r border-slate-200">Stok</th>
+                          <th className="px-2 w-20 text-right border-r border-slate-200 bg-brand/5 text-brand">Kuantitas</th>
+                          <th className="px-2 w-20 text-center border-r border-slate-200">Satuan</th>
+                          <th className="px-2 w-24 text-right border-r border-slate-200">Total Base</th>
+                          <th className="px-2 w-48 border-r border-slate-200">Catatan Baris</th>
+                          <th className="px-2 w-8 text-center">Act</th>
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                      {lines.map((l, i) => (
+                        <tr key={i} className="hover:bg-slate-50 h-8">
+                            <td className="px-2 text-center text-slate-400 border-r border-slate-100">{i + 1}</td>
+                            <td className="px-2 border-r border-slate-100 truncate">
+                                <span className="font-semibold text-slate-700">{l.name}</span>
+                                <span className="ml-2 text-[10px] text-slate-400 font-mono">{l.code}</span>
+                            </td>
+                            <td className="px-2 text-right border-r border-slate-100 font-mono text-slate-500">
+                                {getStockQty(l.itemId).toLocaleString()}
+                            </td>
+                            <td className="p-0 border-r border-slate-100">
+                                <input 
+                                    id={`input-${i}-qty`}
+                                    type="number" 
+                                    value={l.qty} 
+                                    onChange={e => updateLine(i, 'qty', Number(e.target.value))} 
+                                    onKeyDown={e => handleGridKeyDown(e, i, 'qty')}
+                                    className="w-full h-full bg-transparent text-right px-2 font-bold text-slate-800 outline-none focus:bg-blue-50" 
+                                />
+                            </td>
+                            <td className="p-0 border-r border-slate-100">
+                                <select 
+                                    value={l.unit} 
+                                    onChange={e => updateLine(i, 'unit', e.target.value)} 
+                                    className="w-full h-full bg-transparent text-center px-1 outline-none appearance-none focus:bg-blue-50 cursor-pointer"
+                                >
+                                    <option value={l.unit}>{l.unit}</option>
+                                    {masterItems.find(it => it.id === l.itemId)?.conversions?.map(c => 
+                                        c.name !== l.unit && <option key={c.name} value={c.name}>{c.name}</option>
+                                    )}
+                                </select>
+                            </td>
+                            <td className="px-2 text-right border-r border-slate-100 font-mono text-slate-600">
+                                {(l.qty * (l.ratio || 1)).toLocaleString()}
+                            </td>
+                            <td className="p-0 border-r border-slate-100">
+                                <input 
+                                    id={`input-${i}-note`}
+                                    type="text" 
+                                    value={l.note || ''} 
+                                    onChange={e => updateLine(i, 'note', e.target.value)} 
+                                    onKeyDown={e => handleGridKeyDown(e, i, 'note')}
+                                    className="w-full h-full bg-transparent px-2 text-slate-600 italic outline-none focus:bg-blue-50" 
+                                    placeholder="..." 
+                                />
+                            </td>
+                            <td className="px-0 text-center">
+                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-rose-500 p-1"><Trash2 size={12}/></button>
+                            </td>
+                        </tr>
+                      ))}
 
-                          {/* IN-LINE ENTRY ROW */}
-                          <tr className="bg-slate-50/40 h-12 border-b-2 border-slate-200">
-                              <td className="px-4 text-center text-brand font-bold text-[10px] border-r border-slate-100">NEW</td>
-                              <td className="px-2 border-r border-slate-100 relative">
-                                  <div className="flex items-center gap-3">
-                                      <Search size={14} className="text-slate-400"/>
-                                      <input 
-                                          ref={inlineSearchTriggerRef} type="text" placeholder="Ketik kode atau nama barang..." 
-                                          onFocus={() => { setIsSearching(true); }}
-                                          value={pendingItem ? pendingItem.name : ''}
-                                          onClick={() => { if(!pendingItem) setIsSearching(true); }}
-                                          readOnly={!!pendingItem} // Lock input if item selected, force clear to search again
-                                          className={`w-full bg-transparent border-none p-0 text-sm font-medium outline-none cursor-text placeholder:text-slate-400 ${pendingItem ? 'text-slate-800' : 'text-slate-600'}`}
-                                      />
-                                      {pendingItem && (
-                                          <button onClick={() => { setPendingItem(null); setPendingQty(''); setIsSearching(true); }} className="text-slate-400 hover:text-rose-500"><X size={14}/></button>
-                                      )}
-                                  </div>
-                              </td>
-                              <td className="px-4 text-right border-r border-slate-100 font-mono text-xs text-slate-500">
-                                  {pendingItem ? getStockQty(pendingItem.id).toLocaleString() : '-'}
-                              </td>
-                              <td className="px-1 border-r border-slate-100 bg-white shadow-inner">
+                      {/* --- NEW ENTRY ROW (ALWAYS ACTIVE) --- */}
+                      <tr className="bg-emerald-50/30 h-9 border-b-2 border-slate-200">
+                          <td className="px-2 text-center font-bold text-[9px] text-emerald-600 border-r border-slate-200">BARU</td>
+                          <td className="p-0 border-r border-slate-200 relative">
+                              <div className="relative w-full h-full">
                                   <input 
-                                      ref={qtyInputRef} type="number" disabled={!pendingItem}
-                                      value={pendingQty} onChange={e => setPendingQty(e.target.value)}
-                                      onKeyDown={e => e.key === 'Enter' && handleCommitLine()}
-                                      placeholder="0"
-                                      className="w-full bg-transparent border-none p-2 text-right font-semibold text-brand outline-none text-sm placeholder:text-slate-300" 
+                                      ref={inlineSearchTriggerRef}
+                                      type="text" 
+                                      placeholder="Ketik nama / kode barang..." 
+                                      value={pendingItem ? pendingItem.name : searchQuery}
+                                      onChange={e => {
+                                          if(pendingItem) setPendingItem(null); // Reset if typing again
+                                          setSearchQuery(e.target.value);
+                                          setIsSearching(true);
+                                      }}
+                                      onKeyDown={e => {
+                                          handleNewEntryKeyDown(e, 'search');
+                                          // Handle dropdown navigation
+                                          if(isSearching) {
+                                              if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => (prev + 1) % searchResults.length); }
+                                              if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => (prev - 1 + searchResults.length) % searchResults.length); }
+                                              if (e.key === 'Enter') { e.preventDefault(); if (searchResults[selectedIndex]) handleSelectItem(searchResults[selectedIndex]); }
+                                              if (e.key === 'Escape') setIsSearching(false);
+                                          }
+                                      }}
+                                      onFocus={() => {
+                                          if (searchQuery) setIsSearching(true);
+                                      }}
+                                      className={`w-full h-full px-2 text-xs outline-none bg-transparent placeholder:text-slate-400 ${pendingItem ? 'font-bold text-slate-800' : 'font-normal'}`}
+                                      autoComplete="off"
                                   />
-                              </td>
-                              <td className="px-4 text-center border-r border-slate-100 text-xs font-bold text-slate-500">
-                                  {pendingItem?.baseUnit || '-'}
-                              </td>
-                              <td className="px-4 text-right border-r border-slate-100 font-mono text-xs text-slate-400">
-                                  {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '0'}
-                              </td>
-                              <td className="px-2">
-                                  <input 
-                                      type="text" disabled={!pendingItem}
-                                      value={pendingNote} onChange={e => setPendingNote(e.target.value)}
-                                      onKeyDown={e => e.key === 'Enter' && handleCommitLine()}
-                                      placeholder="Catatan..." 
-                                      className="w-full bg-transparent border-none p-1 text-slate-500 italic outline-none text-xs placeholder:text-slate-300" 
-                                  />
-                              </td>
-                              <td className="px-2 text-center">
-                                  {pendingItem && (
-                                      <button onClick={handleCommitLine} className="text-emerald-500 hover:scale-110 transition-transform"><Check size={18} strokeWidth={3}/></button>
+                                  {pendingItem && <button onClick={() => { setPendingItem(null); setSearchQuery(''); inlineSearchTriggerRef.current?.focus(); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={12}/></button>}
+                                  
+                                  {/* INLINE AUTOCOMPLETE DROPDOWN */}
+                                  {isSearching && searchQuery && (
+                                      <div ref={searchDropdownRef} className="absolute top-full left-0 w-full min-w-[300px] bg-white border border-slate-300 shadow-xl rounded-b-lg z-[100] max-h-60 overflow-auto">
+                                          {searchResults.length === 0 ? (
+                                              <div className="p-3 text-center text-slate-400 text-xs italic">Tidak ditemukan</div>
+                                          ) : (
+                                              searchResults.map((item, idx) => (
+                                                  <div 
+                                                      key={item.id}
+                                                      onMouseDown={() => handleSelectItem(item)} // MouseDown fires before Blur
+                                                      className={`px-3 py-2 cursor-pointer border-b border-slate-50 flex justify-between items-center ${idx === selectedIndex ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-slate-50 text-slate-700'}`}
+                                                  >
+                                                      <div>
+                                                          <div className="font-bold text-xs">{highlightMatch(item.name, searchQuery)}</div>
+                                                          <div className="text-[10px] text-slate-500 font-mono">{highlightMatch(item.code, searchQuery)}</div>
+                                                      </div>
+                                                      <div className="text-right">
+                                                          <div className="text-[10px] font-bold text-slate-500">{getStockQty(item.id)}</div>
+                                                          <div className="text-[9px] uppercase text-slate-400">{item.baseUnit}</div>
+                                                      </div>
+                                                  </div>
+                                              ))
+                                          )}
+                                      </div>
                                   )}
-                              </td>
-                          </tr>
-                          
-                          {/* FILLER ROWS */}
-                          {[...Array(Math.max(0, 8 - lines.length))].map((_, i) => (
-                              <tr key={`filler-${i}`} className="h-10">
-                                  <td className="border-r border-slate-100"></td>
-                                  <td className="border-r border-slate-100"></td>
-                                  <td className="border-r border-slate-100"></td>
-                                  <td className="border-r border-slate-100"></td>
-                                  <td className="border-r border-slate-100"></td>
-                                  <td className="border-r border-slate-100"></td>
-                                  <td className="border-r border-slate-100"></td>
-                                  <td></td>
-                              </tr>
-                          ))}
-                      </tbody>
-                  </table>
-              </div>
+                              </div>
+                          </td>
+                          <td className="px-2 text-right border-r border-slate-200 font-mono text-slate-400">
+                              {pendingItem ? getStockQty(pendingItem.id).toLocaleString() : '-'}
+                          </td>
+                          <td className="p-0 border-r border-slate-200">
+                              <input 
+                                  ref={qtyInputRef}
+                                  type="number" 
+                                  placeholder="0"
+                                  disabled={!pendingItem}
+                                  value={pendingQty}
+                                  onChange={e => setPendingQty(e.target.value)}
+                                  onKeyDown={e => handleNewEntryKeyDown(e, 'qty')}
+                                  className="w-full h-full bg-white text-right px-2 font-bold text-brand outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-slate-50 disabled:text-slate-300" 
+                              />
+                          </td>
+                          <td className="px-2 text-center border-r border-slate-200 font-bold text-slate-500">
+                              {pendingItem?.baseUnit || '-'}
+                          </td>
+                          <td className="px-2 text-right border-r border-slate-200 font-mono text-slate-300">
+                              {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '-'}
+                          </td>
+                          <td className="p-0 border-r border-slate-200">
+                              <input 
+                                  ref={noteInputRef}
+                                  type="text" 
+                                  placeholder="Catatan baris..." 
+                                  disabled={!pendingItem}
+                                  value={pendingNote}
+                                  onChange={e => setPendingNote(e.target.value)}
+                                  onKeyDown={e => handleNewEntryKeyDown(e, 'note')}
+                                  className="w-full h-full bg-white px-2 italic text-slate-600 outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-slate-50" 
+                              />
+                          </td>
+                          <td className="text-center p-0">
+                               {pendingItem && (
+                                   <button onClick={handleCommitLine} className="w-full h-full flex items-center justify-center text-emerald-500 hover:bg-emerald-50" title="Simpan Baris (Arrow Down)"><CornerDownLeft size={14}/></button>
+                               )}
+                          </td>
+                      </tr>
+                      
+                      {/* FILLER */}
+                      {[...Array(Math.max(0, 10 - lines.length))].map((_, i) => (
+                          <tr key={`fill-${i}`} className="h-8"><td colSpan={8} className="border-r border-slate-100"></td></tr>
+                      ))}
+                  </tbody>
+              </table>
           </div>
           
-          {/* FOOTER TOTALS */}
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-               <div className="flex items-center gap-10">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Item</span>
-                        <span className="text-lg font-bold text-slate-700">{lines.length} Baris</span>
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Kuantitas</span>
-                        <span className="text-lg font-bold text-brand">{lines.reduce((acc, l) => acc + (l.qty * l.ratio), 0).toLocaleString()} <span className="text-xs text-slate-500 ml-1">BASE</span></span>
-                    </div>
+          {/* 4. FOOTER INFO */}
+          <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs shrink-0">
+               <div className="flex gap-6 text-slate-500 font-medium">
+                   <span>Total Baris: <strong className="text-slate-800">{lines.length}</strong></span>
+                   <span>Total Qty: <strong className="text-slate-800">{lines.reduce((acc, l) => acc + (l.qty * (l.ratio||1)), 0).toLocaleString()}</strong> <span className="text-[10px]">BASE</span></span>
                </div>
-               <div className="text-xs font-medium text-slate-400 italic flex items-center gap-2">
-                  <Info size={14} className="text-slate-300"/> Transaksi ini akan menyesuaikan stok gudang secara real-time.
+               <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                   <span className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200"><Search size={10}/> Cari Barang</span>
+                   <span>→</span>
+                   <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">Pilih</span>
+                   <span>→</span>
+                   <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">Isi Qty</span>
+                   <span>→</span>
+                   <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold">Arrow Down / Enter</span>
+                   <span>=</span>
+                   <span className="text-emerald-600 font-bold">Simpan</span>
                </div>
           </div>
       </div>
-
-      {/* SEARCH OVERLAY - ELEGANT & TYPING TRIGGERED */}
-      {isSearching && (
-          <div className="fixed inset-0 z-[100] flex items-start justify-center pt-24 px-4 bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in slide-in-from-top-4 duration-200">
-                  <div className="p-4 bg-white flex items-center gap-4 border-b border-slate-100">
-                      <Search className="text-slate-400" size={20}/>
-                      <input 
-                        ref={searchInputRef} type="text" placeholder="Ketik Kode SKU atau Nama Barang..." 
-                        value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Escape') setIsSearching(false);
-                            if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => (prev + 1) % (searchResults.length || 1)); }
-                            if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => (prev - 1 + (searchResults.length || 1)) % (searchResults.length || 1)); }
-                            if (e.key === 'Enter' && searchResults[selectedIndex]) handleSelectItem(searchResults[selectedIndex]);
-                        }}
-                        className="flex-1 bg-transparent text-lg font-medium text-slate-800 outline-none placeholder:text-slate-300"
-                      />
-                      <button onClick={() => setIsSearching(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20}/></button>
-                  </div>
-                  
-                  <div className="max-h-[50vh] overflow-y-auto">
-                      {!searchQuery ? (
-                          <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
-                              <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
-                                  <Search size={24} />
-                              </div>
-                              <span className="text-sm font-medium">Mulai mengetik untuk mencari barang...</span>
-                          </div>
-                      ) : searchResults.length === 0 ? (
-                          <div className="p-12 text-center text-slate-400 font-medium italic">Barang tidak ditemukan...</div>
-                      ) : (
-                          <div className="divide-y divide-slate-50">
-                              {searchResults.map((item, idx) => (
-                                  <div 
-                                    key={item.id} onClick={() => handleSelectItem(item)} onMouseEnter={() => setSelectedIndex(idx)}
-                                    className={`p-3 px-4 flex justify-between items-center cursor-pointer transition-all ${idx === selectedIndex ? 'bg-brand/5 border-l-4 border-brand' : 'hover:bg-slate-50 border-l-4 border-transparent'}`}
-                                  >
-                                      <div className="flex items-center gap-4">
-                                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${idx === selectedIndex ? 'bg-brand text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                              {item.name.substring(0, 1)}
-                                          </div>
-                                          <div>
-                                              <div className={`text-sm font-semibold ${idx === selectedIndex ? 'text-brand' : 'text-slate-700'}`}>{highlightMatch(item.name, searchQuery)}</div>
-                                              <div className="text-xs text-slate-400 font-mono mt-0.5">{highlightMatch(item.code, searchQuery)} <span className="mx-1 text-slate-300">•</span> {item.category}</div>
-                                          </div>
-                                      </div>
-                                      <div className="flex items-center gap-6">
-                                          <div className="text-right">
-                                              <div className="text-xs font-bold text-slate-600">{getStockQty(item.id).toLocaleString()}</div>
-                                              <div className="text-[10px] font-bold text-slate-400 uppercase">{item.baseUnit}</div>
-                                          </div>
-                                          {idx === selectedIndex && <CornerDownLeft size={14} className="text-brand"/>}
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
-                      )}
-                  </div>
-                  <div className="p-2 bg-slate-50 border-t border-slate-100 flex justify-between px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                      <span>Total: {masterItems.length} Item</span>
-                      <span>Enter untuk memilih</span>
-                  </div>
-              </div>
-          </div>
-      )}
     </div>
   );
 };
