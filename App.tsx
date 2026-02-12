@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
 import { InventoryView } from './components/InventoryView';
@@ -78,9 +77,9 @@ function App() {
           {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
 
           <div className="flex h-screen overflow-hidden">
-              <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#0a0a0a] flex flex-col text-slate-300 shadow-xl transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 flex flex-col text-slate-300 shadow-xl transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                   {/* BRAND HEADER */}
-                  <div className="h-20 flex items-center justify-between px-6 border-b border-white/10 bg-[#0a0a0a]">
+                  <div className="h-20 flex items-center justify-between px-6 border-b border-white/10 bg-slate-900">
                       <div className="flex items-center gap-3">
                           {/* Custom Molecule Logo SVG */}
                           <div className="w-9 h-9 flex items-center justify-center">
