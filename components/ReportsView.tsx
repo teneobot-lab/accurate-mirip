@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Transaction, Warehouse } from '../types';
-import { Filter, Search, Calendar, RefreshCw, FileSpreadsheet, Edit3, Trash2, Loader2, ChevronDown, ChevronRight, Box, User, Hash, Terminal, MapPin, MessageSquare } from 'lucide-react';
-import ExcelJS from 'exceljs';
+import { Plus, Edit3, Trash2, Filter, RefreshCw, Printer, Search, Calendar, ChevronDown, ChevronRight, X, Info, LayoutGrid, FileSpreadsheet } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface Props {
@@ -15,12 +14,13 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [expandedTx, setExpandedTx] = useState<Set<string>>(new Set());
+    const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
 
-    const [filterWh, setFilterWh] = useState('ALL');
-    const [filterType, setFilterType] = useState('ALL');
+    // Filter States
     const [searchQuery, setSearchQuery] = useState('');
-    
+    const [filterWhFrom, setFilterWhFrom] = useState('ALL');
+    const [filterWhTo, setFilterWhTo] = useState('ALL');
+    const [isFilterDateActive, setIsFilterDateActive] = useState(true);
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -30,7 +30,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
     const refreshData = async () => {
         setIsLoading(true);
         try {
-            const filters = { start: startDate, end: endDate, warehouse: filterWh, type: filterType };
+            const filters = isFilterDateActive ? { start: startDate, end: endDate } : {};
             const [txs, whs] = await Promise.all([
                 StorageService.fetchTransactions(filters).catch(() => []),
                 StorageService.fetchWarehouses().catch(() => [])
@@ -44,137 +44,240 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction }) => {
         }
     };
 
-    useEffect(() => { refreshData(); }, [startDate, endDate, filterWh, filterType]);
+    useEffect(() => { refreshData(); }, [isFilterDateActive, startDate, endDate]);
 
     const filteredTransactions = useMemo(() => {
         const lower = searchQuery.toLowerCase().trim();
-        if (!lower) return transactions;
-        return transactions.filter(tx => 
-            tx.referenceNo.toLowerCase().includes(lower) || 
-            (tx.partnerName && tx.partnerName.toLowerCase().includes(lower)) ||
-            (tx.notes && tx.notes.toLowerCase().includes(lower)) ||
-            tx.items.some(it => it.name?.toLowerCase().includes(lower) || it.code?.toLowerCase().includes(lower))
-        );
-    }, [transactions, searchQuery]);
+        return transactions.filter(tx => {
+            const matchSearch = !lower || 
+                tx.referenceNo.toLowerCase().includes(lower) || 
+                (tx.notes && tx.notes.toLowerCase().includes(lower)) ||
+                tx.items.some(it => it.name?.toLowerCase().includes(lower));
+            
+            const matchWhFrom = filterWhFrom === 'ALL' || tx.sourceWarehouseId === filterWhFrom;
+            
+            return matchSearch && matchWhFrom;
+        });
+    }, [transactions, searchQuery, filterWhFrom]);
 
-    const handleExport = async () => {
-        if (filteredTransactions.length === 0) return showToast("Tidak ada data.", "warning");
-        showToast("Export Excel Sedang Berjalan...", "info");
-        // Logic Export ExcelJS existing remains...
-    };
+    const ToolbarButton = ({ icon: Icon, label, onClick, disabled = false, color = "text-slate-700" }: any) => (
+        <button 
+            onClick={onClick} 
+            disabled={disabled}
+            className={`flex flex-col items-center justify-center px-3 py-1 border-r border-slate-300 hover:bg-slate-200 transition-colors disabled:opacity-30 ${color}`}
+        >
+            <Icon size={18} />
+            <span className="text-[10px] font-bold mt-0.5">{label}</span>
+        </button>
+    );
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 p-6 lg:p-8 gap-6 overflow-hidden">
-            <div className="bg-white p-6 rounded-[28px] border border-slate-200 flex flex-wrap gap-6 items-end shadow-sm">
-                <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Periode Laporan</label>
-                    <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent border-none text-xs font-bold text-slate-800 outline-none px-2" />
-                        <span className="text-slate-300">-</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent border-none text-xs font-bold text-slate-800 outline-none px-2" />
+        <div className="flex flex-col h-full bg-[#d4d0c8] select-none font-sans overflow-hidden">
+            
+            {/* 1. TOP TOOLBAR - CLASSIC VFP STYLE */}
+            <div className="flex bg-[#f0f0f0] border-b border-[#999] shadow-sm shrink-0">
+                <ToolbarButton icon={Plus} label="Baru" onClick={() => {}} color="text-green-700" />
+                <ToolbarButton icon={Edit3} label="Ubah" onClick={() => {
+                    const tx = transactions.find(t => t.id === selectedTxId);
+                    if (tx) onEditTransaction(tx);
+                }} disabled={!selectedTxId} color="text-blue-700" />
+                <ToolbarButton icon={Trash2} label="Hapus" onClick={() => {}} disabled={!selectedTxId} color="text-red-700" />
+                <div className="w-px h-10 bg-slate-300 my-auto"></div>
+                <ToolbarButton icon={Filter} label="Filter" onClick={() => {}} />
+                <ToolbarButton icon={RefreshCw} label="Perbarui" onClick={refreshData} />
+                <ToolbarButton icon={Printer} label="Print" onClick={() => {}} />
+                <div className="ml-auto flex items-center px-4">
+                    <div className="flex items-center gap-2 bg-white border border-[#999] px-2 py-1 rounded shadow-inner">
+                        <Search size={14} className="text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="Live search..." 
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="bg-transparent border-none text-[11px] font-bold outline-none w-40" 
+                        />
                     </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Gudang</label>
-                    <select value={filterWh} onChange={e => setFilterWh(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand/10 w-44">
-                        <option value="ALL">Semua Gudang</option>
-                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                    </select>
-                </div>
-
-                <div className="flex-1 flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Pencarian Cepat</label>
-                    <div className="relative group">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand transition-colors"/>
-                        <input type="text" placeholder="Cari No. Referensi, Partner, atau Nama Barang..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-12 text-xs font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-brand/10" />
-                    </div>
-                </div>
-
-                <div className="flex gap-2">
-                    <button onClick={refreshData} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 hover:text-brand transition-all"><RefreshCw size={20} className={isLoading ? 'animate-spin' : ''}/></button>
-                    <button onClick={handleExport} className="px-6 py-2.5 bg-brand text-white text-[11px] font-bold uppercase tracking-widest rounded-xl flex items-center gap-2 hover:opacity-90 transition-all shadow-lg shadow-brand/20"><FileSpreadsheet size={18}/> Export Excel</button>
                 </div>
             </div>
 
-            <div className="flex-1 bg-white rounded-[32px] border border-slate-200 overflow-hidden flex flex-col shadow-sm">
-                <div className="overflow-auto flex-1">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] sticky top-0 z-10 border-b border-slate-100">
-                            <tr>
-                                <th className="px-6 py-4 w-12"></th>
-                                <th className="px-6 py-4 w-32">Tanggal</th>
-                                <th className="px-6 py-4 w-44">Referensi</th>
-                                <th className="px-6 py-4 w-24 text-center">Tipe</th>
-                                <th className="px-6 py-4">Entitas Partner</th>
-                                <th className="px-6 py-4 w-40">Lokasi Gudang</th>
-                                <th className="px-6 py-4 w-24 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-sm text-slate-700 divide-y divide-slate-100">
-                             {filteredTransactions.map((tx, idx) => (
-                                 <React.Fragment key={tx.id}>
-                                     <tr className="hover:bg-slate-50/50 group transition-colors">
-                                        <td className="px-6 py-4 text-center">
-                                            <button onClick={() => setExpandedTx(prev => {
-                                                const n = new Set(prev); if(n.has(tx.id)) n.delete(tx.id); else n.add(tx.id); return n;
-                                            })} className="text-slate-300 hover:text-brand transition-colors">
-                                                {expandedTx.has(tx.id) ? <ChevronDown size={18}/> : <ChevronRight size={18}/>}
-                                            </button>
+            <div className="flex-1 flex overflow-hidden">
+                
+                {/* 2. LEFT SIDEBAR FILTER - ACCURATE STYLE */}
+                <aside className="w-56 bg-[#f0f0f0] border-r border-[#999] flex flex-col p-2 gap-4 shrink-0 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                    <div className="bg-[#335157] text-white px-2 py-1 flex justify-between items-center text-[10px] font-black uppercase">
+                        <span>Panel Filter</span>
+                        <X size={12} className="cursor-pointer hover:scale-110" />
+                    </div>
+
+                    <div className="space-y-3">
+                        {/* Cari Filter */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-600 uppercase">Cari:</label>
+                            <input 
+                                type="text" 
+                                placeholder="<No. Transfer>" 
+                                className="w-full bg-white border border-[#999] p-1.5 text-[11px] font-medium outline-none focus:border-blue-500" 
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Gudang Asal */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-600 uppercase">Pindah dari:</label>
+                            <select 
+                                value={filterWhFrom}
+                                onChange={e => setFilterWhFrom(e.target.value)}
+                                className="w-full bg-white border border-[#999] p-1.5 text-[11px] font-bold outline-none"
+                            >
+                                <option value="ALL">&lt;Semua&gt;</option>
+                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Gudang Tujuan */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-600 uppercase">Pindah ke:</label>
+                            <select 
+                                value={filterWhTo}
+                                onChange={e => setFilterWhTo(e.target.value)}
+                                className="w-full bg-white border border-[#999] p-1.5 text-[11px] font-bold outline-none"
+                            >
+                                <option value="ALL">&lt;Semua&gt;</option>
+                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Filter Tanggal */}
+                        <div className="pt-2 border-t border-[#ccc] space-y-2">
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="checkbox" 
+                                    id="filterDate" 
+                                    checked={isFilterDateActive}
+                                    onChange={e => setIsFilterDateActive(e.target.checked)}
+                                    className="accent-blue-600"
+                                />
+                                <label htmlFor="filterDate" className="text-[10px] font-black text-slate-700 uppercase">Filter Tanggal</label>
+                            </div>
+                            
+                            <div className={`space-y-2 transition-opacity ${isFilterDateActive ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                                <div className="flex items-center justify-between gap-1">
+                                    <span className="text-[10px] font-bold text-slate-500 w-8">Dari</span>
+                                    <div className="flex-1 flex items-center bg-white border border-[#999]">
+                                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-1 text-[11px] font-bold outline-none border-none" />
+                                        <Calendar size={12} className="mr-1 text-slate-400" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between gap-1">
+                                    <span className="text-[10px] font-bold text-slate-500 w-8">s/d</span>
+                                    <div className="flex-1 flex items-center bg-white border border-[#999]">
+                                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-1 text-[11px] font-bold outline-none border-none" />
+                                        <Calendar size={12} className="mr-1 text-slate-400" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-auto p-2 bg-slate-200 rounded border border-slate-300 text-center">
+                        <div className="text-[14px] font-black text-slate-700">{filteredTransactions.length}</div>
+                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">Total Transaksi</div>
+                    </div>
+                </aside>
+
+                {/* 3. MAIN DATA GRID - ULTRA DENSE */}
+                <div className="flex-1 bg-white flex flex-col overflow-hidden relative shadow-inner">
+                    <div className="overflow-auto flex-1 scroll-smooth">
+                        <table className="w-full border-collapse table-fixed min-w-[800px]">
+                            <thead className="bg-[#e1e1e1] sticky top-0 z-10 border-b border-[#999]">
+                                <tr>
+                                    <th className="px-2 py-1 text-left text-[10px] font-bold text-slate-700 border-r border-[#ccc] w-48 group cursor-pointer hover:bg-slate-200">
+                                        No. Transfer <span className="text-yellow-500 ml-1">▼</span>
+                                    </th>
+                                    <th className="px-2 py-1 text-left text-[10px] font-bold text-slate-700 border-r border-[#ccc] w-32 group cursor-pointer hover:bg-slate-200">
+                                        Tanggal
+                                    </th>
+                                    <th className="px-2 py-1 text-left text-[10px] font-bold text-slate-700 border-r border-[#ccc] group cursor-pointer hover:bg-slate-200">
+                                        Keterangan / Partner
+                                    </th>
+                                    <th className="px-2 py-1 text-left text-[10px] font-bold text-slate-700 border-r border-[#ccc] w-48 group cursor-pointer hover:bg-slate-200">
+                                        Dari
+                                    </th>
+                                    <th className="px-2 py-1 text-left text-[10px] font-bold text-slate-700 w-48 group cursor-pointer hover:bg-slate-200">
+                                        s/d
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#eee]">
+                                {filteredTransactions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="p-20 text-center text-slate-400 italic text-xs uppercase tracking-widest bg-slate-50">Data Tidak Ditemukan</td>
+                                    </tr>
+                                ) : filteredTransactions.map((tx) => (
+                                    <tr 
+                                        key={tx.id} 
+                                        onClick={() => setSelectedTxId(tx.id)}
+                                        onDoubleClick={() => onEditTransaction(tx)}
+                                        className={`h-7 cursor-default transition-colors ${
+                                            selectedTxId === tx.id 
+                                            ? 'bg-[#0055dd] text-white font-bold' 
+                                            : 'hover:bg-[#e8f1ff] odd:bg-white even:bg-[#fafafa]'
+                                        }`}
+                                    >
+                                        <td className="px-2 border-r border-[#eee] text-[11px] font-mono truncate">{tx.referenceNo}</td>
+                                        <td className="px-2 border-r border-[#eee] text-[11px] truncate">
+                                            {new Date(tx.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                         </td>
-                                        <td className="px-6 py-4 font-mono font-bold text-brand text-xs uppercase">{tx.date}</td>
-                                        <td className="px-6 py-4 font-extrabold text-slate-900 text-xs">{tx.referenceNo}</td>
-                                        <td className="px-6 py-4 text-center">
-                                             <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${tx.type === 'IN' ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-rose-600 bg-rose-50 border-rose-100'}`}>{tx.type}</span>
+                                        <td className="px-2 border-r border-[#eee] text-[11px] truncate">
+                                            {tx.partnerName || tx.notes || '-'}
                                         </td>
-                                        <td className="px-6 py-4 font-semibold text-slate-700">{tx.partnerName || '-'}</td>
-                                        <td className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase">{warehouses.find(w => w.id === tx.sourceWarehouseId)?.name}</td>
-                                        <td className="px-6 py-4 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div className="flex justify-center gap-2">
-                                                <button onClick={() => onEditTransaction(tx)} className="p-1.5 text-slate-400 hover:text-brand transition-colors"><Edit3 size={16}/></button>
-                                                <button className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
-                                            </div>
+                                        <td className="px-2 border-r border-[#eee] text-[11px] truncate font-bold opacity-80 uppercase">
+                                            {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || '-'}
                                         </td>
-                                     </tr>
-                                     {expandedTx.has(tx.id) && (
-                                         <tr className="bg-slate-50/50">
-                                             <td colSpan={7} className="px-20 py-6 border-b border-slate-100">
-                                                 <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                                    <table className="w-full text-xs">
-                                                        <thead className="bg-slate-50 text-[9px] font-bold uppercase text-slate-400 tracking-widest border-b border-slate-100">
-                                                            <tr>
-                                                                <th className="px-6 py-3">SKU</th>
-                                                                <th className="px-6 py-3">Deskripsi Barang</th>
-                                                                <th className="px-6 py-3 text-right">Qty</th>
-                                                                <th className="px-6 py-3 text-center">Satuan</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-100">
-                                                            {tx.items.map((it, i) => (
-                                                                <tr key={i}>
-                                                                    <td className="px-6 py-3 font-mono font-bold text-brand">{it.code}</td>
-                                                                    <td className="px-6 py-3 font-medium text-slate-600">{it.name}</td>
-                                                                    <td className="px-6 py-3 text-right font-black text-slate-900">{it.qty.toLocaleString()}</td>
-                                                                    <td className="px-6 py-3 text-center text-slate-400 font-bold uppercase">{it.unit}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                 </div>
-                                                 {tx.notes && (
-                                                     <div className="mt-4 flex items-start gap-2 text-slate-400 italic text-xs">
-                                                         <MessageSquare size={14}/> {tx.notes}
-                                                     </div>
-                                                 )}
-                                             </td>
-                                         </tr>
-                                     )}
-                                 </React.Fragment>
-                             ))}
-                        </tbody>
-                    </table>
+                                        <td className="px-2 text-[11px] truncate font-bold opacity-80 uppercase">
+                                            {tx.partnerName || 'PENERIMA'}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {/* FILLER ROWS TO MAINTAIN APPEARANCE */}
+                                {[...Array(Math.max(0, 20 - filteredTransactions.length))].map((_, i) => (
+                                    <tr key={`fill-${i}`} className="h-7 bg-white odd:bg-white even:bg-[#fafafa]">
+                                        <td className="px-2 border-r border-[#eee]"></td>
+                                        <td className="px-2 border-r border-[#eee]"></td>
+                                        <td className="px-2 border-r border-[#eee]"></td>
+                                        <td className="px-2 border-r border-[#eee]"></td>
+                                        <td className="px-2"></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {/* STATUS BAR */}
+                    <div className="bg-[#f0f0f0] border-t border-[#999] px-3 py-1 flex items-center justify-between text-[10px] font-bold text-slate-600 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <span className="flex items-center gap-1"><Info size={10}/> Total Baris: {filteredTransactions.length}</span>
+                            <span>|</span>
+                            <span className="text-blue-600">Enterprise Edition v5.1</span>
+                        </div>
+                        <div className="italic">GudangPro Management System</div>
+                    </div>
                 </div>
             </div>
+            
+            <style>{`
+                /* Accurate Scrollbar Style */
+                ::-webkit-scrollbar { width: 14px; height: 14px; }
+                ::-webkit-scrollbar-track { background: #f0f0f0; border: 1px solid #ccc; }
+                ::-webkit-scrollbar-thumb { background: #d4d0c8; border: 2px solid #f0f0f0; outline: 1px solid #999; }
+                ::-webkit-scrollbar-thumb:hover { background: #c0c0c0; }
+                
+                input[type="date"]::-webkit-calendar-picker-indicator {
+                    display: none;
+                    -webkit-appearance: none;
+                }
+            `}</style>
         </div>
     );
 };
