@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
 import { ArrowLeft, RefreshCw, FileSpreadsheet, Printer, Calendar, Search, ArrowDownLeft, ArrowUpRight, Hash } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { useToast } from './Toast';
 
 interface Props {
@@ -68,7 +68,6 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
 
     // 2. Hitung Saldo Awal (Transaksi sebelum Start Date)
     let opening = 0;
-    // Optional: Jika ada initial stock di master item, tambahkan di sini (jika didukung DB)
     
     const beforePeriodTxs = itemTxs.filter(tx => tx.date < startDate);
     beforePeriodTxs.forEach(tx => {
@@ -128,45 +127,134 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
     };
   }, [transactions, item, startDate, endDate, warehouses]);
 
-  // --- EXPORT TO EXCEL ---
-  const handleExportExcel = () => {
-    if (ledgerRows.length === 0) return showToast("Tidak ada data untuk diekspor", "warning");
+  // --- EXPORT TO EXCEL (PROFESSIONAL WITH EXCELJS) ---
+  const handleExportExcel = async () => {
+    if (ledgerRows.length === 0 && openingBalance === 0) return showToast("Tidak ada data untuk diekspor", "warning");
 
-    // Format Data untuk Excel
-    const excelData = [
-        { 
-            Tanggal: startDate, 
-            'No. Referensi': 'SALDO AWAL', 
-            Keterangan: 'Bawaan Periode Sebelumnya', 
-            Masuk: 0, 
-            Keluar: 0, 
-            Saldo: openingBalance 
-        },
-        ...ledgerRows.map(row => ({
-            Tanggal: row.date,
-            'No. Referensi': row.ref,
-            'Tipe': row.type,
-            'Gudang': row.whName,
-            'Partner': row.partner,
-            'Keterangan': row.note,
-            'Masuk': row.inQty,
-            'Keluar': row.outQty,
-            'Saldo': row.balance
-        }))
-    ];
+    try {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Kartu Stok');
 
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Kartu Stok");
+        // --- 1. HEADER INFORMASI BARANG ---
+        sheet.mergeCells('A1:G1');
+        const titleCell = sheet.getCell('A1');
+        titleCell.value = 'KARTU STOK BARANG (STOCK CARD)';
+        titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF335157' } }; // Dark Teal
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-    // Auto width columns
-    const wscols = [
-        {wch: 12}, {wch: 20}, {wch: 10}, {wch: 20}, {wch: 20}, {wch: 30}, {wch: 10}, {wch: 10}, {wch: 12}
-    ];
-    ws['!cols'] = wscols;
+        // Detail Barang
+        sheet.mergeCells('A2:G2');
+        sheet.getCell('A2').value = `ITEM: [${item.code}] ${item.name}`;
+        sheet.getCell('A2').font = { name: 'Arial', size: 10, bold: true };
+        sheet.getCell('A2').alignment = { horizontal: 'left' };
 
-    XLSX.writeFile(wb, `KartuStok_${item.code}_${startDate}_${endDate}.xlsx`);
-    showToast("File Excel Berhasil Diunduh", "success");
+        sheet.mergeCells('A3:G3');
+        sheet.getCell('A3').value = `SATUAN DASAR: ${item.baseUnit}  |  PERIODE: ${startDate} s/d ${endDate}`;
+        sheet.getCell('A3').font = { name: 'Arial', size: 10 };
+
+        // Spasi
+        sheet.getRow(4).height = 10;
+
+        // --- 2. TABLE HEADER ---
+        const headerRow = sheet.getRow(5);
+        headerRow.values = ['TANGGAL', 'NO. BUKTI', 'TIPE', 'KETERANGAN / PARTNER', 'MASUK', 'KELUAR', 'SALDO'];
+        headerRow.height = 25;
+        
+        const headerStyle: Partial<ExcelJS.Style> = {
+            font: { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } },
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }, // Light Gray
+            alignment: { horizontal: 'center', vertical: 'middle' },
+            border: {
+                top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+            }
+        };
+
+        headerRow.eachCell((cell) => {
+            cell.style = headerStyle;
+        });
+
+        // --- 3. OPENING BALANCE ROW ---
+        const openRow = sheet.addRow([
+            startDate, 
+            '-', 
+            'OPENING', 
+            'SALDO AWAL PERIODE', 
+            null, 
+            null, 
+            openingBalance
+        ]);
+        
+        openRow.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF555555' } };
+        openRow.getCell(7).font = { name: 'Arial', size: 9, bold: true }; // Saldo Bold
+        openRow.eachCell(cell => {
+             cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } };
+             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+        });
+
+        // --- 4. DATA ROWS ---
+        ledgerRows.forEach(row => {
+            const r = sheet.addRow([
+                row.date,
+                row.ref,
+                row.type,
+                `${row.partner !== '-' ? row.partner : ''} ${row.note ? `(${row.note})` : ''}`.trim() || row.whName,
+                row.inQty > 0 ? row.inQty : null,
+                row.outQty > 0 ? row.outQty : null,
+                row.balance
+            ]);
+
+            // Styling per cell
+            r.font = { name: 'Arial', size: 9 };
+            r.getCell(1).alignment = { horizontal: 'center' }; // Date
+            r.getCell(2).alignment = { horizontal: 'left' };   // Ref
+            r.getCell(3).alignment = { horizontal: 'center' }; // Type
+            
+            // Warna Angka
+            if (row.inQty > 0) r.getCell(5).font = { color: { argb: 'FF10B981' } }; // Green
+            if (row.outQty > 0) r.getCell(6).font = { color: { argb: 'FFEF4444' } }; // Red
+            r.getCell(7).font = { bold: true }; // Saldo Bold
+
+            // Border tipis
+            r.eachCell(cell => {
+                cell.border = {
+                    left: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+                    right: { style: 'thin', color: { argb: 'FFDDDDDD' } },
+                    bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } }
+                };
+            });
+        });
+
+        // --- 5. FORMATTING COLUMNS ---
+        sheet.getColumn(1).width = 12; // Tanggal
+        sheet.getColumn(2).width = 20; // Ref
+        sheet.getColumn(3).width = 10; // Tipe
+        sheet.getColumn(4).width = 40; // Keterangan
+        sheet.getColumn(5).width = 12; // Masuk
+        sheet.getColumn(6).width = 12; // Keluar
+        sheet.getColumn(7).width = 15; // Saldo
+
+        // Number Format (#,##0)
+        ['E', 'F', 'G'].forEach(col => {
+            sheet.getColumn(col).numFmt = '#,##0.###;-#,##0.###;"-"';
+        });
+
+        // --- 6. DOWNLOAD ---
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `StockCard_${item.code}_${startDate}_${endDate}.xlsx`;
+        anchor.click();
+        window.URL.revokeObjectURL(url);
+        
+        showToast("Laporan Excel Berhasil Diunduh", "success");
+
+    } catch (e) {
+        console.error(e);
+        showToast("Gagal membuat file Excel", "error");
+    }
   };
 
   return (
