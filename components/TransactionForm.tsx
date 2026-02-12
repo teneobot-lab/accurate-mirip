@@ -226,99 +226,99 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   <Package size={24}/>
               </div>
               <div>
-                  <h1 className="text-lg font-black text-slate-900 tracking-tight leading-none uppercase">Formulir {type === 'IN' ? 'Penerimaan' : 'Pengiriman'}</h1>
-                  <span className="text-xs font-mono font-bold text-slate-400 uppercase mt-1 inline-block">{refNo}</span>
-                  {isEditMode && <span className="ml-2 text-[9px] font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded border border-amber-200 uppercase">Edit Mode</span>}
+                  <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none uppercase">Formulir {type === 'IN' ? 'Penerimaan' : 'Pengiriman'}</h1>
+                  <span className="text-xs font-mono font-medium text-slate-500 uppercase mt-1 inline-block">{refNo}</span>
+                  {isEditMode && <span className="ml-2 text-[10px] font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded border border-amber-200 uppercase">Edit Mode</span>}
               </div>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
-              <button onClick={handleDownloadTemplate} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-2">
-                  <Download size={14}/> Template
+              <button onClick={handleDownloadTemplate} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded-xl text-xs font-semibold uppercase transition-all flex items-center gap-2">
+                  <Download size={16}/> Template
               </button>
               <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
-              <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-brand border border-brand/30 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-2">
-                  <FileSpreadsheet size={14}/> Import
+              <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-brand border border-brand/30 rounded-xl text-xs font-semibold uppercase transition-all flex items-center gap-2">
+                  <FileSpreadsheet size={16}/> Import
               </button>
               <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
-              <button onClick={() => handleSave(true)} disabled={isSubmitting} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-2 disabled:opacity-50">
-                  <Plus size={14}/> Simpan & Baru
+              <button onClick={() => handleSave(true)} disabled={isSubmitting} className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold uppercase transition-all flex items-center gap-2 disabled:opacity-50">
+                  <Plus size={16}/> Simpan & Baru
               </button>
-              <button onClick={() => handleSave(false)} disabled={isSubmitting} className="px-6 py-2.5 bg-brand text-white rounded-xl text-[10px] font-bold uppercase shadow-lg shadow-brand/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50">
-                  {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Simpan Selesai
+              <button onClick={() => handleSave(false)} disabled={isSubmitting} className="px-6 py-2.5 bg-brand text-white rounded-xl text-xs font-semibold uppercase shadow-lg shadow-brand/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Simpan Selesai
               </button>
           </div>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           
-          {/* INFO SECTION - COMPACT */}
+          {/* INFO SECTION - COMPACT & ELEGANT */}
           <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6 bg-slate-50/50 border-b border-slate-200 shadow-inner">
               <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Calendar size={12}/> Tanggal</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-semibold text-slate-900 outline-none shadow-sm" />
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all" />
               </div>
               <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Building2 size={12}/> Gudang</label>
-                  <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-semibold text-slate-900 outline-none shadow-sm">
+                  <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all">
                       {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
               </div>
               <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><User size={12}/> {type === 'IN' ? 'Supplier' : 'Customer'}</label>
-                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-semibold text-slate-900 outline-none shadow-sm">
+                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all">
                       <option value="">-- Pilih Partner --</option>
                       {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
               </div>
               <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><FileText size={12}/> Catatan Global</label>
-                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Tulis catatan di sini..." className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-900 outline-none shadow-sm" />
+                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Tulis catatan di sini..." className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 outline-none shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all" />
               </div>
           </div>
 
-          {/* DENSE GRID SECTION - ACCURATE STYLE */}
+          {/* DENSE GRID SECTION - ACCURATE STYLE REFINED */}
           <div className="flex-1 flex flex-col bg-white overflow-hidden">
               <div className="overflow-x-auto overflow-y-auto flex-1">
                   <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
-                      <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 border-b border-slate-200">
+                      <thead className="bg-slate-50 text-xs font-semibold text-slate-600 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
                           <tr>
                               <th className="px-4 py-3 w-12 text-center">#</th>
                               <th className="px-4 py-3">Barang & SKU</th>
-                              <th className="px-4 py-3 w-32 text-right">Stok Saat Ini</th>
+                              <th className="px-4 py-3 w-32 text-right">Stok</th>
                               <th className="px-4 py-3 w-32 text-right">Kuantitas</th>
                               <th className="px-4 py-3 w-28 text-center">Satuan</th>
                               <th className="px-4 py-3 w-32 text-right">Total Base</th>
-                              <th className="px-4 py-3">Catatan</th>
+                              <th className="px-4 py-3">Catatan Baris</th>
                               <th className="px-4 py-3 w-12"></th>
                           </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-100 text-sm">
                           {lines.map((l, i) => {
                               const itemMaster = masterItems.find(it => it.id === l.itemId);
                               return (
-                                <tr key={i} className="hover:bg-slate-50/50 transition-colors group h-10">
-                                    <td className="px-4 text-center text-slate-400 font-mono text-[10px] border-r border-slate-100">{i + 1}</td>
+                                <tr key={i} className="hover:bg-slate-50 transition-colors group h-10">
+                                    <td className="px-4 text-center text-slate-400 font-medium text-xs border-r border-slate-100">{i + 1}</td>
                                     <td className="px-4 border-r border-slate-100 truncate">
-                                        <span className="font-bold text-slate-900 text-xs uppercase mr-2">{l.name}</span>
-                                        <span className="text-[10px] font-mono text-slate-400 font-bold">{l.code}</span>
+                                        <span className="font-semibold text-slate-800 mr-2">{l.name}</span>
+                                        <span className="text-xs font-mono text-slate-500">{l.code}</span>
                                     </td>
-                                    <td className="px-4 text-right border-r border-slate-100 font-mono text-[11px] text-slate-400">
+                                    <td className="px-4 text-right border-r border-slate-100 font-mono text-xs text-slate-500">
                                         {getStockQty(l.itemId).toLocaleString()}
                                     </td>
                                     <td className="px-1 border-r border-slate-100">
-                                        <input type="number" value={l.qty} onChange={e => updateLine(i, 'qty', Number(e.target.value))} className="w-full bg-transparent border-none p-2 text-right font-black text-brand outline-none text-xs" />
+                                        <input type="number" value={l.qty} onChange={e => updateLine(i, 'qty', Number(e.target.value))} className="w-full bg-transparent border-none p-2 text-right font-medium text-slate-800 outline-none focus:bg-slate-50 transition-colors" />
                                     </td>
                                     <td className="px-1 border-r border-slate-100">
-                                        <select value={l.unit} onChange={e => updateLine(i, 'unit', e.target.value)} className="w-full bg-transparent border-none p-2 text-center font-bold text-slate-600 outline-none uppercase text-[10px] appearance-none cursor-pointer">
+                                        <select value={l.unit} onChange={e => updateLine(i, 'unit', e.target.value)} className="w-full bg-transparent border-none p-2 text-center font-medium text-slate-700 outline-none text-xs appearance-none cursor-pointer focus:bg-slate-50 transition-colors">
                                             <option value={itemMaster?.baseUnit}>{itemMaster?.baseUnit}</option>
                                             {itemMaster?.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                                         </select>
                                     </td>
-                                    <td className="px-4 text-right border-r border-slate-100 font-mono font-bold text-[11px] text-slate-700">
+                                    <td className="px-4 text-right border-r border-slate-100 font-mono font-medium text-xs text-slate-600">
                                         {(l.qty * l.ratio).toLocaleString()}
                                     </td>
                                     <td className="px-2">
-                                        <input type="text" value={l.note || ''} onChange={e => updateLine(i, 'note', e.target.value)} placeholder="Catatan baris..." className="w-full bg-transparent border-none p-1 text-slate-500 italic outline-none text-[11px] placeholder:text-slate-300" />
+                                        <input type="text" value={l.note || ''} onChange={e => updateLine(i, 'note', e.target.value)} placeholder="..." className="w-full bg-transparent border-none p-1 text-slate-600 italic outline-none text-xs placeholder:text-slate-300 focus:bg-slate-50 transition-colors" />
                                     </td>
                                     <td className="px-2 text-center">
                                         <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
@@ -328,35 +328,40 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                           })}
 
                           {/* IN-LINE ENTRY ROW */}
-                          <tr className="bg-slate-50/30 h-12 border-b-2 border-slate-200">
-                              <td className="px-4 text-center text-brand font-black text-[10px] border-r border-slate-100">BARU</td>
+                          <tr className="bg-slate-50/40 h-12 border-b-2 border-slate-200">
+                              <td className="px-4 text-center text-brand font-bold text-[10px] border-r border-slate-100">NEW</td>
                               <td className="px-2 border-r border-slate-100 relative">
                                   <div className="flex items-center gap-3">
                                       <Search size={14} className="text-slate-400"/>
                                       <input 
-                                          ref={inlineSearchTriggerRef} type="text" placeholder="Klik untuk cari barang..." 
-                                          readOnly onFocus={() => setIsSearching(true)} onClick={() => setIsSearching(true)}
-                                          value={pendingItem?.name || ''}
-                                          className="w-full bg-transparent border-none p-0 text-xs font-bold text-brand outline-none cursor-pointer uppercase placeholder:italic placeholder:text-slate-400"
+                                          ref={inlineSearchTriggerRef} type="text" placeholder="Ketik kode atau nama barang..." 
+                                          onFocus={() => { setIsSearching(true); }}
+                                          value={pendingItem ? pendingItem.name : ''}
+                                          onClick={() => { if(!pendingItem) setIsSearching(true); }}
+                                          readOnly={!!pendingItem} // Lock input if item selected, force clear to search again
+                                          className={`w-full bg-transparent border-none p-0 text-sm font-medium outline-none cursor-text placeholder:text-slate-400 ${pendingItem ? 'text-slate-800' : 'text-slate-600'}`}
                                       />
+                                      {pendingItem && (
+                                          <button onClick={() => { setPendingItem(null); setPendingQty(''); setIsSearching(true); }} className="text-slate-400 hover:text-rose-500"><X size={14}/></button>
+                                      )}
                                   </div>
                               </td>
-                              <td className="px-4 text-right border-r border-slate-100 font-mono text-[11px] text-slate-400">
+                              <td className="px-4 text-right border-r border-slate-100 font-mono text-xs text-slate-500">
                                   {pendingItem ? getStockQty(pendingItem.id).toLocaleString() : '-'}
                               </td>
-                              <td className="px-1 border-r border-slate-100 bg-brand/[0.03]">
+                              <td className="px-1 border-r border-slate-100 bg-white shadow-inner">
                                   <input 
                                       ref={qtyInputRef} type="number" disabled={!pendingItem}
                                       value={pendingQty} onChange={e => setPendingQty(e.target.value)}
                                       onKeyDown={e => e.key === 'Enter' && handleCommitLine()}
                                       placeholder="0"
-                                      className="w-full bg-transparent border-none p-2 text-right font-black text-brand outline-none text-xs placeholder:text-slate-300" 
+                                      className="w-full bg-transparent border-none p-2 text-right font-semibold text-brand outline-none text-sm placeholder:text-slate-300" 
                                   />
                               </td>
-                              <td className="px-4 text-center border-r border-slate-100 text-[10px] font-black text-slate-400 uppercase">
+                              <td className="px-4 text-center border-r border-slate-100 text-xs font-bold text-slate-500">
                                   {pendingItem?.baseUnit || '-'}
                               </td>
-                              <td className="px-4 text-right border-r border-slate-100 font-mono text-[11px] text-slate-400">
+                              <td className="px-4 text-right border-r border-slate-100 font-mono text-xs text-slate-400">
                                   {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '0'}
                               </td>
                               <td className="px-2">
@@ -364,20 +369,20 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                       type="text" disabled={!pendingItem}
                                       value={pendingNote} onChange={e => setPendingNote(e.target.value)}
                                       onKeyDown={e => e.key === 'Enter' && handleCommitLine()}
-                                      placeholder="Ketik catatan..." 
-                                      className="w-full bg-transparent border-none p-1 text-slate-400 italic outline-none text-[11px] placeholder:text-slate-300" 
+                                      placeholder="Catatan..." 
+                                      className="w-full bg-transparent border-none p-1 text-slate-500 italic outline-none text-xs placeholder:text-slate-300" 
                                   />
                               </td>
                               <td className="px-2 text-center">
                                   {pendingItem && (
-                                      <button onClick={handleCommitLine} className="text-brand hover:scale-110 transition-transform"><Check size={18} strokeWidth={3}/></button>
+                                      <button onClick={handleCommitLine} className="text-emerald-500 hover:scale-110 transition-transform"><Check size={18} strokeWidth={3}/></button>
                                   )}
                               </td>
                           </tr>
                           
                           {/* FILLER ROWS */}
-                          {[...Array(Math.max(0, 10 - lines.length))].map((_, i) => (
-                              <tr key={`filler-${i}`} className="h-10 opacity-10">
+                          {[...Array(Math.max(0, 8 - lines.length))].map((_, i) => (
+                              <tr key={`filler-${i}`} className="h-10">
                                   <td className="border-r border-slate-100"></td>
                                   <td className="border-r border-slate-100"></td>
                                   <td className="border-r border-slate-100"></td>
@@ -397,26 +402,26 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
                <div className="flex items-center gap-10">
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Total Baris</span>
-                        <span className="text-base font-black text-slate-800">{lines.length} Barang</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Item</span>
+                        <span className="text-lg font-bold text-slate-700">{lines.length} Baris</span>
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Total Kuantitas</span>
-                        <span className="text-base font-black text-brand">{lines.reduce((acc, l) => acc + (l.qty * l.ratio), 0).toLocaleString()} <span className="text-[10px] font-bold ml-1">BASE UNIT</span></span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Kuantitas</span>
+                        <span className="text-lg font-bold text-brand">{lines.reduce((acc, l) => acc + (l.qty * l.ratio), 0).toLocaleString()} <span className="text-xs text-slate-500 ml-1">BASE</span></span>
                     </div>
                </div>
-               <div className="text-[10px] font-semibold text-slate-400 uppercase italic flex items-center gap-2">
+               <div className="text-xs font-medium text-slate-400 italic flex items-center gap-2">
                   <Info size={14} className="text-slate-300"/> Transaksi ini akan menyesuaikan stok gudang secara real-time.
                </div>
           </div>
       </div>
 
-      {/* SEARCH OVERLAY */}
+      {/* SEARCH OVERLAY - ELEGANT & TYPING TRIGGERED */}
       {isSearching && (
-          <div className="fixed inset-0 z-[100] flex items-start justify-center pt-24 px-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-                  <div className="p-5 bg-slate-50 flex items-center gap-4 border-b border-slate-200">
-                      <Search className="text-brand" size={24}/>
+          <div className="fixed inset-0 z-[100] flex items-start justify-center pt-24 px-4 bg-slate-900/20 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in slide-in-from-top-4 duration-200">
+                  <div className="p-4 bg-white flex items-center gap-4 border-b border-slate-100">
+                      <Search className="text-slate-400" size={20}/>
                       <input 
                         ref={searchInputRef} type="text" placeholder="Ketik Kode SKU atau Nama Barang..." 
                         value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -426,44 +431,52 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => (prev - 1 + (searchResults.length || 1)) % (searchResults.length || 1)); }
                             if (e.key === 'Enter' && searchResults[selectedIndex]) handleSelectItem(searchResults[selectedIndex]);
                         }}
-                        className="flex-1 bg-transparent text-lg font-bold text-slate-900 outline-none placeholder:text-slate-300 uppercase tracking-tight"
+                        className="flex-1 bg-transparent text-lg font-medium text-slate-800 outline-none placeholder:text-slate-300"
                       />
-                      <button onClick={() => setIsSearching(false)} className="p-2 hover:bg-slate-200 rounded-xl text-slate-400"><X size={20}/></button>
+                      <button onClick={() => setIsSearching(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20}/></button>
                   </div>
                   
-                  <div className="max-h-[60vh] overflow-y-auto">
-                      {searchResults.length === 0 && searchQuery ? (
-                          <div className="p-16 text-center text-slate-400 font-medium italic">Barang tidak ditemukan...</div>
+                  <div className="max-h-[50vh] overflow-y-auto">
+                      {!searchQuery ? (
+                          <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
+                              <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
+                                  <Search size={24} />
+                              </div>
+                              <span className="text-sm font-medium">Mulai mengetik untuk mencari barang...</span>
+                          </div>
+                      ) : searchResults.length === 0 ? (
+                          <div className="p-12 text-center text-slate-400 font-medium italic">Barang tidak ditemukan...</div>
                       ) : (
-                          <div className="divide-y divide-slate-100">
-                              {(searchQuery ? searchResults : masterItems.slice(0, 8)).map((item, idx) => (
+                          <div className="divide-y divide-slate-50">
+                              {searchResults.map((item, idx) => (
                                   <div 
                                     key={item.id} onClick={() => handleSelectItem(item)} onMouseEnter={() => setSelectedIndex(idx)}
-                                    className={`p-4 flex justify-between items-center cursor-pointer transition-colors ${idx === selectedIndex ? 'bg-brand/5' : 'hover:bg-slate-50'}`}
+                                    className={`p-3 px-4 flex justify-between items-center cursor-pointer transition-all ${idx === selectedIndex ? 'bg-brand/5 border-l-4 border-brand' : 'hover:bg-slate-50 border-l-4 border-transparent'}`}
                                   >
                                       <div className="flex items-center gap-4">
-                                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${idx === selectedIndex ? 'bg-brand text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                              <Package size={20}/>
+                                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${idx === selectedIndex ? 'bg-brand text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                              {item.name.substring(0, 1)}
                                           </div>
                                           <div>
-                                              <div className="text-sm font-bold text-slate-900 uppercase">{highlightMatch(item.name, searchQuery)}</div>
-                                              <div className="text-[10px] font-mono text-brand font-bold uppercase tracking-wider">{highlightMatch(item.code, searchQuery)} <span className="mx-2 text-slate-200">|</span> {item.category}</div>
+                                              <div className={`text-sm font-semibold ${idx === selectedIndex ? 'text-brand' : 'text-slate-700'}`}>{highlightMatch(item.name, searchQuery)}</div>
+                                              <div className="text-xs text-slate-400 font-mono mt-0.5">{highlightMatch(item.code, searchQuery)} <span className="mx-1 text-slate-300">•</span> {item.category}</div>
                                           </div>
                                       </div>
-                                      <div className="flex items-center gap-4">
+                                      <div className="flex items-center gap-6">
                                           <div className="text-right">
-                                              <div className="text-xs font-black text-slate-800">{getStockQty(item.id).toLocaleString()}</div>
-                                              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{item.baseUnit}</div>
+                                              <div className="text-xs font-bold text-slate-600">{getStockQty(item.id).toLocaleString()}</div>
+                                              <div className="text-[10px] font-bold text-slate-400 uppercase">{item.baseUnit}</div>
                                           </div>
-                                          {idx === selectedIndex && <CornerDownLeft size={16} className="text-brand animate-in slide-in-from-right-2"/>}
+                                          {idx === selectedIndex && <CornerDownLeft size={14} className="text-brand"/>}
                                       </div>
                                   </div>
                               ))}
                           </div>
                       )}
                   </div>
-                  <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-center text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">
-                      Gunakan ↑↓ Navigasi & Enter Pilih
+                  <div className="p-2 bg-slate-50 border-t border-slate-100 flex justify-between px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <span>Total: {masterItems.length} Item</span>
+                      <span>Enter untuk memilih</span>
                   </div>
               </div>
           </div>
