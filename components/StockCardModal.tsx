@@ -2,20 +2,37 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
-import { ArrowLeft, Package, TrendingUp, History, MapPin, Box, Calendar, RefreshCw, FileText, ArrowDownLeft, ArrowUpRight, Calculator } from 'lucide-react';
+import { ArrowLeft, RefreshCw, FileSpreadsheet, Printer, Calendar, Search, ArrowDownLeft, ArrowUpRight, Hash } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useToast } from './Toast';
 
 interface Props {
   item: Item;
   onBack: () => void;
 }
 
+interface StockLedgerRow {
+    id: string;
+    date: string;
+    ref: string;
+    type: string;
+    whName: string;
+    partner: string;
+    note: string;
+    inQty: number;
+    outQty: number;
+    balance: number;
+    unit: string;
+}
+
 export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const { showToast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Date Filter State - Fixed to Local Time 1st of Month
+  // Default tanggal: Awal bulan ini s/d Hari ini
   const [startDate, setStartDate] = useState(() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -25,247 +42,248 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [fetchedStocks, fetchedWh, fetchedTx] = await Promise.all([
-        StorageService.fetchStocks(),
+      const [fetchedTx, fetchedWh, fetchedStocks] = await Promise.all([
+        StorageService.fetchTransactions(),
         StorageService.fetchWarehouses(),
-        StorageService.fetchTransactions()
+        StorageService.fetchStocks()
       ]);
-      setStocks(fetchedStocks);
-      setWarehouses(fetchedWh);
       setTransactions(fetchedTx);
+      setWarehouses(fetchedWh);
+      setStocks(fetchedStocks);
     } catch (error) {
-      console.error("Failed to load stock data", error);
+      showToast("Gagal memuat data kartu stok", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [item.id]); // Reload if item changes
+  useEffect(() => { loadData(); }, [item.id]);
 
-  // Calculate current stock breakdown
-  const stockData = useMemo(() => {
-    const itemStocks = stocks.filter(s => s.itemId === item.id);
-    const total = itemStocks.reduce((acc, s) => acc + Number(s.qty), 0);
-    const breakdown = warehouses.map(wh => {
-        const s = itemStocks.find(stk => stk.warehouseId === wh.id);
-        return { name: wh.name, qty: s ? Number(s.qty) : 0 };
-    });
-    return { total, breakdown };
-  }, [item, stocks, warehouses]);
+  // --- LOGIC PERHITUNGAN KARTU STOK (LEDGER) ---
+  const { ledgerRows, summary, openingBalance } = useMemo(() => {
+    // 1. Filter transaksi hanya untuk item ini
+    const itemTxs = transactions.filter(tx => 
+        tx.items.some(line => line.itemId === item.id)
+    ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.createdAt - b.createdAt);
 
-  // Get filtered history and summary metrics
-  const { history, summary } = useMemo(() => {
-    const relevantTx = transactions.filter(tx => 
-        tx.items.some(ti => ti.itemId === item.id) &&
-        tx.date >= startDate &&
-        tx.date <= endDate
-    );
+    // 2. Hitung Saldo Awal (Transaksi sebelum Start Date)
+    let opening = 0;
+    // Optional: Jika ada initial stock di master item, tambahkan di sini (jika didukung DB)
     
+    const beforePeriodTxs = itemTxs.filter(tx => tx.date < startDate);
+    beforePeriodTxs.forEach(tx => {
+        const line = tx.items.find(l => l.itemId === item.id);
+        if (!line) return;
+        const qtyBase = line.qty * (line.ratio || 1);
+        
+        if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') opening += qtyBase;
+        else if (tx.type === 'OUT' || tx.type === 'TRANSFER') opening -= qtyBase;
+    });
+
+    // 3. Proses Transaksi dalam Periode
+    const periodTxs = itemTxs.filter(tx => tx.date >= startDate && tx.date <= endDate);
+    let runningBalance = opening;
     let totalIn = 0;
     let totalOut = 0;
 
-    const mappedHistory = relevantTx
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .map(tx => {
-            const line = tx.items.find(ti => ti.itemId === item.id);
-            const qtyInBase = line ? line.qty * (line.ratio || 1) : 0;
-            
-            if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') totalIn += qtyInBase;
-            else if (tx.type === 'OUT' || tx.type === 'TRANSFER') totalOut += qtyInBase;
+    const rows: StockLedgerRow[] = periodTxs.map(tx => {
+        const line = tx.items.find(l => l.itemId === item.id);
+        if (!line) return {} as StockLedgerRow;
 
-            return {
-                id: tx.id,
-                date: tx.date,
-                ref: tx.referenceNo,
-                type: tx.type,
-                qty: line ? line.qty : 0,
-                unit: line ? line.unit : '',
-                wh: warehouses.find(w => w.id === tx.sourceWarehouseId)?.name,
-                note: tx.notes || line?.note || '-'
-            };
-        });
+        const qtyBase = line.qty * (line.ratio || 1);
+        let inQty = 0;
+        let outQty = 0;
 
-    return { 
-        history: mappedHistory,
-        summary: { totalIn, totalOut, balance: totalIn - totalOut }
+        if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') {
+            inQty = qtyBase;
+            totalIn += qtyBase;
+            runningBalance += qtyBase;
+        } else {
+            outQty = qtyBase;
+            totalOut += qtyBase;
+            runningBalance -= qtyBase;
+        }
+
+        const whName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || 'Unknown';
+
+        return {
+            id: tx.id,
+            date: tx.date,
+            ref: tx.referenceNo,
+            type: tx.type,
+            whName: whName,
+            partner: tx.partnerName || '-',
+            note: tx.notes || line.note || '',
+            inQty,
+            outQty,
+            balance: runningBalance,
+            unit: item.baseUnit
+        };
+    });
+
+    return {
+        ledgerRows: rows,
+        summary: { totalIn, totalOut, closing: runningBalance },
+        openingBalance: opening
     };
-  }, [item, transactions, warehouses, startDate, endDate]);
+  }, [transactions, item, startDate, endDate, warehouses]);
+
+  // --- EXPORT TO EXCEL ---
+  const handleExportExcel = () => {
+    if (ledgerRows.length === 0) return showToast("Tidak ada data untuk diekspor", "warning");
+
+    // Format Data untuk Excel
+    const excelData = [
+        { 
+            Tanggal: startDate, 
+            'No. Referensi': 'SALDO AWAL', 
+            Keterangan: 'Bawaan Periode Sebelumnya', 
+            Masuk: 0, 
+            Keluar: 0, 
+            Saldo: openingBalance 
+        },
+        ...ledgerRows.map(row => ({
+            Tanggal: row.date,
+            'No. Referensi': row.ref,
+            'Tipe': row.type,
+            'Gudang': row.whName,
+            'Partner': row.partner,
+            'Keterangan': row.note,
+            'Masuk': row.inQty,
+            'Keluar': row.outQty,
+            'Saldo': row.balance
+        }))
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Kartu Stok");
+
+    // Auto width columns
+    const wscols = [
+        {wch: 12}, {wch: 20}, {wch: 10}, {wch: 20}, {wch: 20}, {wch: 30}, {wch: 10}, {wch: 10}, {wch: 12}
+    ];
+    ws['!cols'] = wscols;
+
+    XLSX.writeFile(wb, `KartuStok_${item.code}_${startDate}_${endDate}.xlsx`);
+    showToast("File Excel Berhasil Diunduh", "success");
+  };
 
   return (
-    <div className="flex flex-col h-full p-4 gap-4 animate-in fade-in slide-in-from-right duration-300">
+    <div className="flex flex-col h-full bg-[#e8e8e8] font-sans">
         
-        {/* Header Navigation Bar */}
-        <div className="bg-gable p-4 rounded-2xl border border-spectra flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-lg shrink-0">
+        {/* 1. HEADER & TOOLBAR (Classic Style) */}
+        <div className="bg-[#f0f0f0] border-b border-[#999] px-4 py-2 flex justify-between items-center shadow-sm shrink-0">
             <div className="flex items-center gap-4">
-                 <button onClick={onBack} className="p-2.5 rounded-xl bg-daintree text-slate-400 hover:text-white hover:bg-spectra/20 border border-spectra transition-all group">
-                    <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                 <button onClick={onBack} className="p-1.5 border border-[#999] bg-[#e1e1e1] hover:bg-white rounded shadow-sm text-slate-700">
+                    <ArrowLeft size={16} />
                  </button>
                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-xl font-black text-white leading-none uppercase">{item.name}</h2>
-                        <span className="px-2 py-0.5 rounded bg-daintree border border-spectra text-[10px] font-mono font-bold text-emerald-400">{item.code}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] text-cutty font-bold uppercase tracking-widest">
-                         <span className="flex items-center gap-1"><Package size={12}/> {item.category}</span>
-                         <span>•</span>
-                         <span>Base: {item.baseUnit}</span>
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight">KARTU STOK (STOCK CARD)</h2>
+                    <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <span className="font-mono font-bold bg-yellow-100 border border-yellow-300 px-1">{item.code}</span>
+                        <span className="font-bold">{item.name}</span>
+                        <span className="text-[10px] bg-slate-200 px-1 rounded border border-slate-300">{item.baseUnit}</span>
                     </div>
                  </div>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="flex items-center gap-2 bg-daintree p-1 rounded-xl border border-spectra/50 flex-1 sm:flex-none">
-                    <Calendar size={14} className="text-spectra ml-2"/>
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent text-xs text-white font-bold outline-none border-none w-24 p-1.5" />
-                    <span className="text-cutty text-xs">-</span>
-                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-xs text-white font-bold outline-none border-none w-24 p-1.5" />
+
+            <div className="flex items-center gap-2">
+                <div className="flex items-center bg-white border border-[#999] px-2 py-1 shadow-inner">
+                    <span className="text-[10px] font-bold text-slate-500 mr-2 uppercase">Periode:</span>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs font-bold border-none outline-none w-24" />
+                    <span className="text-xs mx-1">-</span>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-xs font-bold border-none outline-none w-24" />
+                    <button onClick={loadData} className="ml-2 text-blue-600 hover:text-blue-800"><RefreshCw size={14}/></button>
                 </div>
-                <button onClick={loadData} className="p-2.5 bg-spectra text-white rounded-xl hover:bg-white hover:text-spectra transition-all shadow-lg active:scale-95 border border-spectra/50">
-                    <RefreshCw size={18} className={isLoading ? 'animate-spin' : ''} />
+                
+                <button onClick={handleExportExcel} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-700 text-white text-xs font-bold border border-emerald-800 hover:bg-emerald-600 shadow-sm">
+                    <FileSpreadsheet size={14}/> Export Excel
                 </button>
             </div>
         </div>
 
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden">
-            
-            {/* Left Column: KPI & Distribution */}
-            <div className="w-full lg:w-1/3 flex flex-col gap-4 overflow-y-auto scrollbar-thin pr-1">
-                {/* Total Stock KPI */}
-                <div className="bg-gable p-6 rounded-2xl border border-spectra shadow-sm relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                        <Box size={120} className="text-spectra"/>
-                    </div>
-                    <div className="relative z-10">
-                        <div className="text-xs font-black text-cutty uppercase mb-2 tracking-widest flex items-center gap-2">
-                             <TrendingUp size={16}/> Saldo Stok Saat Ini
-                        </div>
-                        <div className={`text-5xl font-mono font-black tracking-tighter ${stockData.total <= item.minStock ? 'text-red-400' : 'text-white'}`}>
-                            {stockData.total.toLocaleString()}
-                        </div>
-                        <div className="mt-2 flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-500">{item.baseUnit}</span>
-                            {stockData.total <= item.minStock && (
-                                <span className="bg-red-900/30 text-red-400 px-2 py-1 rounded text-[10px] font-black border border-red-900/50 animate-pulse">
-                                    ⚠️ DI BAWAH MIN ({item.minStock})
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Warehouse Distribution */}
-                <div className="bg-gable border border-spectra rounded-2xl overflow-hidden shadow-sm flex-1 flex flex-col">
-                    <div className="p-4 bg-daintree/50 border-b border-spectra">
-                        <h3 className="text-xs font-black text-cutty uppercase tracking-widest flex items-center gap-2">
-                            <MapPin size={14} /> Lokasi Penyimpanan
-                        </h3>
-                    </div>
-                    <div className="p-2 overflow-y-auto">
-                        <table className="w-full text-xs text-left">
-                            <tbody className="divide-y divide-spectra/20">
-                                {stockData.breakdown.map((wh, idx) => (
-                                    <tr key={idx} className="hover:bg-daintree transition-colors group">
-                                        <td className="px-4 py-3 font-bold text-slate-300">{wh.name}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <div className="font-mono font-black text-white">{wh.qty.toLocaleString()}</div>
-                                        </td>
-                                        <td className="px-4 py-3 w-1/3">
-                                            <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
-                                                <div 
-                                                    className={`h-full rounded-full ${wh.qty > 0 ? 'bg-emerald-500' : 'bg-slate-700'}`} 
-                                                    style={{ width: `${Math.min((wh.qty / Math.max(stockData.total, 1)) * 100, 100)}%` }}
-                                                ></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+        {/* 2. SUMMARY PANEL */}
+        <div className="bg-[#d4d0c8] px-4 py-2 border-b border-white grid grid-cols-4 gap-4 text-xs shrink-0">
+            <div className="bg-white border border-[#999] p-2 flex justify-between items-center shadow-inner">
+                <span className="font-bold text-slate-500 uppercase">Saldo Awal</span>
+                <span className="font-mono font-black text-slate-800">{openingBalance.toLocaleString()}</span>
             </div>
+            <div className="bg-white border border-[#999] p-2 flex justify-between items-center shadow-inner">
+                <span className="font-bold text-emerald-600 uppercase flex items-center gap-1"><ArrowDownLeft size={12}/> Masuk</span>
+                <span className="font-mono font-black text-emerald-600">{summary.totalIn.toLocaleString()}</span>
+            </div>
+            <div className="bg-white border border-[#999] p-2 flex justify-between items-center shadow-inner">
+                <span className="font-bold text-red-600 uppercase flex items-center gap-1"><ArrowUpRight size={12}/> Keluar</span>
+                <span className="font-mono font-black text-red-600">{summary.totalOut.toLocaleString()}</span>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-400 p-2 flex justify-between items-center shadow-sm">
+                <span className="font-bold text-slate-800 uppercase flex items-center gap-1"><Hash size={12}/> Saldo Akhir</span>
+                <span className="font-mono font-black text-slate-900 text-sm">{summary.closing.toLocaleString()} <span className="text-[9px] text-slate-500">{item.baseUnit}</span></span>
+            </div>
+        </div>
 
-            {/* Right Column: Transaction History Table */}
-            <div className="flex-1 bg-gable border border-spectra rounded-2xl shadow-sm flex flex-col overflow-hidden">
-                <div className="p-4 bg-daintree/50 border-b border-spectra flex justify-between items-center">
-                    <h3 className="text-xs font-black text-cutty uppercase tracking-widest flex items-center gap-2">
-                        <History size={14} /> Riwayat Transaksi
-                    </h3>
-                    <div className="text-[10px] font-bold text-slate-500">
-                        Menampilkan {history.length} data
-                    </div>
-                </div>
-                
-                <div className="flex-1 overflow-auto scrollbar-thin">
-                     <table className="w-full text-xs text-left border-collapse">
-                        <thead className="bg-daintree text-slate-400 uppercase font-black border-b border-spectra sticky top-0 z-10 text-[10px] tracking-wider">
+        {/* 3. DENSE DATA TABLE */}
+        <div className="flex-1 overflow-auto p-4">
+            <div className="bg-white border border-[#999] shadow-sm min-w-[900px]">
+                <table className="w-full border-collapse text-xs">
+                    <thead className="bg-[#e1e1e1] text-slate-800 font-bold uppercase sticky top-0 z-10">
+                        <tr>
+                            <th className="border border-[#999] px-2 py-1.5 w-24">Tanggal</th>
+                            <th className="border border-[#999] px-2 py-1.5 w-32">No. Bukti</th>
+                            <th className="border border-[#999] px-2 py-1.5 w-20 text-center">Tipe</th>
+                            <th className="border border-[#999] px-2 py-1.5">Keterangan / Partner / Gudang</th>
+                            <th className="border border-[#999] px-2 py-1.5 w-24 text-right bg-emerald-50">Masuk</th>
+                            <th className="border border-[#999] px-2 py-1.5 w-24 text-right bg-red-50">Keluar</th>
+                            <th className="border border-[#999] px-2 py-1.5 w-28 text-right bg-yellow-50">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody className="text-slate-700">
+                        {/* OPENING BALANCE ROW */}
+                        <tr className="bg-[#f9f9f9] font-bold italic text-slate-500">
+                            <td className="border border-[#ccc] px-2 py-1">{startDate}</td>
+                            <td className="border border-[#ccc] px-2 py-1 text-center">-</td>
+                            <td className="border border-[#ccc] px-2 py-1 text-center">OPENING</td>
+                            <td className="border border-[#ccc] px-2 py-1">SALDO AWAL PERIODE</td>
+                            <td className="border border-[#ccc] px-2 py-1 text-right bg-emerald-50/50">-</td>
+                            <td className="border border-[#ccc] px-2 py-1 text-right bg-red-50/50">-</td>
+                            <td className="border border-[#ccc] px-2 py-1 text-right font-mono text-slate-800 bg-yellow-50/50">{openingBalance.toLocaleString()}</td>
+                        </tr>
+
+                        {ledgerRows.length === 0 ? (
                             <tr>
-                                <th className="px-4 py-3">Tanggal</th>
-                                <th className="px-4 py-3">Ref No</th>
-                                <th className="px-4 py-3 text-center">Tipe</th>
-                                <th className="px-4 py-3 text-right">Qty</th>
-                                <th className="px-4 py-3 text-center">Unit</th>
-                                <th className="px-4 py-3">Gudang</th>
-                                <th className="px-4 py-3">Ket</th>
+                                <td colSpan={7} className="p-8 text-center text-slate-400 italic">Tidak ada transaksi pada periode ini</td>
                             </tr>
-                        </thead>
-                        <tbody className="divide-y divide-spectra/20 text-slate-300">
-                            {history.length === 0 ? (
-                                <tr>
-                                    <td colSpan={7} className="p-12 text-center flex flex-col items-center justify-center opacity-50 gap-2">
-                                        <FileText size={32} className="text-slate-600"/>
-                                        <span className="text-slate-500 font-bold uppercase tracking-widest">Tidak ada riwayat pada periode ini</span>
-                                    </td>
-                                </tr>
-                            ) : history.map((h) => (
-                                <tr key={h.id} className="hover:bg-daintree/50 transition-colors group">
-                                    <td className="px-4 py-3 font-mono text-emerald-500 font-bold">{h.date}</td>
-                                    <td className="px-4 py-3 font-mono font-bold text-white group-hover:text-spectra transition-colors">{h.ref}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tight border ${
-                                            h.type === 'IN' || h.type === 'ADJUSTMENT' ? 'bg-emerald-900/20 text-emerald-400 border-emerald-900/50' :
-                                            h.type === 'OUT' ? 'bg-red-900/20 text-red-400 border-red-900/50' : 'bg-blue-900/20 text-blue-400 border-blue-900/50'
-                                        }`}>{h.type}</span>
-                                    </td>
-                                    <td className={`px-4 py-3 text-right font-black text-sm ${h.type === 'OUT' || h.type === 'TRANSFER' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                        {h.qty.toLocaleString()}
-                                    </td>
-                                    <td className="px-4 py-3 text-center text-slate-500 font-bold uppercase text-[10px]">{h.unit}</td>
-                                    <td className="px-4 py-3 text-slate-400 truncate max-w-[120px] font-bold text-[10px] uppercase">{h.wh}</td>
-                                    <td className="px-4 py-3 text-slate-500 italic truncate max-w-[150px]">{h.note}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* SUMMARY FOOTER PANEL */}
-                <div className="bg-daintree p-4 border-t border-spectra grid grid-cols-3 gap-4 shadow-[0_-4px_10px_rgba(0,0,0,0.1)]">
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><ArrowDownLeft size={10} className="text-emerald-500"/> Total Mutasi Masuk</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-mono font-black text-emerald-400">{summary.totalIn.toLocaleString()}</span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.baseUnit}</span>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-1 border-x border-spectra px-4">
-                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><ArrowUpRight size={10} className="text-red-400"/> Total Mutasi Keluar</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-mono font-black text-red-400">{summary.totalOut.toLocaleString()}</span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.baseUnit}</span>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-1 pl-4">
-                        <span className="text-[9px] font-black text-spectra uppercase tracking-widest flex items-center gap-1.5"><Calculator size={10}/> Netto Mutasi Periode</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className={`text-lg font-mono font-black ${summary.balance >= 0 ? 'text-white' : 'text-red-500'}`}>
-                                {summary.balance >= 0 ? '+' : ''}{summary.balance.toLocaleString()}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase">{item.baseUnit}</span>
-                        </div>
-                    </div>
-                </div>
+                        ) : ledgerRows.map((row) => (
+                            <tr key={row.id} className="hover:bg-blue-50 transition-colors">
+                                <td className="border border-[#ccc] px-2 py-1 font-mono text-[11px] whitespace-nowrap">
+                                    {new Date(row.date).toLocaleDateString('id-ID')}
+                                </td>
+                                <td className="border border-[#ccc] px-2 py-1 font-mono text-[11px] text-blue-700 whitespace-nowrap cursor-pointer hover:underline" title="Lihat Detail Transaksi">
+                                    {row.ref}
+                                </td>
+                                <td className="border border-[#ccc] px-2 py-1 text-center text-[10px]">
+                                    {row.type}
+                                </td>
+                                <td className="border border-[#ccc] px-2 py-1 truncate max-w-xs">
+                                    <span className="font-bold text-slate-800">{row.partner}</span>
+                                    <span className="mx-1 text-slate-400">|</span>
+                                    <span className="text-slate-600">{row.whName}</span>
+                                    {row.note && <span className="ml-2 italic text-slate-500 text-[10px]">({row.note})</span>}
+                                </td>
+                                <td className={`border border-[#ccc] px-2 py-1 text-right font-mono ${row.inQty > 0 ? 'text-emerald-600 font-bold bg-emerald-50/30' : 'text-slate-300'}`}>
+                                    {row.inQty > 0 ? row.inQty.toLocaleString() : '-'}
+                                </td>
+                                <td className={`border border-[#ccc] px-2 py-1 text-right font-mono ${row.outQty > 0 ? 'text-red-600 font-bold bg-red-50/30' : 'text-slate-300'}`}>
+                                    {row.outQty > 0 ? row.outQty.toLocaleString() : '-'}
+                                </td>
+                                <td className="border border-[#ccc] px-2 py-1 text-right font-mono font-bold text-slate-900 bg-yellow-50/30">
+                                    {row.balance.toLocaleString()}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
