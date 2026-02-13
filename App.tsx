@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
 import { InventoryView } from './components/InventoryView';
@@ -13,7 +14,6 @@ import { GlobalSearch } from './components/GlobalSearch';
 import { LowStockAlert } from './components/LowStockAlert';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
-// Added Plus to imports
 import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
@@ -81,7 +81,6 @@ function App() {
                   {/* BRAND HEADER */}
                   <div className="h-20 flex items-center justify-between px-6 border-b border-white/10 bg-slate-900">
                       <div className="flex items-center gap-3">
-                          {/* Custom Molecule Logo SVG */}
                           <div className="w-9 h-9 flex items-center justify-center">
                               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                                   <circle cx="50" cy="50" r="14" fill="white"/>
@@ -126,6 +125,7 @@ function App() {
                       
                       <div className="mt-auto border-t border-white/10 pt-4">
                           <NavItem id="SETTINGS" label="Pengaturan" icon={Settings} />
+                          {/* Changed handleLogout to onClick to fix TypeScript error */}
                           <button onClick={handleLogout} className="flex items-center w-full p-3 text-sm font-semibold rounded-xl transition-all text-rose-400 hover:bg-rose-400/10 mt-2">
                               <LogOut size={20} className="mr-3 flex-shrink-0" />
                               <span>Keluar Sistem</span>
@@ -135,35 +135,36 @@ function App() {
               </aside>
 
               <main className="flex-1 flex flex-col overflow-hidden">
-                  <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-30 shrink-0">
+                  {/* SLIM TOPBAR - DARK THEME */}
+                  <header className="h-12 bg-slate-900 border-b border-white/10 flex items-center justify-between px-6 shadow-sm z-30 shrink-0">
                       <div className="flex items-center gap-4">
-                          <button onClick={() => setIsSidebarOpen(true)} className={`p-2 rounded-lg text-slate-500 hover:bg-slate-100 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={20} /></button>
-                          <h2 className="text-sm lg:text-base font-bold text-slate-800 flex items-center gap-2">
+                          <button onClick={() => setIsSidebarOpen(true)} className={`p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={18} /></button>
+                          <h2 className="text-xs font-bold text-slate-200 flex items-center gap-2">
                               {(viewingItem || activeTransaction) ? (
-                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-slate-800 hover:underline">
-                                      <ArrowLeft size={18}/> <span className="font-semibold uppercase tracking-tight text-xs">Kembali Ke List</span>
+                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-slate-200 hover:text-white transition-colors">
+                                      <ArrowLeft size={16}/> <span className="font-bold uppercase tracking-tight text-[10px]">Kembali Ke List</span>
                                   </button>
                               ) : (
-                                  <span className="uppercase tracking-widest text-xs text-slate-500">{activeTab}</span>
+                                  <span className="uppercase tracking-[0.2em] text-[10px] text-slate-500 font-black">{activeTab}</span>
                               )}
                           </h2>
                       </div>
                       
                       {!activeTransaction && !viewingItem && (
-                          <div className="flex-1 max-w-lg mx-8">
+                          <div className="flex-1 max-w-sm mx-4">
                               <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
                           </div>
                       )}
 
-                      <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex items-center gap-3 shrink-0">
                           <LowStockAlert />
                           <MusicPlayer />
-                          <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+                          <div className="flex items-center gap-3 pl-3 border-l border-white/10">
                               <div className="hidden md:block text-right">
-                                  <p className="text-xs font-bold text-slate-800 leading-none">{currentUser?.name}</p>
-                                  <p className="text-[10px] text-slate-500 font-medium uppercase mt-1">{currentUser?.role}</p>
+                                  <p className="text-[10px] font-bold text-slate-200 leading-none tracking-tight">{currentUser?.name}</p>
+                                  <p className="text-[8px] text-slate-500 font-black uppercase mt-1 tracking-widest">{currentUser?.role}</p>
                               </div>
-                              <div className="w-10 h-10 rounded-full bg-slate-900 text-white border border-slate-200 flex items-center justify-center font-black shadow-sm">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 text-white border border-white/10 flex items-center justify-center font-black text-xs shadow-sm ring-2 ring-white/5">
                                   {currentUser?.name.substring(0,2).toUpperCase()}
                               </div>
                           </div>
