@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, Stock } from '../types';
-import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Database, Tag, Edit3, Info, Copy, FileSpreadsheet, Check, RefreshCw, ChevronRight } from 'lucide-react';
+import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Database, Tag, Edit3, Info, Copy, FileSpreadsheet, Check, RefreshCw, ChevronRight, Filter } from 'lucide-react';
 import { useToast } from './Toast';
 import ExcelJS from 'exceljs';
 import { Decimal } from 'decimal.js';
@@ -121,7 +121,6 @@ export const RejectView: React.FC = () => {
         ).slice(0, 10);
     }, [query, rejectMasterItems, pendingItem]);
 
-    // Added filteredMasterItems to handle the item list in the Katalog tab with searching
     const filteredMasterItems = useMemo(() => {
         if (!debouncedMasterSearch) return rejectMasterItems;
         const lower = debouncedMasterSearch.toLowerCase();
@@ -207,49 +206,148 @@ export const RejectView: React.FC = () => {
     };
 
     const handleExportMatrix = async () => {
-        const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
-        if (filteredBatches.length === 0) return showToast("Tidak ada data", "warning");
+        // Filter data berdasarkan outlet dan periode
+        const filteredBatches = batches.filter(b => 
+            (selectedOutlet === 'ALL' || b.outlet === selectedOutlet) &&
+            b.date >= exportStart && b.date <= exportEnd
+        );
+
+        if (filteredBatches.length === 0) return showToast("Tidak ada data untuk periode ini", "warning");
+
         try {
             const workbook = new ExcelJS.Workbook();
             const sheet = workbook.addWorksheet('Matrix Reject');
+            
+            // Generate List Tanggal
             const dateList: string[] = [];
             let curr = new Date(exportStart);
             const end = new Date(exportEnd);
-            while (curr <= end) { dateList.push(curr.toISOString().split('T')[0]); curr.setDate(curr.getDate() + 1); }
+            while (curr <= end) { 
+                dateList.push(curr.toISOString().split('T')[0]); 
+                curr.setDate(curr.getDate() + 1); 
+            }
 
+            // Agregasi Data Per Barang
             const itemMap = new Map<string, any>();
             filteredBatches.forEach(batch => {
                 batch.items.forEach(it => {
-                    if (!itemMap.has(it.itemId)) itemMap.set(it.itemId, { code: it.sku, name: it.name, unit: it.unit, dateValues: new Map() });
+                    if (!itemMap.has(it.itemId)) {
+                        itemMap.set(it.itemId, { 
+                            code: it.sku, 
+                            name: it.name, 
+                            unit: it.unit, 
+                            dateValues: new Map() 
+                        });
+                    }
                     const data = itemMap.get(it.itemId)!;
                     const currentVal = data.dateValues.get(batch.date) || new Decimal(0);
                     data.dateValues.set(batch.date, currentVal.plus(it.baseQty));
                 });
             });
 
-            const headerRow = sheet.addRow(['NO', 'KODE', 'NAMA BARANG', 'SATUAN', ...dateList.map(d => `${d.split('-')[2]}/${d.split('-')[1]}`), 'TOTAL']);
-            headerRow.font = { bold: true };
-            let rowIdx = 1;
+            // 1. Title Row
+            const titleRow = sheet.addRow(['LAPORAN REJECT MINGGUAN']);
+            titleRow.font = { bold: true, size: 12 };
+            sheet.mergeCells(1, 1, 1, 5 + dateList.length);
+
+            // 2. Header Row
+            const headers = [
+                'NO', 'KODE', 'NAMA BARANG', 'SATUAN', 
+                ...dateList.map(d => {
+                    const dt = d.split('-');
+                    return `${dt[2]}/${dt[1]}`;
+                }), 
+                'TOTAL'
+            ];
+            const headerRow = sheet.addRow(headers);
+            
+            // Styling Header (Warna Kuning & Bold)
+            headerRow.eachCell((cell) => {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFFF00' }
+                };
+                cell.font = { bold: true, size: 10 };
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+                cell.alignment = { horizontal: 'center' };
+            });
+
+            // 3. Data Rows
+            let rowCounter = 1;
             Array.from(itemMap.values()).forEach(item => {
-                const row = [rowIdx++, item.code, item.name, item.unit];
+                const rowData = [rowCounter++, item.code, item.name, item.unit];
                 let total = new Decimal(0);
+                
                 dateList.forEach(d => {
                     const qty = item.dateValues.get(d) || new Decimal(0);
-                    row.push(qty.toNumber() || null);
+                    rowData.push(qty.toNumber() || null);
                     total = total.plus(qty);
                 });
-                row.push(total.toNumber() || null);
-                sheet.addRow(row);
+                
+                rowData.push(total.toNumber() || null);
+                const row = sheet.addRow(rowData);
+
+                // Styling Sel Data
+                row.eachCell((cell, colNumber) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                    
+                    if (colNumber === 1) cell.alignment = { horizontal: 'center' };
+                    if (colNumber > 4) {
+                        cell.alignment = { horizontal: 'right' };
+                        cell.numFmt = '#,##0.0';
+                        // Style Kolom Total
+                        if (colNumber === rowData.length) cell.font = { bold: true };
+                    }
+                });
             });
+
+            // Auto Column Width
+            sheet.columns.forEach((col, idx) => {
+                if (idx === 0) col.width = 5;
+                else if (idx === 1) col.width = 15;
+                else if (idx === 2) col.width = 35;
+                else if (idx === 3) col.width = 10;
+                else col.width = 7;
+            });
+
+            // 4. Filename Logic
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"];
+            const formatD = (dStr: string) => {
+                const d = new Date(dStr);
+                return `${String(d.getDate()).padStart(2, '0')} ${monthNames[d.getMonth()]}`;
+            };
+            
+            const startF = formatD(exportStart);
+            const endF = formatD(exportEnd);
+            const yearF = new Date(exportEnd).getFullYear();
+            const outletName = selectedOutlet === 'ALL' ? 'SEMUA OUTLET' : selectedOutlet.toUpperCase();
+            
+            const fileName = `Laporan Reject Mingguan ${outletName} ${startF} - ${endF} ${yearF}.xlsx`;
+
+            // Download
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer]);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Matrix_Reject_${exportStart}.xlsx`;
+            a.download = fileName;
             a.click();
-            showToast("Export Berhasil", "success");
-        } catch (e) { showToast("Gagal Export", "error"); }
+            showToast("Laporan Berhasil Diekspor", "success");
+        } catch (e) { 
+            console.error(e);
+            showToast("Gagal Export", "error"); 
+        }
     };
 
     return (
@@ -278,17 +376,29 @@ export const RejectView: React.FC = () => {
                     ))}
                 </div>
 
-                {activeTab === 'NEW' && (
-                    <div className="flex items-center gap-2 pr-2 h-full">
-                        <select value={selectedOutlet} onChange={e => setSelectedOutlet(e.target.value)} className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400">
-                            {outlets.map(o => <option key={o} value={o}>{o}</option>)}
+                <div className="flex items-center gap-2 pr-2 h-full">
+                    {/* Global Outlet Filter */}
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
+                        <Filter size={10} className="text-slate-400"/>
+                        <select 
+                            value={selectedOutlet} 
+                            onChange={e => setSelectedOutlet(e.target.value)} 
+                            className="bg-transparent text-[10px] font-bold text-slate-600 outline-none cursor-pointer"
+                        >
+                            <option value="ALL">SEMUA OUTLET</option>
+                            {outlets.map(o => <option key={o} value={o}>{o.toUpperCase()}</option>)}
                         </select>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400" />
-                        <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5">
-                            <Save size={13}/> Simpan
-                        </button>
                     </div>
-                )}
+
+                    {activeTab === 'NEW' && (
+                        <>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400" />
+                            <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5">
+                                <Save size={13}/> Simpan
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 overflow-hidden relative">
@@ -429,7 +539,7 @@ export const RejectView: React.FC = () => {
                                     <input type="date" value={exportEnd} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-semibold text-slate-600 outline-none w-28"/>
                                 </div>
                             </div>
-                            <button onClick={handleExportMatrix} className="text-[10px] font-bold text-emerald-600 hover:underline flex items-center gap-1">
+                            <button onClick={handleExportMatrix} className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
                                 <FileSpreadsheet size={12}/> EXPORT MATRIX
                             </button>
                         </div>
@@ -445,7 +555,9 @@ export const RejectView: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {batches.filter(b => b.date >= exportStart && b.date <= exportEnd).map(b => (
+                                    {batches
+                                        .filter(b => (selectedOutlet === 'ALL' || b.outlet === selectedOutlet) && b.date >= exportStart && b.date <= exportEnd)
+                                        .map(b => (
                                         <tr key={b.id} className="h-7 hover:bg-slate-50 group transition-colors">
                                             <td className="px-3 text-[11px] font-mono text-slate-500">{b.id}</td>
                                             <td className="px-3 text-[11px] text-slate-600">{b.date}</td>
