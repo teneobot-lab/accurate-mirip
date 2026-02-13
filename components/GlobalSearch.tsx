@@ -64,12 +64,12 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
     <div className="relative w-full" ref={containerRef}>
       <div className="relative group">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className={`h-4 w-4 transition-colors ${isOpen ? 'text-white' : 'text-slate-500'}`} />
+          <Search className={`h-3.5 w-3.5 transition-colors ${isOpen ? 'text-slate-200' : 'text-slate-400'}`} />
         </div>
         <input
           ref={inputRef} type="text"
-          className="block w-full pl-10 pr-4 py-1.5 border border-white/10 bg-white/5 text-white rounded-lg placeholder:text-slate-500 focus:ring-2 focus:ring-white/5 focus:bg-white/10 focus:border-white/20 text-[11px] font-bold transition-all shadow-inner outline-none"
-          placeholder="Cari Master Barang (SKU, Nama)..."
+          className="block w-full pl-9 pr-4 py-1.5 border border-slate-700/50 bg-slate-800/50 text-slate-200 rounded-lg placeholder:text-slate-500 focus:ring-1 focus:ring-slate-700 focus:bg-slate-800 focus:border-slate-600 text-[11px] font-medium transition-all outline-none"
+          placeholder="Cari Master Barang..."
           value={query}
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true); setSelectedIndex(0); }}
           onFocus={() => { if(query) setIsOpen(true); }}
@@ -77,9 +77,9 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
           autoComplete="off"
         />
         <div className="absolute inset-y-0 right-3 flex items-center gap-2">
-            {isLoading && <Loader2 size={14} className="animate-spin text-slate-400"/>}
+            {isLoading && <Loader2 size={12} className="animate-spin text-slate-500"/>}
             {!query && (
-                <kbd className="hidden sm:inline-block border border-white/10 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-slate-500 bg-white/5">
+                <kbd className="hidden sm:inline-block border border-slate-700/50 rounded px-1.5 py-0.5 text-[9px] font-medium text-slate-500 bg-slate-800/30">
                     /
                 </kbd>
             )}
@@ -87,44 +87,32 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
       </div>
 
       {isOpen && query && filteredItems.length > 0 && (
-        <div className="absolute z-[100] mt-2 left-0 w-full bg-slate-800 rounded-xl shadow-2xl border border-white/10 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
-            <div className="text-[9px] uppercase font-black text-slate-500 px-4 py-2 bg-slate-900/50 border-b border-white/5 flex justify-between items-center tracking-widest">
-                <span className="flex items-center gap-2"><Tag size={10}/> Sugesti Barang</span>
-                <span className="flex items-center gap-1 opacity-50 font-bold">ENTER <CornerDownLeft size={10}/></span>
+        <div className="absolute z-[100] mt-1.5 left-0 w-full bg-slate-800 rounded-lg shadow-xl border border-slate-700 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="text-[9px] uppercase font-semibold text-slate-500 px-3 py-1.5 bg-slate-900/20 border-b border-slate-700/50 flex justify-between items-center tracking-wider">
+                <span className="flex items-center gap-1.5"><Tag size={10}/> Hasil Pencarian</span>
             </div>
-            <ul className="max-h-64 overflow-y-auto">
+            <ul className="max-h-60 overflow-y-auto">
                 {filteredItems.map((item, index) => (
                 <li
                     key={item.id} onClick={() => handleSelect(item)} onMouseEnter={() => setSelectedIndex(index)}
-                    className={`cursor-pointer px-4 py-3 border-b border-white/5 last:border-0 flex justify-between items-center transition-colors ${
-                        index === selectedIndex ? 'bg-white/5' : 'hover:bg-white/[0.02]'
+                    className={`cursor-pointer px-3 py-2 border-b border-slate-700/30 last:border-0 flex justify-between items-center transition-colors ${
+                        index === selectedIndex ? 'bg-slate-700/50' : 'hover:bg-slate-700/20'
                     }`}
                 >
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className={`p-2 rounded-lg transition-all ${index === selectedIndex ? 'bg-white/10 text-white' : 'bg-white/5 text-slate-500'}`}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`p-1.5 rounded transition-all ${index === selectedIndex ? 'text-white' : 'text-slate-400'}`}>
                             <Package size={14} />
                         </div>
                         <div className="flex flex-col min-w-0">
-                            <span className={`text-[12px] font-bold truncate ${index === selectedIndex ? 'text-white' : 'text-slate-300'}`}>
+                            <span className={`text-[11px] font-semibold truncate ${index === selectedIndex ? 'text-white' : 'text-slate-300'}`}>
                                  {highlightMatch(item.name, query)}
                             </span>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-[9px] font-mono font-bold uppercase tracking-widest ${index === selectedIndex ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {highlightMatch(item.code, query)}
-                                </span>
-                                <span className="text-white/10">•</span>
-                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">
-                                    {item.category}
-                                </span>
-                            </div>
+                            <span className={`text-[9px] font-mono tracking-tight ${index === selectedIndex ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {highlightMatch(item.code, query)}
+                            </span>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10 uppercase">
-                            {item.baseUnit}
-                        </span>
-                        {index === selectedIndex && <ArrowRight size={14} className="text-white animate-in slide-in-from-left-1" />}
-                    </div>
+                    {index === selectedIndex && <ArrowRight size={12} className="text-slate-400" />}
                 </li>
                 ))}
             </ul>

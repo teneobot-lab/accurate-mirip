@@ -56,13 +56,13 @@ function App() {
           setActiveTransaction(null);
           if (window.innerWidth < 1024) setIsSidebarOpen(false); 
       }}
-      className={`flex items-center w-full p-3 mb-1 text-sm font-semibold rounded-xl transition-all ${
+      className={`flex items-center w-full px-3 py-2.5 mb-0.5 text-[13px] font-medium rounded-lg transition-all ${
         activeTab === id && !viewingItem && !activeTransaction
-        ? 'bg-white text-slate-900 shadow-md' 
-        : 'text-slate-400 hover:bg-white/10 hover:text-white'
+        ? 'bg-white text-slate-800 shadow-sm' 
+        : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
       }`}
     >
-      <Icon size={20} className="mr-3 flex-shrink-0" />
+      <Icon size={18} className="mr-3 flex-shrink-0" />
       <span className="whitespace-nowrap tracking-tight">{label}</span>
     </button>
   );
@@ -74,14 +74,14 @@ function App() {
     <ToastProvider>
       <SearchProvider>
         <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans">
-          {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/40 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
+          {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)}></div>}
 
           <div className="flex h-screen overflow-hidden">
-              <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 flex flex-col text-slate-300 shadow-xl transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <aside className={`fixed inset-y-0 left-0 z-50 w-60 bg-[#1e293b] flex flex-col text-slate-400 border-r border-slate-700/30 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                   {/* BRAND HEADER */}
-                  <div className="h-20 flex items-center justify-between px-6 border-b border-white/10 bg-slate-900">
-                      <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 flex items-center justify-center">
+                  <div className="h-14 flex items-center justify-between px-5 border-b border-slate-700/50">
+                      <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 flex items-center justify-center">
                               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                                   <circle cx="50" cy="50" r="14" fill="white"/>
                                   <circle cx="50" cy="15" r="7" fill="white"/>
@@ -90,44 +90,37 @@ function App() {
                                   <circle cx="50" cy="85" r="7" fill="white"/>
                                   <circle cx="19.7" cy="67.5" r="7" fill="white"/>
                                   <circle cx="19.7" cy="32.5" r="7" fill="white"/>
-                                  <path d="M50 36V22" stroke="white" strokeWidth="4"/>
-                                  <path d="M62.1 43L74.2 36" stroke="white" strokeWidth="4"/>
-                                  <path d="M62.1 57L74.2 64" stroke="white" strokeWidth="4"/>
-                                  <path d="M50 64V78" stroke="white" strokeWidth="4"/>
-                                  <path d="M37.9 57L25.8 64" stroke="white" strokeWidth="4"/>
-                                  <path d="M37.9 43L25.8 36" stroke="white" strokeWidth="4"/>
                               </svg>
                           </div>
-                          <div className="flex flex-col justify-center">
-                              <span className="text-white font-bold text-base tracking-[0.1em] leading-none">RESEARCH</span>
-                              <span className="text-white font-light text-base tracking-[0.1em] leading-none mt-0.5">CENTRE</span>
+                          <div className="flex flex-col">
+                              <span className="text-white font-semibold text-sm tracking-widest leading-none">RESEARCH</span>
+                              <span className="text-slate-400 font-normal text-[10px] tracking-widest leading-none mt-1 uppercase">Centre</span>
                           </div>
                       </div>
-                      <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white"><X size={20}/></button>
+                      <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1.5 text-slate-500 hover:text-white"><X size={18}/></button>
                   </div>
 
-                  <div className="p-4 flex-1 overflow-y-auto">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-[0.2em] mt-2">LABORATORY CONCEPT</div>
+                  <div className="p-3 flex-1 overflow-y-auto custom-scrollbar">
+                      <div className="text-[10px] font-semibold text-slate-500 uppercase mb-3 px-3 tracking-[0.15em] mt-2">Core Navigation</div>
                       <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
                       <NavItem id="INVENTORY" label="Stok Barang" icon={Package} />
                       <NavItem id="REPORTS" label="Mutasi Stok" icon={FileBarChart} />
                       <NavItem id="REJECT" label="Barang Reject" icon={AlertOctagon} />
                       
-                      <div className="mt-8 text-[10px] font-bold text-slate-500 uppercase mb-4 px-3 tracking-[0.2em]">TRANSACTIONS</div>
-                      <div className="space-y-2">
-                          <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2.5 text-xs font-bold text-emerald-400 hover:bg-emerald-400/10 rounded-xl flex items-center transition-all border border-emerald-400/20">
-                              <Plus size={16} className="mr-3"/> Penerimaan (Masuk)
+                      <div className="mt-6 text-[10px] font-semibold text-slate-500 uppercase mb-3 px-3 tracking-[0.15em]">Quick Action</div>
+                      <div className="space-y-1 px-1">
+                          <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[12px] font-medium text-emerald-400 hover:bg-emerald-400/5 rounded-lg flex items-center transition-all border border-emerald-400/10">
+                              <Plus size={14} className="mr-3"/> Penerimaan
                           </button>
-                          <button onClick={() => { setActiveTransaction({ type: 'OUT' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2.5 text-xs font-bold text-rose-400 hover:bg-rose-400/10 rounded-xl flex items-center transition-all border border-rose-400/20">
-                              <Plus size={16} className="mr-3"/> Pengiriman (Keluar)
+                          <button onClick={() => { setActiveTransaction({ type: 'OUT' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[12px] font-medium text-rose-400 hover:bg-rose-400/5 rounded-lg flex items-center transition-all border border-rose-400/10">
+                              <Plus size={14} className="mr-3"/> Pengiriman
                           </button>
                       </div>
                       
-                      <div className="mt-auto border-t border-white/10 pt-4">
+                      <div className="mt-auto border-t border-slate-700/50 pt-3">
                           <NavItem id="SETTINGS" label="Pengaturan" icon={Settings} />
-                          {/* Changed handleLogout to onClick to fix TypeScript error */}
-                          <button onClick={handleLogout} className="flex items-center w-full p-3 text-sm font-semibold rounded-xl transition-all text-rose-400 hover:bg-rose-400/10 mt-2">
-                              <LogOut size={20} className="mr-3 flex-shrink-0" />
+                          <button onClick={handleLogout} className="flex items-center w-full px-3 py-2.5 text-[13px] font-medium rounded-lg transition-all text-slate-400 hover:text-rose-400 hover:bg-rose-400/5 mt-1">
+                              <LogOut size={18} className="mr-3 flex-shrink-0" />
                               <span>Keluar Sistem</span>
                           </button>
                       </div>
@@ -135,23 +128,23 @@ function App() {
               </aside>
 
               <main className="flex-1 flex flex-col overflow-hidden">
-                  {/* SLIM TOPBAR - DARK THEME */}
-                  <header className="h-12 bg-slate-900 border-b border-white/10 flex items-center justify-between px-6 shadow-sm z-30 shrink-0">
+                  {/* SLIM TOPBAR - DARK THEME SOFT */}
+                  <header className="h-12 bg-[#1e293b] border-b border-slate-700/50 flex items-center justify-between px-5 z-30 shrink-0">
                       <div className="flex items-center gap-4">
-                          <button onClick={() => setIsSidebarOpen(true)} className={`p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={18} /></button>
-                          <h2 className="text-xs font-bold text-slate-200 flex items-center gap-2">
+                          <button onClick={() => setIsSidebarOpen(true)} className={`p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-white/5 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={18} /></button>
+                          <div className="text-xs font-medium text-slate-300">
                               {(viewingItem || activeTransaction) ? (
-                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-slate-200 hover:text-white transition-colors">
-                                      <ArrowLeft size={16}/> <span className="font-bold uppercase tracking-tight text-[10px]">Kembali Ke List</span>
+                                  <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors">
+                                      <ArrowLeft size={16}/> <span className="uppercase tracking-wide text-[10px]">Kembali Ke List</span>
                                   </button>
                               ) : (
-                                  <span className="uppercase tracking-[0.2em] text-[10px] text-slate-500 font-black">{activeTab}</span>
+                                  <span className="uppercase tracking-widest text-[10px] text-slate-500 font-bold">{activeTab}</span>
                               )}
-                          </h2>
+                          </div>
                       </div>
                       
                       {!activeTransaction && !viewingItem && (
-                          <div className="flex-1 max-w-sm mx-4">
+                          <div className="flex-1 max-w-xs mx-4">
                               <GlobalSearch onSelectItem={(item) => setViewingItem(item)} />
                           </div>
                       )}
@@ -159,12 +152,12 @@ function App() {
                       <div className="flex items-center gap-3 shrink-0">
                           <LowStockAlert />
                           <MusicPlayer />
-                          <div className="flex items-center gap-3 pl-3 border-l border-white/10">
+                          <div className="flex items-center gap-3 pl-3 border-l border-slate-700/50">
                               <div className="hidden md:block text-right">
-                                  <p className="text-[10px] font-bold text-slate-200 leading-none tracking-tight">{currentUser?.name}</p>
-                                  <p className="text-[8px] text-slate-500 font-black uppercase mt-1 tracking-widest">{currentUser?.role}</p>
+                                  <p className="text-[11px] font-semibold text-slate-200 leading-none">{currentUser?.name}</p>
+                                  <p className="text-[9px] text-slate-500 font-medium uppercase mt-1 tracking-wider">{currentUser?.role}</p>
                               </div>
-                              <div className="w-8 h-8 rounded-full bg-slate-800 text-white border border-white/10 flex items-center justify-center font-black text-xs shadow-sm ring-2 ring-white/5">
+                              <div className="w-7 h-7 rounded-full bg-slate-700/50 text-slate-200 border border-slate-600/50 flex items-center justify-center font-bold text-[10px]">
                                   {currentUser?.name.substring(0,2).toUpperCase()}
                               </div>
                           </div>
@@ -198,6 +191,12 @@ function App() {
                   </div>
               </main>
           </div>
+          <style>{`
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+          `}</style>
         </div>
       </SearchProvider>
     </ToastProvider>
