@@ -180,9 +180,21 @@ export const RejectView: React.FC = () => {
     const handleCopyToClipboard = (batch: RejectBatch) => {
         if (!batch.items || batch.items.length === 0) return;
         
-        let text = "ID\tKODE\tNAMA BARANG\tQTY\tUNIT\tALASAN\n";
-        batch.items.forEach((it, idx) => {
-            text += `${idx + 1}\t${it.sku}\t${it.name}\t${it.baseQty}\t${it.unit}\t${it.reason || '-'}\n`;
+        // Format Tanggal ke DDMMYY (Contoh: 110226)
+        const d = new Date(batch.date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = String(d.getFullYear()).slice(-2);
+        const formattedDate = `${day}${month}${year}`;
+
+        // Header: Data Reject [Outlet] [DDMMYY]
+        let text = `Data Reject ${batch.outlet} ${formattedDate}\n`;
+        
+        // Items: - [Nama] [Qty] [Unit] [Alasan]
+        batch.items.forEach((it) => {
+            // Kita bersihkan alasan dari info qty tambahan jika ada untuk tampilan bersih
+            const cleanReason = it.reason.split('(')[0].trim();
+            text += `- ${it.name} ${it.baseQty} ${it.unit} ${cleanReason || ''}\n`.replace(/\s+/g, ' ');
         });
 
         navigator.clipboard.writeText(text).then(() => {
