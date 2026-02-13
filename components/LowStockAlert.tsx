@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, AlertTriangle, ArrowRight, RefreshCw, X } from 'lucide-react';
+import { Bell, AlertTriangle, RefreshCw, X } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { Item, Stock } from '../types';
 
@@ -19,17 +19,15 @@ export const LowStockAlert: React.FC = () => {
             ]);
 
             const lowStockItems = items
-                .filter(item => item.isActive && item.minStock > 0) // Hanya item aktif & user set minStock
+                .filter(item => item.isActive && item.minStock > 0)
                 .map(item => {
-                    // Hitung total stok dari semua gudang
                     const currentQty = stocks
                         .filter(s => s.itemId === item.id)
                         .reduce((acc, s) => acc + Number(s.qty), 0);
-                    
                     return { item, currentQty };
                 })
-                .filter(data => data.currentQty <= data.item.minStock) // Logic Low Stock
-                .sort((a, b) => a.currentQty - b.currentQty); // Urutkan dari stok terkecil
+                .filter(data => data.currentQty <= data.item.minStock)
+                .sort((a, b) => a.currentQty - b.currentQty);
 
             setAlerts(lowStockItems);
         } catch (error) {
@@ -39,14 +37,12 @@ export const LowStockAlert: React.FC = () => {
         }
     };
 
-    // Check on mount and every 60 seconds
     useEffect(() => {
         checkStockLevels();
         const interval = setInterval(checkStockLevels, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    // Click outside handler
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -61,106 +57,71 @@ export const LowStockAlert: React.FC = () => {
         <div className="relative" ref={containerRef}>
             <button 
                 onClick={() => setIsOpen(!isOpen)} 
-                className={`relative p-2 rounded-xl transition-all border ${
+                className={`relative p-1.5 rounded-lg transition-all border ${
                     isOpen 
-                    ? 'bg-spectra text-white border-spectra' 
-                    : 'text-slate-400 border-transparent hover:bg-spectra/20 hover:text-white'
+                    ? 'bg-slate-200 text-slate-800 border-slate-300' 
+                    : 'text-slate-400 border-transparent hover:bg-slate-100 hover:text-slate-600'
                 }`}
-                title="Notifikasi Stok Menipis"
             >
-                <Bell size={20} className={alerts.length > 0 && !isOpen ? 'animate-swing' : ''} />
-                
-                {/* Badge Count */}
+                <Bell size={18} className={alerts.length > 0 && !isOpen ? 'animate-bounce-subtle' : ''} />
                 {alerts.length > 0 && (
-                    <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    <span className="absolute top-1 right-1 flex h-2 w-2">
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 border border-white"></span>
                     </span>
                 )}
             </button>
 
-            {/* Dropdown */}
             {isOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-gable rounded-2xl shadow-2xl border border-spectra overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 origin-top-right">
-                    <div className="bg-daintree p-3 border-b border-spectra flex justify-between items-center">
-                        <div className="flex items-center gap-2 text-white font-bold text-xs uppercase tracking-wide">
-                            <AlertTriangle size={14} className="text-red-400"/>
-                            Low Stock Alert
-                            <span className="bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded text-[10px] border border-red-900">
-                                {alerts.length} Item
-                            </span>
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-1 duration-200 origin-top-right">
+                    <div className="bg-slate-50 px-3 py-2 border-b border-slate-200 flex justify-between items-center">
+                        <div className="flex items-center gap-2 text-slate-600 font-bold text-[10px] uppercase tracking-widest">
+                            <AlertTriangle size={12} className="text-amber-500"/> Notifikasi Stok
                         </div>
-                        <div className="flex gap-1">
-                            <button onClick={checkStockLevels} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/10 transition-colors">
-                                <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''}/>
+                        <div className="flex items-center gap-1">
+                            <button onClick={checkStockLevels} className="p-1 text-slate-400 hover:text-slate-600">
+                                <RefreshCw size={10} className={isLoading ? 'animate-spin' : ''}/>
                             </button>
-                            <button onClick={() => setIsOpen(false)} className="p-1.5 text-slate-400 hover:text-white rounded hover:bg-white/10 transition-colors">
-                                <X size={14}/>
+                            <button onClick={() => setIsOpen(false)} className="p-1 text-slate-400 hover:text-rose-500">
+                                <X size={12}/>
                             </button>
                         </div>
                     </div>
 
-                    <div className="max-h-80 overflow-y-auto scrollbar-thin">
+                    <div className="max-h-64 overflow-y-auto custom-scrollbar">
                         {alerts.length === 0 ? (
-                            <div className="p-8 text-center flex flex-col items-center gap-2 text-slate-500">
-                                <span className="p-3 bg-daintree rounded-full border border-spectra/30">
-                                    <Bell size={20} className="text-emerald-500/50"/>
-                                </span>
-                                <span className="text-[10px] font-bold uppercase tracking-wider">Stok Aman</span>
-                                <span className="text-[9px]">Tidak ada item di bawah batas minimum.</span>
+                            <div className="p-6 text-center text-slate-400">
+                                <p className="text-[10px] font-bold uppercase">Stok Aman</p>
                             </div>
                         ) : (
-                            <ul className="divide-y divide-spectra/30">
-                                {alerts.map((alert, idx) => (
-                                    <li key={alert.item.id} className="p-3 hover:bg-daintree/50 transition-colors group">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <span className="font-bold text-slate-200 text-xs truncate w-40" title={alert.item.name}>
-                                                {alert.item.name}
-                                            </span>
-                                            <span className="text-[9px] font-mono font-bold text-spectra uppercase">
-                                                {alert.item.code}
-                                            </span>
+                            <div className="divide-y divide-slate-100">
+                                {alerts.map((alert) => (
+                                    <div key={alert.item.id} className="p-2.5 hover:bg-slate-50 transition-colors">
+                                        <div className="flex justify-between items-start mb-0.5">
+                                            <span className="font-semibold text-slate-700 text-[11px] truncate w-40">{alert.item.name}</span>
+                                            <span className="text-[9px] font-mono text-slate-400">{alert.item.code}</span>
                                         </div>
-                                        <div className="flex justify-between items-end">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] text-slate-500 uppercase font-bold">Sisa Stok</span>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className={`text-sm font-black ${alert.currentQty <= 0 ? 'text-red-500' : 'text-amber-400'}`}>
-                                                        {alert.currentQty.toLocaleString()}
-                                                    </span>
-                                                    <span className="text-[9px] text-slate-400 font-bold">{alert.item.baseUnit}</span>
-                                                </div>
+                                        <div className="flex justify-between items-center">
+                                            <div className="text-[10px]">
+                                                <span className={`font-bold ${alert.currentQty <= 0 ? 'text-rose-600' : 'text-amber-600'}`}>
+                                                    {alert.currentQty.toLocaleString()}
+                                                </span>
+                                                <span className="text-slate-400 ml-1 uppercase">{alert.item.baseUnit}</span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-[9px] text-slate-500 bg-black/20 px-2 py-1 rounded border border-white/5">
-                                                <span>Min: <span className="text-slate-300 font-bold">{alert.item.minStock}</span></span>
-                                            </div>
+                                            <div className="text-[9px] text-slate-400">Min: {alert.item.minStock}</div>
                                         </div>
-                                        {/* Simple Progress Bar */}
-                                        <div className="mt-2 h-1 w-full bg-black/40 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full ${alert.currentQty <= 0 ? 'bg-red-600' : 'bg-amber-500'}`} 
-                                                style={{ width: `${Math.min((alert.currentQty / alert.item.minStock) * 100, 100)}%` }}
-                                            ></div>
-                                        </div>
-                                    </li>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         )}
                     </div>
                 </div>
             )}
             <style>{`
-                @keyframes swing {
-                    0%, 100% { transform: rotate(0deg); }
-                    20% { transform: rotate(15deg); }
-                    40% { transform: rotate(-10deg); }
-                    60% { transform: rotate(5deg); }
-                    80% { transform: rotate(-5deg); }
+                @keyframes bounce-subtle {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-2px); }
                 }
-                .animate-swing {
-                    animation: swing 1s ease-in-out infinite;
-                    transform-origin: top center;
-                }
+                .animate-bounce-subtle { animation: bounce-subtle 2s ease-in-out infinite; }
             `}</style>
         </div>
     );

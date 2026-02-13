@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2, Youtube, BarChart3, Pause } from 'lucide-react';
+import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, Loader2, Youtube, Pause } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { Playlist } from '../types';
 import { useToast } from './Toast';
@@ -25,28 +25,22 @@ const MusicPlayer: React.FC = () => {
       const data = await StorageService.fetchPlaylists();
       setPlaylists(data);
     } catch (e) {
-      console.error("Music DB Sync Error", e);
+      console.error("Music Sync Error", e);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const activePlaylist = playlists.find(p => p.id === activePlaylistId);
   const currentSong = activePlaylist?.songs[currentSongIndex];
 
-  // Regex robust untuk YouTube ID
   const getYoutubeId = (url: string) => {
     if (!url) return null;
-    const cleanUrl = url.trim();
     const regExp = /(?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/|live\/))([\w-]{11})/;
-    const match = cleanUrl.match(regExp);
-    if (match) return match[1];
-    if (/^[\w-]{11}$/.test(cleanUrl)) return cleanUrl;
-    return null;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
   };
 
   const videoId = currentSong ? getYoutubeId(currentSong.youtubeUrl) : null;
@@ -56,273 +50,89 @@ const MusicPlayer: React.FC = () => {
     try {
       await StorageService.createPlaylist(newPlaylistName);
       setNewPlaylistName('');
-      showToast("Playlist tersimpan di MySQL", "success");
+      showToast("Playlist dibuat", "success");
       loadData();
-    } catch (e) {
-      showToast("Gagal simpan playlist", "error");
-    }
-  };
-
-  const handleDeletePlaylist = async (id: string) => {
-    if (!confirm('Hapus playlist ini secara permanen dari Database?')) return;
-    try {
-      await StorageService.deletePlaylist(id);
-      if (activePlaylistId === id) setActivePlaylistId(null);
-      showToast("Playlist dihapus", "info");
-      loadData();
-    } catch (e) {
-      showToast("Gagal hapus", "error");
-    }
-  };
-
-  const handleAddSong = async (playlistId: string) => {
-    if (!newSongTitle.trim() || !newSongUrl.trim()) return;
-    const ytId = getYoutubeId(newSongUrl);
-    if (!ytId) return showToast('Link/ID YouTube tidak valid', 'error');
-
-    try {
-      await StorageService.addSongToPlaylist(playlistId, newSongTitle, newSongUrl.trim());
-      setNewSongTitle('');
-      setNewSongUrl('');
-      showToast("Lagu ditambahkan ke MySQL", "success");
-      loadData();
-      const updated = await StorageService.fetchPlaylists();
-      setEditingPlaylist(updated.find(p => p.id === playlistId) || null);
-    } catch (e) {
-      showToast("Gagal tambah lagu", "error");
-    }
-  };
-
-  const handleDeleteSong = async (pId: string, sId: string) => {
-    try {
-      await StorageService.deleteSong(sId);
-      loadData();
-      const updated = await StorageService.fetchPlaylists();
-      setEditingPlaylist(updated.find(p => p.id === pId) || null);
-    } catch (e) {
-      showToast("Gagal hapus lagu", "error");
-    }
+    } catch (e) { showToast("Gagal buat playlist", "error"); }
   };
 
   return (
     <div className="relative">
-      {/* TRIGGER BUTTON / MINI PLAYER */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`relative p-2 rounded-xl border flex items-center gap-3 transition-all shadow-sm overflow-hidden ${
+        className={`p-1.5 rounded-lg border transition-all flex items-center gap-2 ${
           currentSong 
-            ? 'bg-gable border-spectra pr-4' // Tampilan Mini Player (Lebih Lebar)
-            : isOpen ? 'bg-spectra text-white border-spectra' : 'bg-gable text-slate-400 border-spectra hover:bg-spectra/20'
+          ? 'bg-blue-50 text-blue-700 border-blue-200 pr-3' 
+          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
         }`}
-        style={{ minWidth: currentSong ? '220px' : 'auto' }}
       >
-        <div className={`flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg ${currentSong ? 'bg-daintree text-emerald-400' : ''}`}>
-           {currentSong ? <Music size={16} className="animate-pulse"/> : <Music size={18} />}
-        </div>
-        
-        <div className="flex flex-col text-left overflow-hidden min-w-0 flex-1">
-            {currentSong ? (
-                <>
-                  <div className="flex justify-between items-center w-full">
-                     <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Now Playing</span>
-                     {/* Mini Visualizer Animation */}
-                     <div className="flex gap-0.5 h-2 items-end">
-                        <span className="w-0.5 bg-emerald-500 animate-[bounce_1s_infinite] h-full"></span>
-                        <span className="w-0.5 bg-emerald-500 animate-[bounce_1.2s_infinite] h-2/3"></span>
-                        <span className="w-0.5 bg-emerald-500 animate-[bounce_0.8s_infinite] h-1/2"></span>
-                     </div>
-                  </div>
-                  <span className="text-xs font-bold text-white truncate w-full" title={currentSong.title}>{currentSong.title}</span>
-                </>
-            ) : (
-                <span className="text-xs font-bold hidden sm:inline mr-2">Music Player</span>
-            )}
-        </div>
+        <Music size={18} className={currentSong ? 'animate-pulse' : ''} />
+        {currentSong && (
+          <div className="flex flex-col text-left overflow-hidden max-w-[120px]">
+            <span className="text-[10px] font-bold truncate leading-tight">{currentSong.title}</span>
+            <span className="text-[8px] opacity-70 uppercase font-bold tracking-tighter">Playing...</span>
+          </div>
+        )}
       </button>
 
-      {/* POPUP MODAL */}
-      {/* PENTING: Menggunakan 'opacity-0 pointer-events-none' alih-alih 'hidden/invisible' agar Iframe tetap di-render dan audio terus berputar */}
-      <div 
-        className={`absolute right-0 mt-3 w-80 bg-gable rounded-2xl shadow-2xl border border-spectra overflow-hidden z-50 transition-all duration-300 ease-in-out origin-top-right ${
-          isOpen 
-            ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' 
-            : 'opacity-0 scale-95 -translate-y-4 pointer-events-none h-0' // h-0 optional, but careful not to unmount iframe
-        }`}
-        style={{ visibility: isOpen ? 'visible' : 'visible' }} // Force visible to keep iframe alive, relying on opacity/pointer-events
-      >
-          {/* Bagian Player (Hanya muncul jika ada lagu, tapi tetap di DOM) */}
-          <div className={`${!currentSong ? 'hidden' : 'block'} p-3 bg-daintree text-white flex flex-col gap-2 border-b border-spectra`}>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="animate-pulse bg-spectra/50 p-1 rounded-full"><Youtube size={12}/></div>
-                  <div className="truncate text-xs font-bold max-w-[200px]">{currentSong?.title}</div>
-                </div>
-                <button onClick={() => { setActivePlaylistId(null); setCurrentSongIndex(0); }} className="text-slate-400 hover:text-white" title="Stop & Close"><X size={14}/></button>
-              </div>
-              
-              <div className="aspect-video w-full rounded-lg overflow-hidden bg-black shadow-inner border border-spectra/30 relative group">
-                {videoId ? (
-                    <iframe 
-                      key={videoId} 
-                      width="100%" 
-                      height="100%" 
-                      src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&origin=${window.location.origin}`}
-                      title="YouTube player" 
-                      frameBorder="0" 
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                      allowFullScreen
-                      className="absolute inset-0"
-                    ></iframe>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-xs text-red-400 gap-1 p-4 text-center">
-                        <span className="font-bold">Invalid YouTube ID</span>
-                        <span className="text-[10px] text-slate-500">URL: {currentSong?.youtubeUrl}</span>
-                    </div>
-                )}
-              </div>
-
-              <div className="flex justify-center items-center gap-4 py-1">
-                <button 
-                   onClick={() => setCurrentSongIndex(prev => (prev - 1 + activePlaylist!.songs.length) % activePlaylist!.songs.length)}
-                   className="hover:scale-110 transition-transform text-slate-300 hover:text-white"
-                ><SkipBack size={18}/></button>
-                <div className="text-[10px] font-mono text-spectra">
-                    {currentSongIndex + 1} / {activePlaylist?.songs.length || 0}
-                </div>
-                <button 
-                  onClick={() => setCurrentSongIndex(prev => (prev + 1) % activePlaylist!.songs.length)}
-                  className="hover:scale-110 transition-transform text-slate-300 hover:text-white"
-                ><SkipForward size={18}/></button>
-              </div>
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-200 origin-top-right">
+          <div className="bg-slate-50 px-3 py-2 border-b border-slate-200 flex justify-between items-center">
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+              <Youtube size={12}/> Audio System
+            </h4>
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-rose-500"><X size={14}/></button>
           </div>
 
-          <div className="flex border-b border-spectra bg-daintree">
-            <button 
-              onClick={() => { setIsManaging(false); setEditingPlaylist(null); }}
-              className={`flex-1 p-3 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${!isManaging ? 'text-white border-b-2 border-spectra bg-spectra/10' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <ListMusic size={14}/> Playlists
-            </button>
-            <button 
-              onClick={() => setIsManaging(true)}
-              className={`flex-1 p-3 text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${isManaging ? 'text-white border-b-2 border-spectra bg-spectra/10' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              <Edit3 size={14}/> Manage
-            </button>
-          </div>
-
-          {/* LIST SECTION */}
-          <div className="p-4 max-h-96 overflow-y-auto bg-gable min-h-[200px] scrollbar-thin">
-            {isLoading ? (
-                <div className="h-full flex flex-col items-center justify-center text-cutty py-10">
-                    <Loader2 size={24} className="animate-spin mb-2 text-spectra" />
-                    <span className="text-[10px] font-bold">MYSQL SYNC...</span>
-                </div>
-            ) : isManaging ? (
-              /* --- MANAGE MODE --- */
-              <div className="space-y-4">
-                {editingPlaylist ? (
-                  <div className="space-y-3">
-                    <button onClick={() => setEditingPlaylist(null)} className="text-[10px] text-slate-400 font-bold flex items-center gap-1 mb-2 hover:text-white">
-                       <SkipBack size={10}/> Back to List
-                    </button>
-                    <div className="p-3 bg-daintree rounded-lg border border-spectra">
-                        <h4 className="text-xs font-bold text-white mb-2">Add Song to {editingPlaylist.name}</h4>
-                        <input 
-                          type="text" placeholder="Song Title" 
-                          value={newSongTitle} onChange={e => setNewSongTitle(e.target.value)}
-                          className="w-full text-xs p-2 border border-spectra rounded mb-2 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
-                        />
-                        <input 
-                          type="text" placeholder="Paste YouTube Link or ID..." 
-                          value={newSongUrl} onChange={e => setNewSongUrl(e.target.value)}
-                          className="w-full text-xs p-2 border border-spectra rounded mb-3 bg-gable text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
-                        />
-                        <button 
-                          onClick={() => handleAddSong(editingPlaylist.id)}
-                          className="w-full py-2 bg-spectra text-white rounded text-xs font-bold hover:bg-white hover:text-spectra transition-colors shadow-lg"
-                        >Add Song</button>
-                    </div>
-                    <div className="space-y-1">
-                      {editingPlaylist.songs.map(s => (
-                        <div key={s.id} className="flex justify-between items-center p-2 bg-daintree/50 rounded border border-spectra/50 text-xs group">
-                           <span className="truncate flex-1 text-slate-300">{s.title}</span>
-                           <button onClick={() => handleDeleteSong(editingPlaylist.id, s.id)} className="text-slate-500 hover:text-red-400 ml-2"><Trash2 size={12}/></button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" placeholder="New Playlist Name" 
-                        value={newPlaylistName} onChange={e => setNewPlaylistName(e.target.value)}
-                        className="flex-1 text-xs p-2 border border-spectra rounded bg-daintree text-white outline-none focus:ring-1 focus:ring-spectra placeholder:text-cutty" 
-                      />
-                      <button onClick={handleCreatePlaylist} className="p-2 bg-spectra text-white rounded hover:bg-white hover:text-spectra transition-colors"><Plus size={16}/></button>
-                    </div>
-                    <div className="space-y-2">
-                       {playlists.map(p => (
-                         <div key={p.id} className="flex justify-between items-center p-3 bg-daintree/30 rounded-xl border border-spectra/30 group hover:border-spectra transition-colors">
-                            <div className="flex flex-col">
-                               <span className="text-sm font-bold text-slate-200">{p.name}</span>
-                               <span className="text-[10px] text-slate-500">{p.songs.length} Songs</span>
-                            </div>
-                            <div className="flex gap-1">
-                               <button onClick={() => setEditingPlaylist(p)} className="p-1.5 text-slate-400 hover:text-white rounded"><Edit3 size={14}/></button>
-                               <button onClick={() => handleDeletePlaylist(p.id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded"><Trash2 size={14}/></button>
-                            </div>
-                         </div>
-                       ))}
-                    </div>
-                  </>
+          <div className="p-3">
+            {currentSong && (
+              <div className="mb-4 bg-slate-900 rounded-lg overflow-hidden aspect-video relative group">
+                {videoId && (
+                  <iframe 
+                    key={videoId} width="100%" height="100%" 
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&playsinline=1`}
+                    title="Player" frameBorder="0" allow="autoplay; encrypted-media" className="absolute inset-0"
+                  ></iframe>
                 )}
-              </div>
-            ) : (
-              /* --- PLAYLIST SELECTION MODE --- */
-              <div className="space-y-2">
-                {playlists.length === 0 && (
-                   <div className="text-center py-8 text-cutty text-xs italic">
-                      Tidak ada playlist.<br/>Klik 'Manage' untuk membuat.
-                   </div>
-                )}
-                {playlists.map(p => (
-                  <button 
-                    key={p.id} 
-                    onClick={() => {
-                      if (p.songs.length > 0) {
-                        setActivePlaylistId(p.id);
-                        setCurrentSongIndex(0);
-                      } else {
-                        showToast('Playlist kosong', 'info');
-                      }
-                    }}
-                    className={`w-full text-left p-3 rounded-xl border transition-all flex justify-between items-center group ${
-                      activePlaylistId === p.id 
-                      ? 'bg-spectra border-spectra shadow-lg' 
-                      : 'bg-daintree/30 border-spectra/30 hover:bg-spectra/20 hover:border-spectra'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${activePlaylistId === p.id ? 'bg-white/20 text-white' : 'bg-daintree text-slate-400 group-hover:text-white'}`}>
-                        <Music size={14}/>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className={`text-sm font-bold ${activePlaylistId === p.id ? 'text-white' : 'text-slate-300'}`}>{p.name}</span>
-                        <span className={`text-[10px] ${activePlaylistId === p.id ? 'text-white/60' : 'text-slate-500'}`}>{p.songs.length} Tracks</span>
-                      </div>
-                    </div>
-                    {activePlaylistId === p.id ? <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></div> : <Play size={14} className="text-slate-500 group-hover:text-white opacity-0 group-hover:opacity-100 transition-opacity" />}
-                  </button>
-                ))}
+                {!videoId && <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-[10px]">Invalid Source</div>}
               </div>
             )}
-          </div>
-          <div className="p-2 bg-daintree border-t border-spectra text-[10px] text-center text-cutty">
-             GudangPro Audio v1.1 • MySQL Centralized
+
+            <div className="flex border-b border-slate-100 mb-3">
+              <button onClick={() => setIsManaging(false)} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-tight ${!isManaging ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>List</button>
+              <button onClick={() => setIsManaging(true)} className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-tight ${isManaging ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Manage</button>
+            </div>
+
+            <div className="max-h-56 overflow-y-auto custom-scrollbar">
+              {isManaging ? (
+                <div className="space-y-2">
+                  <div className="flex gap-1.5">
+                    <input type="text" placeholder="New Playlist..." value={newPlaylistName} onChange={e=>setNewPlaylistName(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[11px] outline-none" />
+                    <button onClick={handleCreatePlaylist} className="p-1 bg-blue-600 text-white rounded"><Plus size={14}/></button>
+                  </div>
+                  {playlists.map(p => (
+                    <div key={p.id} className="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100">
+                      <span className="text-[11px] font-semibold text-slate-700">{p.name}</span>
+                      <button onClick={() => StorageService.deletePlaylist(p.id).then(loadData)} className="text-slate-400 hover:text-rose-500"><Trash2 size={12}/></button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {playlists.map(p => (
+                    <button 
+                      key={p.id} onClick={() => { setActivePlaylistId(p.id); setCurrentSongIndex(0); }}
+                      className={`w-full text-left p-2 rounded transition-colors text-[11px] font-medium flex justify-between items-center ${activePlaylistId === p.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                    >
+                      <span className="truncate">{p.name}</span>
+                      <span className="text-[9px] opacity-50">{p.songs.length}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      )}
     </div>
   );
 };
