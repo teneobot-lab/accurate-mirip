@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Item, Stock, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
-import { ArrowLeft, RefreshCw, FileSpreadsheet, Printer, Calendar, Search, ArrowDownLeft, ArrowUpRight, Hash, Package } from 'lucide-react';
+import { ArrowLeft, RefreshCw, FileSpreadsheet, Printer, Calendar, Search, ArrowDownLeft, ArrowUpRight, Hash, Package, Info, ChevronRight } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useToast } from './Toast';
 
@@ -29,10 +29,8 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
   const { showToast } = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [stocks, setStocks] = useState<Stock[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Default tanggal: Awal bulan ini s/d Hari ini
   const [startDate, setStartDate] = useState(() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
@@ -42,14 +40,12 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [fetchedTx, fetchedWh, fetchedStocks] = await Promise.all([
+      const [fetchedTx, fetchedWh] = await Promise.all([
         StorageService.fetchTransactions(),
-        StorageService.fetchWarehouses(),
-        StorageService.fetchStocks()
+        StorageService.fetchWarehouses()
       ]);
       setTransactions(fetchedTx);
       setWarehouses(fetchedWh);
-      setStocks(fetchedStocks);
     } catch (error) {
       showToast("Gagal memuat data kartu stok", "error");
     } finally {
@@ -59,27 +55,21 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
 
   useEffect(() => { loadData(); }, [item.id]);
 
-  // --- LOGIC PERHITUNGAN KARTU STOK (LEDGER) ---
   const { ledgerRows, summary, openingBalance } = useMemo(() => {
-    // 1. Filter transaksi hanya untuk item ini
     const itemTxs = transactions.filter(tx => 
         tx.items.some(line => line.itemId === item.id)
     ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.createdAt - b.createdAt);
 
-    // 2. Hitung Saldo Awal (Transaksi sebelum Start Date)
     let opening = 0;
-    
     const beforePeriodTxs = itemTxs.filter(tx => tx.date < startDate);
     beforePeriodTxs.forEach(tx => {
         const line = tx.items.find(l => l.itemId === item.id);
         if (!line) return;
         const qtyBase = line.qty * (line.ratio || 1);
-        
         if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') opening += qtyBase;
         else if (tx.type === 'OUT' || tx.type === 'TRANSFER') opening -= qtyBase;
     });
 
-    // 3. Proses Transaksi dalam Periode
     const periodTxs = itemTxs.filter(tx => tx.date >= startDate && tx.date <= endDate);
     let runningBalance = opening;
     let totalIn = 0;
@@ -127,268 +117,164 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
     };
   }, [transactions, item, startDate, endDate, warehouses]);
 
-  // --- EXPORT TO EXCEL (PROFESSIONAL WITH EXCELJS) ---
   const handleExportExcel = async () => {
     if (ledgerRows.length === 0 && openingBalance === 0) return showToast("Tidak ada data untuk diekspor", "warning");
-
     try {
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Kartu Stok');
-
-        // --- 1. HEADER INFORMASI BARANG ---
         sheet.mergeCells('A1:G1');
         const titleCell = sheet.getCell('A1');
         titleCell.value = 'KARTU STOK BARANG (STOCK CARD)';
-        titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF335157' } }; // Dark Teal
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        titleCell.font = { name: 'Arial', size: 12, bold: true };
+        titleCell.alignment = { horizontal: 'center' };
 
-        // Detail Barang
-        sheet.mergeCells('A2:G2');
-        sheet.getCell('A2').value = `ITEM: [${item.code}] ${item.name}`;
-        sheet.getCell('A2').font = { name: 'Arial', size: 10, bold: true };
-        sheet.getCell('A2').alignment = { horizontal: 'left' };
-
-        sheet.mergeCells('A3:G3');
-        sheet.getCell('A3').value = `SATUAN DASAR: ${item.baseUnit}  |  PERIODE: ${startDate} s/d ${endDate}`;
-        sheet.getCell('A3').font = { name: 'Arial', size: 10 };
-
-        // Spasi
-        sheet.getRow(4).height = 10;
-
-        // --- 2. TABLE HEADER ---
-        const headerRow = sheet.getRow(5);
-        headerRow.values = ['TANGGAL', 'NO. BUKTI', 'TIPE', 'KETERANGAN / PARTNER', 'MASUK', 'KELUAR', 'SALDO'];
-        headerRow.height = 25;
+        const headerRow = sheet.addRow(['TANGGAL', 'NO. BUKTI', 'TIPE', 'PARTNER/KETERANGAN', 'MASUK', 'KELUAR', 'SALDO']);
+        headerRow.font = { bold: true };
         
-        const headerStyle: Partial<ExcelJS.Style> = {
-            font: { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } },
-            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEEEEE' } }, // Light Gray
-            alignment: { horizontal: 'center', vertical: 'middle' },
-            border: {
-                top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
-            }
-        };
-
-        headerRow.eachCell((cell) => {
-            cell.style = headerStyle;
-        });
-
-        // --- 3. OPENING BALANCE ROW ---
-        const openRow = sheet.addRow([
-            startDate, 
-            '-', 
-            'OPENING', 
-            'SALDO AWAL PERIODE', 
-            null, 
-            null, 
-            openingBalance
-        ]);
-        
-        openRow.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF555555' } };
-        openRow.getCell(7).font = { name: 'Arial', size: 9, bold: true }; // Saldo Bold
-        openRow.eachCell(cell => {
-             cell.border = { bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } } };
-             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-        });
-
-        // --- 4. DATA ROWS ---
+        sheet.addRow([startDate, '-', 'OPENING', 'SALDO AWAL', null, null, openingBalance]);
         ledgerRows.forEach(row => {
-            const r = sheet.addRow([
-                row.date,
-                row.ref,
-                row.type,
-                `${row.partner !== '-' ? row.partner : ''} ${row.note ? `(${row.note})` : ''}`.trim() || row.whName,
-                row.inQty > 0 ? row.inQty : null,
-                row.outQty > 0 ? row.outQty : null,
-                row.balance
-            ]);
-
-            // Styling per cell
-            r.font = { name: 'Arial', size: 9 };
-            r.getCell(1).alignment = { horizontal: 'center' }; // Date
-            r.getCell(2).alignment = { horizontal: 'left' };   // Ref
-            r.getCell(3).alignment = { horizontal: 'center' }; // Type
-            
-            // Warna Angka
-            if (row.inQty > 0) r.getCell(5).font = { color: { argb: 'FF10B981' } }; // Green
-            if (row.outQty > 0) r.getCell(6).font = { color: { argb: 'FFEF4444' } }; // Red
-            r.getCell(7).font = { bold: true }; // Saldo Bold
-
-            // Border tipis
-            r.eachCell(cell => {
-                cell.border = {
-                    left: { style: 'thin', color: { argb: 'FFDDDDDD' } },
-                    right: { style: 'thin', color: { argb: 'FFDDDDDD' } },
-                    bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } }
-                };
-            });
+            sheet.addRow([row.date, row.ref, row.type, row.partner, row.inQty || null, row.outQty || null, row.balance]);
         });
 
-        // --- 5. FORMATTING COLUMNS ---
-        sheet.getColumn(1).width = 12; // Tanggal
-        sheet.getColumn(2).width = 20; // Ref
-        sheet.getColumn(3).width = 10; // Tipe
-        sheet.getColumn(4).width = 40; // Keterangan
-        sheet.getColumn(5).width = 12; // Masuk
-        sheet.getColumn(6).width = 12; // Keluar
-        sheet.getColumn(7).width = 15; // Saldo
-
-        // Number Format (#,##0)
-        ['E', 'F', 'G'].forEach(col => {
-            sheet.getColumn(col).numFmt = '#,##0.###;-#,##0.###;"-"';
-        });
-
-        // --- 6. DOWNLOAD ---
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = window.URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
-        anchor.download = `StockCard_${item.code}_${startDate}_${endDate}.xlsx`;
+        anchor.download = `StockCard_${item.code}.xlsx`;
         anchor.click();
-        window.URL.revokeObjectURL(url);
-        
         showToast("Laporan Excel Berhasil Diunduh", "success");
-
-    } catch (e) {
-        console.error(e);
-        showToast("Gagal membuat file Excel", "error");
-    }
+    } catch (e) { showToast("Gagal export", "error"); }
   };
 
-  const StatCard = ({ label, value, colorClass, icon: Icon }: any) => (
-      <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col shadow-sm">
-          <div className="flex justify-between items-start mb-1">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{label}</span>
-              {Icon && <Icon size={14} className="text-slate-300"/>}
-          </div>
-          <div className={`text-lg font-bold font-mono ${colorClass}`}>
-              {value.toLocaleString()} <span className="text-[10px] text-slate-400 font-medium ml-1">{item.baseUnit}</span>
-          </div>
-      </div>
+  const MiniStat = ({ label, value, color = "text-slate-600" }: any) => (
+    <div className="flex flex-col border-r border-slate-200 px-4 last:border-0">
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</span>
+        <span className={`text-[13px] font-bold font-mono ${color}`}>{value.toLocaleString()}</span>
+    </div>
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] font-sans">
-        
-        {/* 1. HEADER (Clean & Minimalist) */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
-            <div className="flex items-center gap-4">
-                 <button onClick={onBack} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
-                    <ArrowLeft size={18} />
-                 </button>
-                 <div>
-                    <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                        {item.name}
-                        <span className="text-xs font-medium text-slate-400 font-mono px-2 py-0.5 bg-slate-50 rounded-full border border-slate-100">{item.code}</span>
-                    </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Kartu stok pergerakan barang (Stock Ledger)</p>
-                 </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg p-1">
-                    <div className="px-2 py-1 border-r border-slate-200">
-                        <Calendar size={14} className="text-slate-400"/>
-                    </div>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-xs font-semibold text-slate-700 outline-none px-2 w-28" />
-                    <span className="text-slate-300">-</span>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-semibold text-slate-700 outline-none px-2 w-28" />
-                    <button onClick={loadData} className="p-1.5 hover:bg-slate-200 rounded text-slate-500 transition-colors mx-1"><RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/></button>
+    <div className="flex flex-col h-full bg-white font-sans overflow-hidden">
+        {/* COMPACT TOOLBAR */}
+        <div className="h-10 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between px-2 shrink-0">
+            <div className="flex items-center h-full">
+                <button onClick={onBack} className="flex items-center gap-1.5 px-3 h-full border-r border-slate-200 text-slate-500 hover:bg-white transition-colors">
+                    <ArrowLeft size={14} />
+                    <span className="text-[11px] font-bold uppercase tracking-tight">Kembali</span>
+                </button>
+                <div className="px-4 flex items-center gap-2">
+                    <Package size={14} className="text-slate-400"/>
+                    <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]">{item.name}</span>
+                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 rounded">{item.code}</span>
                 </div>
-                
-                <button onClick={handleExportExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 shadow-sm transition-all active:scale-95">
-                    <FileSpreadsheet size={16}/> Export
+            </div>
+            
+            <div className="flex items-center gap-2 h-full pr-2">
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-0.5">
+                    <Calendar size={12} className="text-slate-400" />
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
+                    <span className="text-slate-300">/</span>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
+                </div>
+                <button onClick={loadData} className="p-1.5 text-slate-400 hover:text-blue-600">
+                    <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/>
+                </button>
+                <button onClick={handleExportExcel} className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold shadow-sm hover:bg-emerald-700 transition-all">
+                    <FileSpreadsheet size={13}/> EXCEL
                 </button>
             </div>
         </div>
 
-        {/* 2. SUMMARY STATS (Grid Layout) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 px-6 py-4">
-            <StatCard label="Saldo Awal" value={openingBalance} colorClass="text-slate-600" icon={Package} />
-            <StatCard label="Total Masuk" value={summary.totalIn} colorClass="text-emerald-600" icon={ArrowDownLeft} />
-            <StatCard label="Total Keluar" value={summary.totalOut} colorClass="text-rose-600" icon={ArrowUpRight} />
-            <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col shadow-md relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10"><Hash size={48} color="white"/></div>
-                <div className="flex justify-between items-start mb-1 relative z-10">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Saldo Akhir</span>
-                </div>
-                <div className="text-xl font-bold font-mono text-white relative z-10">
-                    {summary.closing.toLocaleString()} <span className="text-[10px] text-slate-400 font-medium ml-1">{item.baseUnit}</span>
-                </div>
+        {/* SUMMARY BAR (VERY DENSE) */}
+        <div className="h-12 bg-white border-b border-slate-200 flex items-center px-2 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+            <MiniStat label="Saldo Awal" value={openingBalance} />
+            <MiniStat label="Total Masuk" value={summary.totalIn} color="text-emerald-600" />
+            <MiniStat label="Total Keluar" value={summary.totalOut} color="text-rose-600" />
+            <div className="flex flex-col px-4 bg-slate-800 rounded mx-2 py-1 shadow-sm">
+                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Saldo Akhir</span>
+                <span className="text-[13px] font-bold font-mono text-white leading-none">{summary.closing.toLocaleString()} <span className="text-[9px] font-medium opacity-50 ml-0.5">{item.baseUnit}</span></span>
             </div>
         </div>
 
-        {/* 3. DENSE DATA TABLE */}
-        <div className="flex-1 overflow-auto px-6 pb-6">
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <table className="w-full border-collapse text-left">
-                    <thead className="bg-slate-50 text-slate-500 sticky top-0 z-10 border-b border-slate-200">
-                        <tr>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-32">Tanggal</th>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-40">No. Ref</th>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-24 text-center">Tipe</th>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider">Keterangan / Gudang</th>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-28 text-right text-emerald-600">Masuk</th>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-28 text-right text-rose-600">Keluar</th>
-                            <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider w-32 text-right">Saldo</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                        {/* OPENING BALANCE ROW */}
-                        <tr className="bg-slate-50/50">
-                            <td className="px-4 py-2 font-mono text-[11px] text-slate-500">{startDate}</td>
-                            <td className="px-4 py-2 text-center text-slate-400">-</td>
-                            <td className="px-4 py-2 text-center text-[10px] font-bold text-slate-400">OPENING</td>
-                            <td className="px-4 py-2 font-medium italic text-slate-500">Saldo Awal Periode</td>
-                            <td className="px-4 py-2 text-right font-mono text-slate-300">-</td>
-                            <td className="px-4 py-2 text-right font-mono text-slate-300">-</td>
-                            <td className="px-4 py-2 text-right font-mono font-bold text-slate-700 bg-slate-100/50">{openingBalance.toLocaleString()}</td>
-                        </tr>
+        {/* ULTRA DENSE LEDGER GRID */}
+        <div className="flex-1 overflow-auto">
+            <table className="w-full border-collapse table-fixed text-left">
+                <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+                    <tr className="h-8">
+                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-24">Tanggal</th>
+                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">No. Referensi</th>
+                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-16 text-center">Tipe</th>
+                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Partner / Keterangan</th>
+                        <th className="px-3 text-[10px] font-bold text-emerald-600 uppercase w-24 text-right">Masuk</th>
+                        <th className="px-3 text-[10px] font-bold text-rose-600 uppercase w-24 text-right">Keluar</th>
+                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-28 text-right bg-slate-50/50">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {/* OPENING ROW */}
+                    <tr className="h-7 bg-slate-50/50">
+                        <td className="px-3 text-[11px] font-mono text-slate-400">{startDate}</td>
+                        <td className="px-3 text-[10px] font-bold text-slate-300 italic text-center">—</td>
+                        <td className="px-3 text-center">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">OPEN</span>
+                        </td>
+                        <td className="px-3 text-[11px] text-slate-400 italic">Saldo Awal Periode</td>
+                        <td className="px-3 text-right text-[11px] font-mono text-slate-300">—</td>
+                        <td className="px-3 text-right text-[11px] font-mono text-slate-300">—</td>
+                        <td className="px-3 text-right text-[11px] font-mono font-bold text-slate-500 bg-slate-50">{openingBalance.toLocaleString()}</td>
+                    </tr>
 
-                        {ledgerRows.length === 0 ? (
-                            <tr>
-                                <td colSpan={7} className="p-12 text-center text-slate-400 text-sm">Tidak ada transaksi pada periode ini</td>
-                            </tr>
-                        ) : ledgerRows.map((row) => (
-                            <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
-                                <td className="px-4 py-2 font-mono text-[11px] text-slate-600">
-                                    {new Date(row.date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                </td>
-                                <td className="px-4 py-2 font-mono text-[11px] text-blue-600 font-medium cursor-pointer hover:underline">
-                                    {row.ref}
-                                </td>
-                                <td className="px-4 py-2 text-center">
-                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                    {ledgerRows.length === 0 ? (
+                        <tr>
+                            <td colSpan={7} className="h-20 text-center text-slate-300 text-[11px] font-medium uppercase tracking-widest italic">Tidak ada mutasi transaksi</td>
+                        </tr>
+                    ) : (
+                        ledgerRows.map((row) => (
+                            <tr key={row.id} className="h-7 hover:bg-slate-50 transition-colors group">
+                                <td className="px-3 text-[11px] font-mono text-slate-500">{row.date}</td>
+                                <td className="px-3 text-[11px] font-mono font-semibold text-blue-600 truncate cursor-default">{row.ref}</td>
+                                <td className="px-3 text-center">
+                                    <span className={`px-1 rounded text-[9px] font-bold border ${
                                         row.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                                         row.type === 'OUT' ? 'bg-rose-50 text-rose-600 border-rose-100' :
                                         'bg-slate-100 text-slate-500 border-slate-200'
-                                    }`}>
-                                        {row.type}
-                                    </span>
+                                    }`}>{row.type}</span>
                                 </td>
-                                <td className="px-4 py-2 truncate max-w-xs">
-                                    <div className="flex flex-col">
-                                        <span className="font-semibold text-slate-700">{row.partner !== '-' ? row.partner : row.whName}</span>
-                                        {row.note && <span className="text-[10px] text-slate-400 italic truncate">{row.note}</span>}
-                                    </div>
+                                <td className="px-3 text-[11px] font-medium text-slate-700 truncate">
+                                    {row.partner !== '-' ? <span className="text-blue-700 mr-2">{row.partner}</span> : null}
+                                    <span className="text-slate-500 italic font-normal">{row.note}</span>
                                 </td>
-                                <td className={`px-4 py-2 text-right font-mono font-medium ${row.inQty > 0 ? 'text-emerald-600 bg-emerald-50/30' : 'text-slate-300'}`}>
-                                    {row.inQty > 0 ? `+${row.inQty.toLocaleString()}` : '-'}
+                                <td className={`px-3 text-right text-[11px] font-mono font-semibold ${row.inQty > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                    {row.inQty > 0 ? row.inQty.toLocaleString() : '—'}
                                 </td>
-                                <td className={`px-4 py-2 text-right font-mono font-medium ${row.outQty > 0 ? 'text-rose-600 bg-rose-50/30' : 'text-slate-300'}`}>
-                                    {row.outQty > 0 ? `-${row.outQty.toLocaleString()}` : '-'}
+                                <td className={`px-3 text-right text-[11px] font-mono font-semibold ${row.outQty > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
+                                    {row.outQty > 0 ? row.outQty.toLocaleString() : '—'}
                                 </td>
-                                <td className="px-4 py-2 text-right font-mono font-bold text-slate-800 bg-slate-50/50 group-hover:bg-white">
+                                <td className="px-3 text-right text-[11px] font-mono font-bold text-slate-700 bg-slate-50/30 group-hover:bg-blue-50/50">
                                     {row.balance.toLocaleString()}
                                 </td>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        ))
+                    )}
+                </tbody>
+            </table>
         </div>
+
+        {/* MINI STATUS BAR */}
+        <div className="h-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between px-3 text-[9px] font-bold text-slate-400 shrink-0">
+            <div className="flex items-center gap-2">
+                <Info size={10}/>
+                <span className="uppercase tracking-widest">Gudang: {item.category || 'SEMUA'}</span>
+                <span className="text-slate-200">|</span>
+                <span className="uppercase tracking-widest">Satuan: {item.baseUnit}</span>
+            </div>
+            <div className="italic opacity-60">System Accurate Interface V2.0</div>
+        </div>
+        <style>{`
+            .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        `}</style>
     </div>
   );
 };
