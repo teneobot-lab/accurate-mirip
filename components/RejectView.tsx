@@ -268,7 +268,7 @@ export const RejectView: React.FC = () => {
                 to: { row: 2, column: headers.length }
             };
             
-            // Styling Header (Warna Kuning & Underline Border)
+            // Styling Header (Warna Kuning & Underline Border ONLY)
             headerRow.eachCell((cell) => {
                 cell.fill = {
                     type: 'pattern',
@@ -276,24 +276,23 @@ export const RejectView: React.FC = () => {
                     fgColor: { argb: 'FFFF00' } // Kuning
                 };
                 cell.font = { bold: true, size: 10, name: 'Arial' };
+                // REMOVE FULL BORDER, ONLY BOTTOM UNDERLINE
                 cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'medium' }, // Garis bawah lebih tebal (Underline effect)
-                    right: { style: 'thin' }
+                    bottom: { style: 'medium' }
                 };
                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
             });
 
             // 3. Data Rows
             let rowCounter = 1;
-            Array.from(itemMap.values()).forEach(item => {
+            const itemsArray = Array.from(itemMap.values()); // Convert to array for index check
+
+            itemsArray.forEach((item, index) => {
                 const rowData = [rowCounter++, item.code, item.name, item.unit];
                 let total = new Decimal(0);
                 
                 dateList.forEach(d => {
                     const qty = item.dateValues.get(d) || new Decimal(0);
-                    // Push null if 0 to keep cell empty (cleaner look), otherwise formatted number
                     rowData.push(qty.equals(0) ? null : qty.toNumber());
                     total = total.plus(qty);
                 });
@@ -301,20 +300,24 @@ export const RejectView: React.FC = () => {
                 rowData.push(total.toNumber() || null);
                 const row = sheet.addRow(rowData);
 
+                const isLastRow = index === itemsArray.length - 1;
+
                 // Styling Sel Data
                 row.eachCell((cell, colNumber) => {
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
+                    // BORDER LOGIC: Only bottom border on the last row
+                    if (isLastRow) {
+                        cell.border = {
+                            bottom: { style: 'medium' }
+                        };
+                    } else {
+                        cell.border = {}; // Clear borders for standard rows
+                    }
+
                     cell.font = { name: 'Arial', size: 10 };
                     
                     if (colNumber === 1) cell.alignment = { horizontal: 'center' };
                     if (colNumber > 4) {
                         cell.alignment = { horizontal: 'right' };
-                        // Pembulatan 1 angka di belakang koma (0.0)
                         cell.numFmt = '#,##0.0'; 
                         
                         // Style Kolom Total
