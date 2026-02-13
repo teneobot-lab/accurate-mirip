@@ -1,13 +1,14 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { StorageService } from '../services/storage';
-import { Item, Stock, Transaction } from '../types';
-import { TrendingUp, Package, Activity, Loader2, RefreshCw, Repeat, ArrowUpRight, ArrowDownRight, Calendar } from 'lucide-react';
+import { Item, Stock, Transaction, Warehouse } from '../types';
+import { Package, ArrowUpRight, ArrowDownRight, RefreshCw, Calendar, ListFilter, LayoutGrid, AlertCircle, Building2, ClipboardList, Activity } from 'lucide-react';
 
 export const DashboardView: React.FC = () => {
     const [items, setItems] = useState<Item[]>([]);
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     const [startDate, setStartDate] = useState(() => {
@@ -19,12 +20,13 @@ export const DashboardView: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [its, stk, txs] = await Promise.all([
+            const [its, stk, txs, whs] = await Promise.all([
                 StorageService.fetchItems().catch(() => []),
                 StorageService.fetchStocks().catch(() => []),
-                StorageService.fetchTransactions().catch(() => [])
+                StorageService.fetchTransactions().catch(() => []),
+                StorageService.fetchWarehouses().catch(() => [])
             ]);
-            setItems(its); setStocks(stk); setTransactions(txs);
+            setItems(its); setStocks(stk); setTransactions(txs); setWarehouses(whs);
         } catch (e) {
             console.error("Dashboard Sync Error");
         } finally {
@@ -34,222 +36,193 @@ export const DashboardView: React.FC = () => {
 
     useEffect(() => { loadData(); }, []);
 
-    const stats = useMemo(() => {
-        const totalStockCount = stocks.reduce((acc, s) => acc + Number(s.qty || 0), 0);
+    const data = useMemo(() => {
         const filteredTx = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
-        let totalIn = 0; let totalOut = 0;
-        const outItemFrequencyMap = new Map<string, number>();
+        const recentTx = transactions.slice(0, 15);
+        
+        const lowStock = items
+            .filter(it => it.isActive && it.minStock > 0)
+            .map(it => ({
+                ...it,
+                current: stocks.filter(s => s.itemId === it.id).reduce((acc, s) => acc + Number(s.qty), 0)
+            }))
+            .filter(it => it.current <= it.minStock)
+            .sort((a, b) => a.current - b.current)
+            .slice(0, 10);
 
-        filteredTx.forEach(tx => {
-            tx.items.forEach(line => { 
-                const qty = Number((line.qty || 0) * (line.ratio || 1));
-                if (tx.type === 'IN' || tx.type === 'ADJUSTMENT') totalIn += qty;
-                if (tx.type === 'OUT') totalOut += qty;
-            });
-            if (tx.type === 'OUT') {
-                new Set<string>(tx.items.map(i => i.itemId)).forEach((itemId: string) => {
-                    outItemFrequencyMap.set(itemId, (outItemFrequencyMap.get(itemId) || 0) + 1);
-                });
-            }
-        });
+        const summary = {
+            totalIn: filteredTx.reduce((acc, tx) => acc + (tx.type === 'IN' ? tx.items.reduce((iAcc, it) => iAcc + (it.qty * it.ratio), 0) : 0), 0),
+            totalOut: filteredTx.reduce((acc, tx) => acc + (tx.type === 'OUT' ? tx.items.reduce((iAcc, it) => iAcc + (it.qty * it.ratio), 0) : 0), 0),
+            totalStock: stocks.reduce((acc, s) => acc + Number(s.qty), 0)
+        };
 
-        const topOutboundItems = Array.from(outItemFrequencyMap.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([id, val]) => ({
-                name: items.find(i => i.id === id)?.name || 'Unknown Item',
-                code: items.find(i => i.id === id)?.code || '???',
-                unit: items.find(i => i.id === id)?.baseUnit || '',
-                value: val
-            }));
-
-        return { totalStockCount, activeItems: items.length, totalIn, totalOut, topOutboundItems };
+        return { recentTx, lowStock, summary };
     }, [items, stocks, transactions, startDate, endDate]);
 
-    if (isLoading) return (
-        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
-            <Loader2 className="animate-spin text-slate-300" size={32} />
-            <div className="text-sm font-medium text-slate-500">Memuat data dashboard...</div>
+    const StatMini = ({ label, value, icon: Icon, colorClass }: any) => (
+        <div className="flex items-center gap-3 px-4 border-r border-slate-200 last:border-0">
+            <div className={`p-1.5 rounded-lg ${colorClass} bg-opacity-10`}>
+                <Icon size={14} className={colorClass}/>
+            </div>
+            <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-tight leading-none">{label}</p>
+                <p className="text-[13px] font-bold text-slate-700 mt-1 leading-none">{value.toLocaleString()}</p>
+            </div>
         </div>
     );
 
     return (
-        <div className="p-8 space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
-            {/* Header Section */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-slate-100 pb-6">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Ringkasan Operasional</h2>
-                    <p className="text-sm text-slate-500 mt-1 font-medium">Pantau pergerakan stok dan performa gudang secara real-time.</p>
+        <div className="flex flex-col h-full bg-white font-sans animate-in fade-in duration-300">
+            {/* TOP COMPACT STATS BAR */}
+            <div className="h-12 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between px-4 shrink-0">
+                <div className="flex h-full items-center">
+                    <StatMini label="Stok Tersedia" value={data.summary.totalStock} icon={Package} colorClass="text-blue-600" />
+                    <StatMini label="Masuk (Periode)" value={data.summary.totalIn} icon={ArrowDownRight} colorClass="text-emerald-600" />
+                    <StatMini label="Keluar (Periode)" value={data.summary.totalOut} icon={ArrowUpRight} colorClass="text-rose-600" />
                 </div>
-                
-                <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-                    <div className="flex items-center px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
-                        <Calendar size={14} className="text-slate-400 mr-2"/>
-                        <input 
-                            type="date" 
-                            value={startDate} 
-                            onChange={e => setStartDate(e.target.value)} 
-                            className="bg-transparent border-none p-0 text-xs font-semibold text-slate-700 outline-none w-24" 
-                        />
-                        <span className="text-slate-300 mx-2">s/d</span>
-                        <input 
-                            type="date" 
-                            value={endDate} 
-                            onChange={e => setEndDate(e.target.value)} 
-                            className="bg-transparent border-none p-0 text-xs font-semibold text-slate-700 outline-none w-24" 
-                        />
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-2 py-1">
+                        <Calendar size={12} className="text-slate-400"/>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-[10px] font-semibold outline-none bg-transparent w-24" />
+                        <span className="text-slate-300">-</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-[10px] font-semibold outline-none bg-transparent w-24" />
                     </div>
-                    <button onClick={loadData} className="p-2 text-slate-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-all" title="Refresh Data">
-                        <RefreshCw size={16}/>
+                    <button onClick={loadData} className="p-1.5 hover:bg-slate-200 rounded-md text-slate-400 transition-colors">
+                        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/>
                     </button>
                 </div>
             </div>
 
-            {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard 
-                    title="Pengiriman Keluar" 
-                    value={stats.totalOut} 
-                    icon={<ArrowUpRight size={20}/>} 
-                    color="text-rose-600" 
-                    bg="bg-rose-50"
-                    desc="Total item keluar periode ini"
-                />
-                <StatCard 
-                    title="Penerimaan Masuk" 
-                    value={stats.totalIn} 
-                    icon={<ArrowDownRight size={20}/>} 
-                    color="text-emerald-600" 
-                    bg="bg-emerald-50"
-                    desc="Total item masuk periode ini"
-                />
-                <StatCard 
-                    title="Total Stok Fisik" 
-                    value={stats.totalStockCount} 
-                    icon={<Package size={20}/>} 
-                    color="text-blue-600" 
-                    bg="bg-blue-50"
-                    desc="Akumulasi seluruh gudang"
-                />
-                <StatCard 
-                    title="Database Item" 
-                    value={stats.activeItems} 
-                    icon={<Repeat size={20}/>} 
-                    color="text-slate-700" 
-                    bg="bg-slate-100"
-                    desc="SKU aktif terdaftar"
-                />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Top Items List */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                            <TrendingUp size={18} className="text-slate-400"/> 
-                            Frekuensi Barang Keluar
-                        </h3>
-                        <span className="text-xs font-medium text-slate-400 px-2 py-1 bg-slate-50 rounded-md">Top 5 Item</span>
-                    </div>
-                    
-                    <div className="space-y-5 flex-1">
-                        {stats.topOutboundItems.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 min-h-[200px]">
-                                <Package size={32} className="opacity-20"/>
-                                <span className="text-sm">Belum ada transaksi keluar periode ini</span>
-                            </div>
-                        ) : (
-                            stats.topOutboundItems.map((item, idx) => {
-                                const maxVal = stats.topOutboundItems[0]?.value || 1;
-                                const percent = (item.value / maxVal) * 100;
-                                
-                                return (
-                                    <div key={idx} className="group">
-                                        <div className="flex justify-between items-center mb-1.5">
-                                            <div className="flex items-center gap-3">
-                                                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${idx === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
-                                                    {idx + 1}
-                                                </span>
-                                                <div>
-                                                    <div className="text-sm font-semibold text-slate-700 group-hover:text-brand transition-colors">{item.name}</div>
-                                                    <div className="text-[10px] text-slate-400 font-mono">{item.code}</div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-sm font-bold text-slate-800">{item.value}x</span>
-                                                <span className="text-[10px] text-slate-400 ml-1 font-medium">Transaksi</span>
-                                            </div>
-                                        </div>
-                                        <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full rounded-full transition-all duration-1000 ${idx === 0 ? 'bg-amber-400' : 'bg-slate-300 group-hover:bg-brand'}`}
-                                                style={{ width: `${percent}%` }}
-                                            ></div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
+            {/* MAIN CONTENT GRID - PADAT & FULL LAYAR */}
+            <div className="flex-1 flex overflow-hidden">
                 
-                {/* System Status / Mini Widget */}
-                <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl text-white shadow-lg relative overflow-hidden">
-                        {/* Decorative Circles */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-brand/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
-                        
-                        <div className="relative z-10">
-                            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm">
-                                <Activity size={20} className="text-emerald-400"/>
+                {/* LEFT COLUMN: LOW STOCK (DENSE) */}
+                <div className="w-72 border-r border-slate-200 flex flex-col shrink-0 bg-slate-50/30">
+                    <div className="px-4 py-2 bg-slate-100/50 border-b border-slate-200 flex items-center justify-between">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <AlertCircle size={12} className="text-rose-500"/> Stok Menipis
+                        </h3>
+                        <span className="text-[9px] font-bold bg-rose-100 text-rose-600 px-1.5 rounded-full">{data.lowStock.length}</span>
+                    </div>
+                    <div className="flex-1 overflow-auto custom-scrollbar">
+                        {data.lowStock.map(it => (
+                            <div key={it.id} className="p-3 border-b border-slate-100 hover:bg-white transition-colors">
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className="text-[11px] font-semibold text-slate-700 truncate w-40">{it.name}</span>
+                                    <span className="text-[9px] font-mono text-slate-400">{it.code}</span>
+                                </div>
+                                <div className="flex justify-between items-end">
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] text-slate-400 uppercase leading-none">Status Stok</span>
+                                        <span className="text-[12px] font-bold text-rose-600 mt-1">
+                                            {it.current.toLocaleString()} <span className="text-[10px] font-medium text-slate-400">{it.baseUnit}</span>
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-[9px] text-slate-400 block leading-none">Min. Stock</span>
+                                        <span className="text-[10px] font-semibold text-slate-500">{it.minStock}</span>
+                                    </div>
+                                </div>
+                                <div className="mt-2 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-rose-500" style={{ width: `${Math.min((it.current / it.minStock) * 100, 100)}%` }}></div>
+                                </div>
                             </div>
-                            <h3 className="text-lg font-bold mb-1">Status Sistem</h3>
-                            <p className="text-slate-400 text-xs leading-relaxed mb-6">
-                                Semua layanan berjalan normal. Sinkronisasi data real-time aktif.
-                            </p>
-                            
-                            <div className="flex items-center gap-2 text-[10px] font-medium bg-black/20 p-2 rounded-lg w-fit border border-white/5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Online & Connected
+                        ))}
+                    </div>
+                </div>
+
+                {/* CENTER COLUMN: RECENT TRANSACTIONS (ACCURATE TABLE STYLE) */}
+                <div className="flex-1 flex flex-col min-w-0">
+                    <div className="px-4 py-2 bg-slate-100/50 border-b border-slate-200 flex items-center justify-between shrink-0">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <ClipboardList size={12} className="text-blue-500"/> Transaksi Terkini
+                        </h3>
+                        <button className="text-[10px] font-semibold text-blue-600 hover:underline">Lihat Semua Laporan</button>
+                    </div>
+                    <div className="flex-1 overflow-auto bg-white">
+                        <table className="w-full border-collapse text-left table-fixed">
+                            <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+                                <tr className="h-8">
+                                    <th className="px-4 text-[10px] font-bold text-slate-400 uppercase w-32">No. Ref</th>
+                                    <th className="px-4 text-[10px] font-bold text-slate-400 uppercase w-24">Tanggal</th>
+                                    <th className="px-4 text-[10px] font-bold text-slate-400 uppercase w-16 text-center">Tipe</th>
+                                    <th className="px-4 text-[10px] font-bold text-slate-400 uppercase">Keterangan / Partner</th>
+                                    <th className="px-4 text-[10px] font-bold text-slate-400 uppercase w-20 text-center">Items</th>
+                                    <th className="px-4 text-[10px] font-bold text-slate-400 uppercase w-32">Gudang</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {data.recentTx.map(tx => (
+                                    <tr key={tx.id} className="h-8 hover:bg-blue-50/40 group transition-colors">
+                                        <td className="px-4 text-[11px] font-mono text-slate-500 truncate">{tx.referenceNo}</td>
+                                        <td className="px-4 text-[11px] text-slate-600">{tx.date}</td>
+                                        <td className="px-4 text-center">
+                                            <span className={`px-1 rounded text-[9px] font-bold uppercase border ${tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                {tx.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 text-[11px] text-slate-700 truncate font-medium">
+                                            {tx.partnerName ? <span className="uppercase text-[10px] bg-slate-100 px-1 rounded mr-2 text-slate-500">{tx.partnerName}</span> : null}
+                                            {tx.notes || (tx.items.length > 0 ? tx.items[0].name : '-')}
+                                        </td>
+                                        <td className="px-4 text-center text-[11px] font-bold text-slate-500">{tx.items.length}</td>
+                                        <td className="px-4 text-[11px] text-slate-500 truncate uppercase">
+                                            {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || '-'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* RIGHT COLUMN: SYSTEM STATUS / WIDGETS */}
+                <div className="w-64 border-l border-slate-200 flex flex-col shrink-0 bg-slate-50/50">
+                    <div className="px-4 py-2 bg-slate-100/50 border-b border-slate-200">
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <Activity size={12} className="text-emerald-500"/> System Monitor
+                        </h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Sinkronisasi Database</p>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span className="text-[11px] font-semibold text-slate-700">Terhubung ke MySQL</span>
+                            </div>
+                            <p className="text-[9px] text-slate-400 mt-1">Latency: 24ms • Realtime Active</p>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Gudang Aktif</p>
+                            <div className="space-y-2">
+                                {warehouses.slice(0, 3).map(wh => (
+                                    <div key={wh.id} className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 size={10} className="text-slate-400"/>
+                                            <span className="text-[10px] font-semibold text-slate-600 truncate w-24">{wh.name}</span>
+                                        </div>
+                                        <span className={`text-[8px] font-bold uppercase ${wh.isActive ? 'text-emerald-500' : 'text-slate-300'}`}>Online</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
 
-                    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-                        <h4 className="text-sm font-bold text-slate-700 mb-4">Akses Cepat</h4>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center cursor-pointer hover:bg-brand/5 hover:border-brand/20 transition-all group">
-                                <span className="text-2xl mb-1 block group-hover:scale-110 transition-transform">📦</span>
-                                <span className="text-[10px] font-bold text-slate-600">Cek Stok</span>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-center cursor-pointer hover:bg-brand/5 hover:border-brand/20 transition-all group">
-                                <span className="text-2xl mb-1 block group-hover:scale-110 transition-transform">📄</span>
-                                <span className="text-[10px] font-bold text-slate-600">Laporan</span>
-                            </div>
+                        <div className="bg-blue-600 p-4 rounded-xl text-white shadow-lg relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-10"><LayoutGrid size={48}/></div>
+                            <h4 className="text-[11px] font-bold mb-1 uppercase tracking-wider">Quick Note</h4>
+                            <p className="text-[10px] opacity-80 leading-relaxed">Jangan lupa cek stok opname akhir bulan ini untuk area Warehouse A.</p>
                         </div>
                     </div>
                 </div>
             </div>
+            
+            <style>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+            `}</style>
         </div>
     );
 };
-
-// Elegant Stat Card Component
-const StatCard = ({ title, value, icon, bg, color, desc }: any) => (
-    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all duration-300">
-        <div className="flex justify-between items-start mb-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg} ${color}`}>
-                {icon}
-            </div>
-            {/* Optional Trend Indicator could go here */}
-        </div>
-        <div>
-            <div className="text-3xl font-bold text-slate-800 tracking-tight mb-1">
-                {value.toLocaleString()}
-            </div>
-            <div className="text-sm font-medium text-slate-600">{title}</div>
-            <div className="text-[10px] text-slate-400 mt-1">{desc}</div>
-        </div>
-    </div>
-);
