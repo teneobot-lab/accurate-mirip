@@ -17,14 +17,6 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
-const cleanNum = (val: string | number): number => {
-    try {
-        return new Decimal(val).toNumber();
-    } catch {
-        return 0;
-    }
-};
-
 export const RejectView: React.FC = () => {
     const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'MASTER_ITEMS' | 'MASTER'>('NEW');
@@ -180,25 +172,31 @@ export const RejectView: React.FC = () => {
     const handleCopyToClipboard = (batch: RejectBatch) => {
         if (!batch.items || batch.items.length === 0) return;
         
-        // Format Tanggal ke DDMMYY (Contoh: 110226)
         const d = new Date(batch.date);
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = String(d.getFullYear()).slice(-2);
         const formattedDate = `${day}${month}${year}`;
 
-        // Header: Data Reject [Outlet] [DDMMYY]
         let text = `Data Reject ${batch.outlet} ${formattedDate}\n`;
         
-        // Items: - [Nama] [Qty] [Unit] [Alasan]
         batch.items.forEach((it) => {
-            // Kita bersihkan alasan dari info qty tambahan jika ada untuk tampilan bersih
-            const cleanReason = it.reason.split('(')[0].trim();
-            text += `- ${it.name} ${it.baseQty} ${it.unit} ${cleanReason || ''}\n`.replace(/\s+/g, ' ');
+            // EKSTRAKSI QTY & UNIT ASLI DARI FIELD REASON (disimpan di handleAddLine)
+            const match = it.reason.match(/\(([^)]+)\)/);
+            // match[1] berisi nilai input user seperti "39 grm" atau "9 prs"
+            const originalInputText = match ? match[1].toLowerCase().trim() : `${it.qty} ${it.unit.toLowerCase()}`;
+            
+            // Ambil alasan murni (teks sebelum tanda kurung)
+            const pureReason = it.reason.split('(')[0].trim().toLowerCase();
+            const itemName = it.name.toLowerCase();
+            
+            // Format: - [nama] [qty unit asli] [alasan]
+            const line = `- ${itemName} ${originalInputText} ${pureReason}`.replace(/\s+/g, ' ').trim();
+            text += `${line}\n`;
         });
 
-        navigator.clipboard.writeText(text).then(() => {
-            showToast("Data batch berhasil disalin ke clipboard", "success");
+        navigator.clipboard.writeText(text.trim()).then(() => {
+            showToast("Format laporan disalin (Lowercase & Unit Asli)", "success");
         }).catch(() => {
             showToast("Gagal menyalin data", "error");
         });
@@ -273,84 +271,84 @@ export const RejectView: React.FC = () => {
     }, [debouncedMasterSearch, rejectMasterItems]);
 
     return (
-        <div className="flex flex-col h-full bg-[#f8fafc] font-sans">
+        <div className="flex flex-col h-full bg-[#f1f5f9] font-sans">
             
-            {/* Header / Tabs */}
-            <div className="px-6 py-4 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20 shadow-sm">
-                <div className="flex gap-2">
+            {/* Header / Tabs - Compact */}
+            <div className="px-4 py-2 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-20 shadow-sm shrink-0">
+                <div className="flex gap-1">
                     {[
                         { id: 'NEW', label: 'Input Reject', icon: Plus },
                         { id: 'HISTORY', label: 'Riwayat', icon: History },
-                        { id: 'MASTER_ITEMS', label: 'Katalog Barang', icon: Database },
+                        { id: 'MASTER_ITEMS', label: 'Katalog', icon: Database },
                         { id: 'MASTER', label: 'Outlet', icon: MapPin }
                     ].map(tab => (
                         <button 
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all ${
                                 activeTab === tab.id 
-                                ? 'bg-slate-800 text-white shadow-md' 
+                                ? 'bg-slate-800 text-white shadow-sm' 
                                 : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
                             }`}
                         >
-                            <tab.icon size={14}/> {tab.label}
+                            <tab.icon size={12}/> {tab.label}
                         </button>
                     ))}
                 </div>
                 {activeTab === 'NEW' && (
-                    <div className="flex items-center gap-3">
-                        <select value={selectedOutlet} onChange={e => setSelectedOutlet(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-brand">
+                    <div className="flex items-center gap-2">
+                        <select value={selectedOutlet} onChange={e => setSelectedOutlet(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-brand">
                             {outlets.map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-brand" />
-                        <button onClick={handleSaveBatch} className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors flex items-center gap-2">
-                            <Save size={14}/> Simpan
+                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-brand" />
+                        <button onClick={handleSaveBatch} className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-[11px] font-bold shadow-sm transition-colors flex items-center gap-1.5">
+                            <Save size={12}/> Simpan
                         </button>
                     </div>
                 )}
             </div>
 
-            <div className="flex-1 overflow-hidden p-6">
+            <div className="flex-1 overflow-hidden p-3 lg:p-4">
                 {isLoading ? (
-                    <div className="h-full flex items-center justify-center text-slate-400 gap-2 text-sm font-medium">
-                        <Loader2 className="animate-spin" size={20}/> Memuat data...
+                    <div className="h-full flex items-center justify-center text-slate-400 gap-2 text-xs font-medium">
+                        <Loader2 className="animate-spin" size={16}/> Memuat data...
                     </div>
                 ) : activeTab === 'NEW' ? (
-                    <div className="h-full flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                        {/* INPUT REJECT TABLE */}
+                    <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        {/* ULTRA DENSE TABLE */}
                         <div className="flex-1 overflow-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50 text-xs font-semibold text-slate-500 sticky top-0 z-10 border-b border-slate-200">
+                            <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
+                                <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 sticky top-0 z-10 border-b border-slate-200 uppercase tracking-wider">
                                     <tr>
-                                        <th className="px-4 py-3 w-12 text-center">#</th>
-                                        <th className="px-4 py-3">Barang & SKU</th>
-                                        <th className="px-4 py-3 w-32 text-right">Qty Base</th>
-                                        <th className="px-4 py-3 w-24 text-center">Satuan</th>
-                                        <th className="px-4 py-3">Catatan / Alasan</th>
-                                        <th className="px-4 py-3 w-12"></th>
+                                        <th className="px-3 py-1.5 w-10 text-center">#</th>
+                                        <th className="px-3 py-1.5">Barang & SKU</th>
+                                        <th className="px-3 py-1.5 w-24 text-right">Qty Base</th>
+                                        <th className="px-3 py-1.5 w-20 text-center">Satuan</th>
+                                        <th className="px-3 py-1.5">Catatan / Alasan</th>
+                                        <th className="px-3 py-1.5 w-10"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-sm">
+                                <tbody className="divide-y divide-slate-100 text-[11px]">
                                     {rejectLines.map((line, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-50 group">
-                                            <td className="px-4 py-2 text-center text-slate-400 text-xs">{idx + 1}</td>
-                                            <td className="px-4 py-2">
-                                                <div className="font-semibold text-slate-700">{line.name}</div>
-                                                <div className="text-[10px] text-slate-400 font-mono">{line.sku}</div>
+                                        <tr key={idx} className="hover:bg-slate-50 group transition-colors h-8">
+                                            <td className="px-3 text-center text-slate-400 font-mono text-[10px]">{idx + 1}</td>
+                                            <td className="px-3 truncate">
+                                                <span className="font-bold text-slate-700">{line.name}</span>
+                                                <span className="ml-2 text-[9px] text-slate-400 font-mono italic">{line.sku}</span>
                                             </td>
-                                            <td className="px-4 py-2 text-right font-mono font-medium text-rose-600">{line.qty.toLocaleString()}</td>
-                                            <td className="px-4 py-2 text-center"><span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{line.unit}</span></td>
-                                            <td className="px-4 py-2 text-slate-500 italic text-xs">{line.reason}</td>
-                                            <td className="px-4 py-2 text-center">
-                                                <button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button>
+                                            <td className="px-3 text-right font-mono font-bold text-rose-600">{line.qty.toLocaleString()}</td>
+                                            <td className="px-3 text-center"><span className="text-[9px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{line.unit}</span></td>
+                                            <td className="px-3 text-slate-500 italic truncate">{line.reason}</td>
+                                            <td className="px-3 text-center">
+                                                <button onClick={() => setRejectLines(rejectLines.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
                                             </td>
                                         </tr>
                                     ))}
                                     
-                                    {/* Inline Input Row */}
-                                    <tr className="bg-slate-50/50 border-t border-slate-200">
-                                        <td className="px-4 py-2 text-center"><Plus size={14} className="text-slate-400 mx-auto"/></td>
-                                        <td className="px-2 py-2 relative">
+                                    {/* Ultra Dense Inline Input Row */}
+                                    <tr className="bg-slate-50 border-t-2 border-slate-200">
+                                        <td className="px-3 py-1 text-center"><Plus size={12} className="text-slate-400 mx-auto"/></td>
+                                        <td className="p-1 relative">
                                             <input 
                                                 ref={itemInputRef}
                                                 type="text" placeholder="Cari Barang..." 
@@ -358,45 +356,45 @@ export const RejectView: React.FC = () => {
                                                 onChange={e => { setQuery(e.target.value); if(pendingItem) setPendingItem(null); setIsDropdownOpen(true); }}
                                                 onKeyDown={e => {
                                                     if(e.key==='Enter' && filteredItems[selectedIndex]) selectItem(filteredItems[selectedIndex]);
-                                                    if(e.key==='ArrowDown') setSelectedIndex(p => (p+1)%filteredItems.length);
-                                                    if(e.key==='ArrowUp') setSelectedIndex(p => (p-1+filteredItems.length)%filteredItems.length);
+                                                    if(e.key==='ArrowDown') { e.preventDefault(); setSelectedIndex(p => (p+1)%filteredItems.length); }
+                                                    if(e.key==='ArrowUp') { e.preventDefault(); setSelectedIndex(p => (p-1+filteredItems.length)%filteredItems.length); }
                                                 }} 
-                                                className="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm font-medium outline-none focus:border-brand placeholder:text-slate-400"
+                                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-[11px] font-bold outline-none focus:border-brand placeholder:text-slate-400"
                                             />
                                             {isDropdownOpen && filteredItems.length > 0 && (
-                                                <div ref={dropdownRef} className="absolute left-2 right-2 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-auto">
+                                                <div ref={dropdownRef} className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-50 max-h-48 overflow-auto">
                                                     {filteredItems.map((it, idx) => (
-                                                        <div key={it.id} onMouseDown={() => selectItem(it)} onMouseEnter={()=>setSelectedIndex(idx)} className={`px-3 py-2 cursor-pointer text-xs flex justify-between items-center ${idx===selectedIndex ? 'bg-slate-100' : 'hover:bg-slate-50'}`}>
+                                                        <div key={it.id} onMouseDown={() => selectItem(it)} onMouseEnter={()=>setSelectedIndex(idx)} className={`px-3 py-1.5 cursor-pointer text-[10px] flex justify-between items-center ${idx===selectedIndex ? 'bg-slate-100' : 'hover:bg-slate-50'}`}>
                                                             <div>
                                                                 <div className="font-bold text-slate-700">{it.name}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono">{it.code}</div>
+                                                                <div className="text-[9px] text-slate-400 font-mono">{it.code}</div>
                                                             </div>
-                                                            <div className="text-[10px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{it.baseUnit}</div>
+                                                            <div className="text-[9px] font-bold text-slate-400 bg-slate-200 px-1 py-0.5 rounded">{it.baseUnit}</div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-2 py-2 relative">
+                                        <td className="p-1 relative">
                                             <input 
                                                 ref={qtyInputRef}
                                                 type="number" placeholder="0" 
                                                 value={pendingQty} onChange={e => setPendingQty(e.target.value)}
                                                 onKeyDown={e => e.key === 'Enter' && reasonInputRef.current?.focus()}
                                                 disabled={!pendingItem}
-                                                className="w-full bg-white border border-slate-300 rounded px-2 py-1.5 text-right text-sm font-bold text-slate-800 outline-none focus:border-brand disabled:bg-slate-100"
+                                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-right text-[11px] font-black text-slate-800 outline-none focus:border-brand disabled:bg-slate-100"
                                             />
                                             {conversionResult && !('error' in conversionResult) && (
-                                                <div className="absolute right-2 -top-3 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded border border-emerald-100 shadow-sm">
+                                                <div className="absolute right-1 -top-2.5 text-[8px] font-black text-emerald-600 bg-white px-1 rounded border border-emerald-100 shadow-sm">
                                                     = {conversionResult.baseQty} {conversionResult.unit}
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-2 py-2">
+                                        <td className="p-1">
                                             <select 
                                                 value={pendingUnit} onChange={e => setPendingUnit(e.target.value)}
                                                 disabled={!pendingItem}
-                                                className="w-full bg-white border border-slate-300 rounded px-1 py-1.5 text-center text-xs font-bold text-slate-600 outline-none focus:border-brand disabled:bg-slate-100"
+                                                className="w-full bg-white border border-slate-300 rounded px-1 py-1 text-center text-[10px] font-black text-slate-600 outline-none focus:border-brand disabled:bg-slate-100"
                                             >
                                                 {pendingItem ? (
                                                     <>
@@ -406,19 +404,19 @@ export const RejectView: React.FC = () => {
                                                 ) : <option>-</option>}
                                             </select>
                                         </td>
-                                        <td className="px-2 py-2">
+                                        <td className="p-1">
                                             <input 
                                                 ref={reasonInputRef}
-                                                type="text" placeholder="Keterangan..." 
+                                                type="text" placeholder="Catatan (Enter)..." 
                                                 value={pendingReason} onChange={e => setPendingReason(e.target.value)}
                                                 onKeyDown={e => e.key === 'Enter' && handleAddLine()}
                                                 disabled={!pendingItem}
-                                                className="w-full bg-white border border-slate-300 rounded px-3 py-1.5 text-sm outline-none focus:border-brand disabled:bg-slate-100 italic text-slate-600"
+                                                className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-[11px] outline-none focus:border-brand disabled:bg-slate-100 italic text-slate-600"
                                             />
                                         </td>
-                                        <td className="px-2 py-2 text-center">
+                                        <td className="p-1 text-center">
                                             <button onClick={handleAddLine} disabled={!pendingItem} className="p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm disabled:opacity-50 transition-colors">
-                                                <CornerDownLeft size={14}/>
+                                                <CornerDownLeft size={12}/>
                                             </button>
                                         </td>
                                     </tr>
@@ -427,43 +425,43 @@ export const RejectView: React.FC = () => {
                         </div>
                     </div>
                 ) : activeTab === 'HISTORY' ? (
-                    <div className="h-full flex flex-col gap-4">
-                        <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Periode</span>
-                                    <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-transparent text-xs font-bold text-slate-700 outline-none w-24"/>
+                    <div className="h-full flex flex-col gap-3">
+                        <div className="bg-white p-2 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm shrink-0">
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase">Periode</span>
+                                    <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-transparent text-[11px] font-bold text-slate-700 outline-none w-24"/>
                                     <span className="text-slate-300">-</span>
-                                    <input type="date" value={exportEnd} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-bold text-slate-700 outline-none w-24"/>
+                                    <input type="date" value={exportEnd} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-bold text-slate-700 outline-none w-24"/>
                                 </div>
                             </div>
-                            <button onClick={handleExportMatrix} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-2 transition-colors">
-                                <FileSpreadsheet size={16}/> Export Laporan Matrix
+                            <button onClick={handleExportMatrix} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors">
+                                <FileSpreadsheet size={14}/> Matrix Export
                             </button>
                         </div>
 
                         <div className="flex-1 bg-white rounded-xl border border-slate-200 overflow-auto shadow-sm">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-50 font-semibold text-slate-500 border-b border-slate-200 sticky top-0">
+                            <table className="w-full text-left text-[11px] border-collapse">
+                                <thead className="bg-slate-50 font-bold text-slate-500 border-b border-slate-200 sticky top-0 uppercase tracking-tighter">
                                     <tr>
-                                        <th className="px-4 py-3">ID Batch</th>
-                                        <th className="px-4 py-3">Tanggal</th>
-                                        <th className="px-4 py-3">Outlet</th>
-                                        <th className="px-4 py-3 text-right">Total Item</th>
-                                        <th className="px-4 py-3 text-center">Aksi</th>
+                                        <th className="px-3 py-2">ID Batch</th>
+                                        <th className="px-3 py-2">Tanggal</th>
+                                        <th className="px-3 py-2">Outlet</th>
+                                        <th className="px-3 py-2 text-right">Items</th>
+                                        <th className="px-3 py-2 text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {batches.filter(b => b.date >= exportStart && b.date <= exportEnd).map(b => (
-                                        <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-4 py-3 font-mono text-slate-500">{b.id}</td>
-                                            <td className="px-4 py-3 font-medium text-slate-700">{b.date}</td>
-                                            <td className="px-4 py-3 font-bold text-slate-800">{b.outlet}</td>
-                                            <td className="px-4 py-3 text-right font-mono font-bold text-rose-600">{b.items.length}</td>
-                                            <td className="px-4 py-3 text-center flex justify-center gap-2">
-                                                <button onClick={() => setViewingBatch(b)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Detail"><Eye size={14}/></button>
-                                                <button onClick={() => handleCopyToClipboard(b)} className="p-1.5 text-slate-500 hover:bg-slate-50 rounded" title="Copy to Clipboard"><Copy size={14}/></button>
-                                                <button onClick={() => { if(confirm('Hapus?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded" title="Hapus"><Trash2 size={14}/></button>
+                                        <tr key={b.id} className="hover:bg-slate-50 transition-colors h-8">
+                                            <td className="px-3 font-mono text-slate-500">{b.id}</td>
+                                            <td className="px-3 font-bold text-slate-700">{b.date}</td>
+                                            <td className="px-3 font-black text-slate-800 uppercase tracking-tight">{b.outlet}</td>
+                                            <td className="px-3 text-right font-mono font-bold text-rose-600">{b.items.length}</td>
+                                            <td className="px-3 text-center flex justify-center gap-1 py-1">
+                                                <button onClick={() => setViewingBatch(b)} className="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Detail"><Eye size={12}/></button>
+                                                <button onClick={() => handleCopyToClipboard(b)} className="p-1 text-slate-600 hover:bg-slate-100 rounded" title="Copy (Format Laporan)"><Copy size={12}/></button>
+                                                <button onClick={() => { if(confirm('Hapus?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1 text-rose-500 hover:bg-rose-50 rounded" title="Hapus"><Trash2 size={12}/></button>
                                             </td>
                                         </tr>
                                     ))}
@@ -472,39 +470,39 @@ export const RejectView: React.FC = () => {
                         </div>
                     </div>
                 ) : activeTab === 'MASTER_ITEMS' ? (
-                    <div className="h-full flex flex-col gap-4">
-                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
+                    <div className="h-full flex flex-col gap-3">
+                        <div className="bg-white p-2 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm shrink-0">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                <input type="text" placeholder="Cari Barang..." value={masterSearch} onChange={e => setMasterSearch(e.target.value)} className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium w-64 outline-none focus:border-brand transition-all" />
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+                                <input type="text" placeholder="Cari SKU / Nama..." value={masterSearch} onChange={e => setMasterSearch(e.target.value)} className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold w-56 outline-none focus:border-brand transition-all" />
                             </div>
-                            <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-700 transition-colors">
-                                <Plus size={14}/> Barang Baru
+                            <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 hover:bg-slate-700 transition-colors">
+                                <Plus size={12}/> Barang Baru
                             </button>
                         </div>
                         <div className="flex-1 bg-white rounded-xl border border-slate-200 overflow-auto shadow-sm">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-50 font-semibold text-slate-500 border-b border-slate-200 sticky top-0">
+                            <table className="w-full text-left text-[11px] border-collapse">
+                                <thead className="bg-slate-50 font-bold text-slate-500 border-b border-slate-200 sticky top-0 uppercase">
                                     <tr>
-                                        <th className="px-4 py-3">Kode SKU</th>
-                                        <th className="px-4 py-3">Nama Produk</th>
-                                        <th className="px-4 py-3 text-center">Base Unit</th>
-                                        <th className="px-4 py-3 text-center">Multi-Unit</th>
-                                        <th className="px-4 py-3 text-center">Aksi</th>
+                                        <th className="px-3 py-2">Kode SKU</th>
+                                        <th className="px-3 py-2">Nama Produk</th>
+                                        <th className="px-3 py-2 text-center">Unit</th>
+                                        <th className="px-3 py-2 text-center">Multi-Unit</th>
+                                        <th className="px-3 py-2 text-center">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredMasterItems.map(item => (
-                                        <tr key={item.id} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-mono font-medium text-slate-600">{item.code}</td>
-                                            <td className="px-4 py-3 font-bold text-slate-800">{item.name}</td>
-                                            <td className="px-4 py-3 text-center"><span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-600">{item.baseUnit}</span></td>
-                                            <td className="px-4 py-3 text-center text-slate-500 text-[10px]">
+                                        <tr key={item.id} className="hover:bg-slate-50 transition-colors h-8">
+                                            <td className="px-3 font-mono font-bold text-slate-600">{item.code}</td>
+                                            <td className="px-3 font-black text-slate-800 truncate">{item.name}</td>
+                                            <td className="px-3 text-center"><span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-[9px] font-black text-slate-600">{item.baseUnit}</span></td>
+                                            <td className="px-3 text-center text-slate-500 text-[9px] italic">
                                                 {item.conversions?.length ? item.conversions.map(c => c.name).join(', ') : '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-center flex justify-center gap-2">
-                                                <button onClick={() => { setEditingItem(item); setItemForm({...item, conversions: item.conversions ? [...item.conversions] : []}); setShowItemModal(true); }} className="text-amber-500 hover:bg-amber-50 p-1.5 rounded"><Edit3 size={14}/></button>
-                                                <button onClick={() => { if(confirm('Hapus?')) StorageService.deleteRejectMasterItem(item.id).then(loadData); }} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded"><Trash2 size={14}/></button>
+                                            <td className="px-3 text-center flex justify-center gap-1 py-1">
+                                                <button onClick={() => { setEditingItem(item); setItemForm({...item, conversions: item.conversions ? [...item.conversions] : []}); setShowItemModal(true); }} className="text-amber-500 hover:bg-amber-50 p-1 rounded"><Edit3 size={12}/></button>
+                                                <button onClick={() => { if(confirm('Hapus?')) StorageService.deleteRejectMasterItem(item.id).then(loadData); }} className="text-rose-500 hover:bg-rose-50 p-1 rounded"><Trash2 size={12}/></button>
                                             </td>
                                         </tr>
                                     ))}
@@ -514,12 +512,12 @@ export const RejectView: React.FC = () => {
                     </div>
                 ) : (
                     /* MASTER OUTLET */
-                    <div className="flex-1 max-w-lg mx-auto w-full bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600"><MapPin size={24}/></div>
+                    <div className="flex-1 max-w-lg mx-auto w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600"><MapPin size={20}/></div>
                             <div>
-                                <h3 className="text-lg font-bold text-slate-800">Daftar Outlet</h3>
-                                <p className="text-xs text-slate-500">Lokasi sumber barang afkir</p>
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Daftar Outlet</h3>
+                                <p className="text-[10px] text-slate-500">Lokasi sumber barang afkir</p>
                             </div>
                         </div>
                         <div className="flex gap-2">
@@ -528,14 +526,14 @@ export const RejectView: React.FC = () => {
                                     StorageService.saveRejectOutlet(e.currentTarget.value).then(loadData);
                                     (e.target as HTMLInputElement).value = '';
                                 }
-                            }} className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm font-medium focus:border-brand" />
-                            <button className="px-6 py-2 bg-slate-800 text-white rounded-xl font-bold text-xs shadow hover:bg-slate-700 transition-all">TAMBAH</button>
+                            }} className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg outline-none text-[11px] font-bold focus:border-brand" />
+                            <button className="px-4 py-2 bg-slate-800 text-white rounded-lg font-bold text-[11px] shadow hover:bg-slate-700 transition-all">TAMBAH</button>
                         </div>
-                        <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                        <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
                             {outlets.map(o => (
-                                <div key={o} className="p-3 bg-slate-50 border border-slate-100 rounded-xl flex justify-between items-center group hover:border-slate-300 transition-colors">
-                                    <span className="text-sm font-bold text-slate-700">{o}</span>
-                                    <button className="opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50 p-1.5 rounded transition-all"><Trash2 size={14}/></button>
+                                <div key={o} className="px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg flex justify-between items-center group hover:border-slate-300 transition-colors">
+                                    <span className="text-[11px] font-black text-slate-700 uppercase">{o}</span>
+                                    <button className="opacity-0 group-hover:opacity-100 text-rose-500 hover:bg-rose-50 p-1 rounded transition-all"><Trash2 size={12}/></button>
                                 </div>
                             ))}
                         </div>
@@ -543,126 +541,123 @@ export const RejectView: React.FC = () => {
                 )}
             </div>
 
-            {/* MODAL MASTER ITEM */}
+            {/* MODAL MASTER ITEM - Compact */}
             {showItemModal && (
                 <div className="fixed inset-0 bg-slate-900/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
-                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+                         <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                              <div>
-                                 <h3 className="font-bold text-slate-800">{editingItem ? 'Edit Barang' : 'Barang Baru'}</h3>
-                                 <p className="text-xs text-slate-500">Katalog Barang Afkir / Reject</p>
+                                 <h3 className="font-black text-slate-800 text-sm uppercase tracking-tight">{editingItem ? 'Edit Barang' : 'Barang Baru'}</h3>
+                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Katalog Barang Afkir</p>
                              </div>
-                             <button onClick={()=>setShowItemModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200"><X size={20}/></button>
+                             <button onClick={()=>setShowItemModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200"><X size={18}/></button>
                          </div>
                          
-                         <div className="p-6 overflow-y-auto space-y-6">
-                             <div className="grid grid-cols-2 gap-4">
-                                 <div className="space-y-1">
-                                     <label className="text-xs font-bold text-slate-600">Kode SKU</label>
-                                     <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono font-medium uppercase outline-none focus:border-brand" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value.toUpperCase()})} placeholder="SKU-001" />
+                         <div className="p-4 overflow-y-auto space-y-4">
+                             <div className="grid grid-cols-2 gap-3">
+                                 <div className="space-y-0.5">
+                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Kode SKU</label>
+                                     <input type="text" className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-[11px] font-mono font-bold uppercase outline-none focus:border-brand" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value.toUpperCase()})} placeholder="SKU-001" />
                                  </div>
-                                 <div className="space-y-1">
-                                     <label className="text-xs font-bold text-slate-600">Satuan Dasar (Base Unit)</label>
-                                     <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold uppercase outline-none focus:border-brand" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value.toUpperCase()})} placeholder="PCS" />
+                                 <div className="space-y-0.5">
+                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Unit Dasar</label>
+                                     <input type="text" className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-[11px] font-black uppercase outline-none focus:border-brand" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value.toUpperCase()})} placeholder="PCS" />
                                  </div>
-                                 <div className="col-span-2 space-y-1">
-                                     <label className="text-xs font-bold text-slate-600">Nama Barang</label>
-                                     <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-medium outline-none focus:border-brand" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} placeholder="Nama Barang Lengkap" />
+                                 <div className="col-span-2 space-y-0.5">
+                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Nama Barang</label>
+                                     <input type="text" className="w-full px-3 py-1.5 border border-slate-300 rounded-md text-[11px] font-black outline-none focus:border-brand" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} placeholder="Nama Barang Lengkap" />
                                  </div>
                              </div>
 
-                             <div className="space-y-3 pt-4 border-t border-slate-100">
+                             <div className="space-y-2 pt-3 border-t border-slate-100">
                                 <div className="flex justify-between items-center">
-                                    <h4 className="text-xs font-bold text-slate-700">Konversi Satuan (Opsional)</h4>
+                                    <h4 className="text-[10px] font-black text-slate-700 uppercase tracking-wider">Konversi Satuan</h4>
                                     <button 
                                         onClick={() => setItemForm({...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }]})} 
-                                        className="text-xs font-bold text-brand hover:underline"
-                                    >+ Tambah Satuan</button>
+                                        className="text-[9px] font-black text-brand hover:underline"
+                                    >+ TAMBAH UNIT</button>
                                 </div>
                                 
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     {(itemForm.conversions || []).map((c, i) => (
-                                        <div key={i} className="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
-                                            <input type="text" placeholder="Unit (BOX)" className="w-24 px-2 py-1 border border-slate-300 rounded text-xs uppercase font-bold outline-none" value={c.name} onChange={e => {
+                                        <div key={i} className="flex gap-1.5 items-center bg-slate-50 p-1.5 rounded-md border border-slate-200">
+                                            <input type="text" placeholder="BOX" className="w-16 px-1.5 py-1 border border-slate-300 rounded text-[10px] uppercase font-black outline-none" value={c.name} onChange={e => {
                                                 const next = [...(itemForm.conversions || [])];
                                                 next[i].name = e.target.value.toUpperCase();
                                                 setItemForm({...itemForm, conversions: next});
                                             }} />
-                                            <select className="px-2 py-1 border border-slate-300 rounded text-xs outline-none bg-white" value={c.operator} onChange={e => {
+                                            <select className="px-1.5 py-1 border border-slate-300 rounded text-[9px] font-bold outline-none bg-white" value={c.operator} onChange={e => {
                                                 const next = [...(itemForm.conversions || [])];
                                                 next[i].operator = e.target.value as any;
                                                 setItemForm({...itemForm, conversions: next});
                                             }}>
-                                                <option value="*">x (Kali)</option>
-                                                <option value="/">/ (Bagi)</option>
+                                                <option value="*">x</option>
+                                                <option value="/">/</option>
                                             </select>
-                                            <input type="number" placeholder="Rasio" className="w-20 px-2 py-1 border border-slate-300 rounded text-xs font-mono outline-none text-right" value={c.ratio} onChange={e => {
+                                            <input type="number" placeholder="Rasio" className="w-16 px-1.5 py-1 border border-slate-300 rounded text-[10px] font-mono font-bold outline-none text-right" value={c.ratio} onChange={e => {
                                                 const next = [...(itemForm.conversions || [])];
                                                 next[i].ratio = Number(e.target.value);
                                                 setItemForm({...itemForm, conversions: next});
                                             }} />
-                                            <span className="text-xs font-bold text-slate-400">{itemForm.baseUnit}</span>
-                                            <button onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} className="ml-auto text-slate-400 hover:text-rose-500"><Trash2 size={14}/></button>
+                                            <span className="text-[9px] font-bold text-slate-400">{itemForm.baseUnit}</span>
+                                            <button onClick={() => setItemForm({...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i)})} className="ml-auto text-slate-400 hover:text-rose-500"><Trash2 size={12}/></button>
                                         </div>
                                     ))}
-                                    {(itemForm.conversions || []).length === 0 && (
-                                        <div className="text-center py-4 text-xs text-slate-400 italic">Tidak ada satuan tambahan.</div>
-                                    )}
                                 </div>
                              </div>
                          </div>
 
-                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                             <button onClick={()=>setShowItemModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-colors">Batal</button>
-                             <button onClick={handleSaveMasterItem} className="px-6 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold shadow-lg hover:bg-slate-700 transition-all active:scale-95">
-                                 Simpan Barang
+                         <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                             <button onClick={()=>setShowItemModal(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-200 rounded-md">Batal</button>
+                             <button onClick={handleSaveMasterItem} className="px-5 py-1.5 bg-slate-800 text-white rounded-md text-[11px] font-black shadow-md hover:bg-slate-700 transition-all active:scale-95">
+                                 SIMPAN
                              </button>
                          </div>
                     </div>
                 </div>
             )}
 
-            {/* DETAIL BATCH MODAL */}
+            {/* DETAIL BATCH MODAL - Compact */}
             {viewingBatch && (
                 <div className="fixed inset-0 bg-slate-900/30 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-                     <div className="bg-white rounded-2xl w-full max-w-xl border border-slate-200 overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
-                         <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                     <div className="bg-white rounded-xl w-full max-w-xl border border-slate-200 overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+                         <div className="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                              <div>
-                                 <h3 className="font-bold text-slate-800 text-sm">Detail Batch Afkir</h3>
-                                 <p className="text-xs font-mono text-slate-500">{viewingBatch.id} • {viewingBatch.outlet}</p>
+                                 <h3 className="font-black text-slate-800 text-[11px] uppercase tracking-tighter">Detail Batch Afkir</h3>
+                                 <p className="text-[9px] font-mono text-slate-500 uppercase">{viewingBatch.id} • {viewingBatch.outlet}</p>
                              </div>
-                             <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-1.5">
                                 <button 
                                     onClick={() => handleCopyToClipboard(viewingBatch)}
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                    className="flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-200 rounded text-[9px] font-black text-slate-600 hover:bg-slate-50 transition-colors uppercase"
                                 >
-                                    <Copy size={12}/> Copy Data
+                                    <Copy size={10}/> Copy Data
                                 </button>
-                                <button onClick={()=>setViewingBatch(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                                <button onClick={()=>setViewingBatch(null)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
                              </div>
                          </div>
                          <div className="p-0 overflow-auto">
-                            <table className="w-full text-xs text-left border-collapse">
-                                <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 sticky top-0">
+                            <table className="w-full text-[11px] text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 font-black border-b border-slate-200 sticky top-0 uppercase tracking-tighter">
                                     <tr>
-                                        <th className="px-4 py-2 w-12 text-center">#</th>
-                                        <th className="px-4 py-2">Nama Barang</th>
-                                        <th className="px-4 py-2 text-right">Qty Base</th>
-                                        <th className="px-4 py-2 text-center">Unit</th>
-                                        <th className="px-4 py-2">Alasan</th>
+                                        <th className="px-3 py-1.5 w-10 text-center">#</th>
+                                        <th className="px-3 py-1.5">Nama Barang</th>
+                                        <th className="px-3 py-1.5 w-20 text-right">Qty</th>
+                                        <th className="px-3 py-1.5 w-16 text-center">Unit</th>
+                                        <th className="px-3 py-1.5">Alasan</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {viewingBatch.items.map((it,i)=>(
-                                        <tr key={i} className="hover:bg-slate-50">
-                                            <td className="px-4 py-2 text-center text-slate-400">{i + 1}</td>
-                                            <td className="px-4 py-2">
-                                                <div className="font-bold text-slate-700">{it.name}</div>
-                                                <div className="text-[10px] text-slate-400 font-mono uppercase">{it.sku}</div>
+                                        <tr key={i} className="hover:bg-slate-50 h-7 transition-colors">
+                                            <td className="px-3 text-center text-slate-400 font-mono text-[10px]">{i + 1}</td>
+                                            <td className="px-3">
+                                                <div className="font-black text-slate-700 truncate max-w-[150px]">{it.name}</div>
+                                                <div className="text-[9px] text-slate-400 font-mono uppercase">{it.sku}</div>
                                             </td>
-                                            <td className="text-right px-4 py-2 font-mono font-bold text-rose-600">{it.qty.toLocaleString()}</td>
-                                            <td className="text-center px-4 py-2 font-bold text-[10px] uppercase text-slate-500">{it.unit}</td>
-                                            <td className="px-4 py-2 text-slate-500 italic text-[10px]">{it.reason}</td>
+                                            <td className="text-right px-3 font-mono font-bold text-rose-600">{it.qty.toLocaleString()}</td>
+                                            <td className="text-center px-3 font-black text-[9px] uppercase text-slate-500 tracking-tighter">{it.unit}</td>
+                                            <td className="px-3 text-slate-500 italic text-[10px] truncate max-w-[150px]">{it.reason}</td>
                                         </tr>
                                     ))}
                                 </tbody>
