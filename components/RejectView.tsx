@@ -25,12 +25,6 @@ const cleanNum = (val: string | number): number => {
     }
 };
 
-// Helper untuk mendapatkan nama hari Indonesia
-const getDayNameID = (dateStr: string) => {
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    return days[new Date(dateStr).getDay()];
-};
-
 export const RejectView: React.FC = () => {
     const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'MASTER_ITEMS' | 'MASTER'>('NEW');
@@ -73,7 +67,7 @@ export const RejectView: React.FC = () => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
     });
-    const [exportEnd, setExportEnd] = useState(new Date().toISOString().split('T')[0]);
+    const [exportEnd, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
     const loadData = async () => {
         setIsLoading(true);
@@ -183,10 +177,23 @@ export const RejectView: React.FC = () => {
         } catch (e) { showToast("Gagal simpan", "error"); }
     };
 
+    const handleCopyToClipboard = (batch: RejectBatch) => {
+        if (!batch.items || batch.items.length === 0) return;
+        
+        let text = "ID\tKODE\tNAMA BARANG\tQTY\tUNIT\tALASAN\n";
+        batch.items.forEach((it, idx) => {
+            text += `${idx + 1}\t${it.sku}\t${it.name}\t${it.baseQty}\t${it.unit}\t${it.reason || '-'}\n`;
+        });
+
+        navigator.clipboard.writeText(text).then(() => {
+            showToast("Data batch berhasil disalin ke clipboard", "success");
+        }).catch(() => {
+            showToast("Gagal menyalin data", "error");
+        });
+    };
+
     // --- ENTERPRISE EXPORT MATRIX ---
     const handleExportMatrix = async () => {
-        // ... (Logika Export Matrix sama, disederhanakan untuk brevity di XML ini namun fungsionalitas tetap sama)
-        // Note: Code logic export tetap dipertahankan seperti sebelumnya
         const filteredBatches = batches.filter(b => b.date >= exportStart && b.date <= exportEnd);
         if (filteredBatches.length === 0) return showToast("Tidak ada data", "warning");
 
@@ -415,7 +422,7 @@ export const RejectView: React.FC = () => {
                                     <span className="text-[10px] font-bold text-slate-500 uppercase">Periode</span>
                                     <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-transparent text-xs font-bold text-slate-700 outline-none w-24"/>
                                     <span className="text-slate-300">-</span>
-                                    <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="bg-transparent text-xs font-bold text-slate-700 outline-none w-24"/>
+                                    <input type="date" value={exportEnd} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-xs font-bold text-slate-700 outline-none w-24"/>
                                 </div>
                             </div>
                             <button onClick={handleExportMatrix} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-2 transition-colors">
@@ -442,8 +449,9 @@ export const RejectView: React.FC = () => {
                                             <td className="px-4 py-3 font-bold text-slate-800">{b.outlet}</td>
                                             <td className="px-4 py-3 text-right font-mono font-bold text-rose-600">{b.items.length}</td>
                                             <td className="px-4 py-3 text-center flex justify-center gap-2">
-                                                <button onClick={() => setViewingBatch(b)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded"><Eye size={14}/></button>
-                                                <button onClick={() => { if(confirm('Hapus?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded"><Trash2 size={14}/></button>
+                                                <button onClick={() => setViewingBatch(b)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded" title="Detail"><Eye size={14}/></button>
+                                                <button onClick={() => handleCopyToClipboard(b)} className="p-1.5 text-slate-500 hover:bg-slate-50 rounded" title="Copy to Clipboard"><Copy size={14}/></button>
+                                                <button onClick={() => { if(confirm('Hapus?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded" title="Hapus"><Trash2 size={14}/></button>
                                             </td>
                                         </tr>
                                     ))}
@@ -523,7 +531,7 @@ export const RejectView: React.FC = () => {
                 )}
             </div>
 
-            {/* MODAL MASTER ITEM (Clean Style) */}
+            {/* MODAL MASTER ITEM */}
             {showItemModal && (
                 <div className="fixed inset-0 bg-slate-900/40 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
@@ -605,32 +613,44 @@ export const RejectView: React.FC = () => {
             {/* DETAIL BATCH MODAL */}
             {viewingBatch && (
                 <div className="fixed inset-0 bg-slate-900/30 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-                     <div className="bg-white rounded-2xl w-full max-w-lg border border-slate-200 overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+                     <div className="bg-white rounded-2xl w-full max-w-xl border border-slate-200 overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
                          <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                              <div>
                                  <h3 className="font-bold text-slate-800 text-sm">Detail Batch Afkir</h3>
                                  <p className="text-xs font-mono text-slate-500">{viewingBatch.id} • {viewingBatch.outlet}</p>
                              </div>
-                             <button onClick={()=>setViewingBatch(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                             <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => handleCopyToClipboard(viewingBatch)}
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                >
+                                    <Copy size={12}/> Copy Data
+                                </button>
+                                <button onClick={()=>setViewingBatch(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                             </div>
                          </div>
-                         <div className="p-4 overflow-auto">
-                            <table className="w-full text-xs text-left">
-                                <thead className="text-slate-500 font-semibold border-b border-slate-100">
+                         <div className="p-0 overflow-auto">
+                            <table className="w-full text-xs text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 sticky top-0">
                                     <tr>
-                                        <th className="py-2">Nama Barang</th>
-                                        <th className="py-2 text-right">Qty Base</th>
-                                        <th className="py-2 text-center">Unit</th>
+                                        <th className="px-4 py-2 w-12 text-center">#</th>
+                                        <th className="px-4 py-2">Nama Barang</th>
+                                        <th className="px-4 py-2 text-right">Qty Base</th>
+                                        <th className="px-4 py-2 text-center">Unit</th>
+                                        <th className="px-4 py-2">Alasan</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-slate-100">
                                     {viewingBatch.items.map((it,i)=>(
-                                        <tr key={i}>
-                                            <td className="py-2">
+                                        <tr key={i} className="hover:bg-slate-50">
+                                            <td className="px-4 py-2 text-center text-slate-400">{i + 1}</td>
+                                            <td className="px-4 py-2">
                                                 <div className="font-bold text-slate-700">{it.name}</div>
-                                                <div className="text-[10px] text-slate-400 italic">{it.reason}</div>
+                                                <div className="text-[10px] text-slate-400 font-mono uppercase">{it.sku}</div>
                                             </td>
-                                            <td className="text-right py-2 font-mono font-bold text-rose-600">{it.qty.toLocaleString()}</td>
-                                            <td className="text-center py-2 text-slate-500 font-bold text-[10px] uppercase">{it.unit}</td>
+                                            <td className="text-right px-4 py-2 font-mono font-bold text-rose-600">{it.qty.toLocaleString()}</td>
+                                            <td className="text-center px-4 py-2 font-bold text-[10px] uppercase text-slate-500">{it.unit}</td>
+                                            <td className="px-4 py-2 text-slate-500 italic text-[10px]">{it.reason}</td>
                                         </tr>
                                     ))}
                                 </tbody>
