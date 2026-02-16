@@ -1,10 +1,11 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Item, Stock, Warehouse, Transaction } from '../types';
+import { Item, Warehouse, Transaction } from '../types';
 import { StorageService } from '../services/storage';
-import { ArrowLeft, RefreshCw, FileSpreadsheet, Printer, Calendar, Search, ArrowDownLeft, ArrowUpRight, Hash, Package, Info, ChevronRight } from 'lucide-react';
+import { ArrowLeft, RefreshCw, FileSpreadsheet, Printer, Calendar, Search, ArrowDownLeft, ArrowUpRight, Hash, Package, Info, ChevronRight, X, Edit3 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { useToast } from './Toast';
+import { TransactionForm } from './TransactionForm';
 
 interface Props {
   item: Item;
@@ -23,6 +24,7 @@ interface StockLedgerRow {
     outQty: number;
     balance: number;
     unit: string;
+    originalTx: Transaction; // Keep ref to full object
 }
 
 export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
@@ -30,6 +32,7 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
   const [startDate, setStartDate] = useState(() => {
       const d = new Date();
@@ -106,7 +109,8 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
             inQty,
             outQty,
             balance: runningBalance,
-            unit: item.baseUnit
+            unit: item.baseUnit,
+            originalTx: tx
         };
     });
 
@@ -147,133 +151,190 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
     } catch (e) { showToast("Gagal export", "error"); }
   };
 
-  const MiniStat = ({ label, value, color = "text-slate-600" }: any) => (
-    <div className="flex flex-col border-r border-slate-200 px-4 last:border-0">
-        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</span>
-        <span className={`text-[13px] font-bold font-mono ${color}`}>{value.toLocaleString()}</span>
-    </div>
-  );
+  const handlePrint = () => {
+      window.print();
+  };
+
+  const handleEditTransaction = (tx: Transaction) => {
+      setEditingTx(tx);
+  };
+
+  const handleEditSuccess = () => {
+      setEditingTx(null);
+      loadData(); // Reload to reflect changes
+  };
+
+  // --- EDIT MODE OVERLAY ---
+  if (editingTx) {
+      return (
+          <div className="fixed inset-0 z-[100] bg-white">
+              <TransactionForm 
+                  type={editingTx.type} 
+                  initialData={editingTx}
+                  onClose={() => setEditingTx(null)}
+                  onSuccess={handleEditSuccess}
+              />
+          </div>
+      );
+  }
 
   return (
-    <div className="flex flex-col h-full bg-white font-sans overflow-hidden">
-        {/* COMPACT TOOLBAR */}
-        <div className="h-10 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between px-2 shrink-0">
-            <div className="flex items-center h-full">
-                <button onClick={onBack} className="flex items-center gap-1.5 px-3 h-full border-r border-slate-200 text-slate-500 hover:bg-white transition-colors">
-                    <ArrowLeft size={14} />
-                    <span className="text-[11px] font-bold uppercase tracking-tight">Kembali</span>
-                </button>
-                <div className="px-4 flex items-center gap-2">
-                    <Package size={14} className="text-slate-400"/>
-                    <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]">{item.name}</span>
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 rounded">{item.code}</span>
-                </div>
-            </div>
+    <div className="fixed inset-0 z-50 bg-slate-800/95 backdrop-blur-sm overflow-y-auto flex justify-center py-8 animate-in fade-in duration-300">
+        
+        {/* ACTION FLOATING BAR */}
+        <div className="fixed top-4 right-4 flex flex-col gap-2 z-[60] print:hidden">
+            <button onClick={onBack} className="p-3 bg-white text-slate-700 rounded-full shadow-lg hover:bg-slate-100 hover:text-rose-600 transition-all" title="Tutup">
+                <X size={20} />
+            </button>
+            <button onClick={handlePrint} className="p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all" title="Print / PDF">
+                <Printer size={20} />
+            </button>
+            <button onClick={handleExportExcel} className="p-3 bg-emerald-600 text-white rounded-full shadow-lg hover:bg-emerald-700 transition-all" title="Excel">
+                <FileSpreadsheet size={20} />
+            </button>
+        </div>
+
+        {/* A4 PAPER CONTAINER */}
+        <div className="bg-white w-[210mm] min-h-[297mm] shadow-2xl relative flex flex-col print:shadow-none print:w-full print:absolute print:inset-0 print:m-0">
             
-            <div className="flex items-center gap-2 h-full pr-2">
-                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-0.5">
-                    <Calendar size={12} className="text-slate-400" />
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
-                    <span className="text-slate-300">/</span>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
+            {/* HEADER PAPER */}
+            <div className="px-[15mm] pt-[15mm] pb-4 border-b-2 border-slate-800 flex justify-between items-end">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 uppercase tracking-widest leading-none">KARTU STOK</h1>
+                    <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-wide">Stock Card Ledger</p>
                 </div>
-                <button onClick={loadData} className="p-1.5 text-slate-400 hover:text-blue-600">
-                    <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/>
-                </button>
-                <button onClick={handleExportExcel} className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold shadow-sm hover:bg-emerald-700 transition-all">
-                    <FileSpreadsheet size={13}/> EXCEL
+                <div className="text-right">
+                    <h2 className="text-sm font-bold text-slate-800">{item.name}</h2>
+                    <p className="text-xs font-mono text-slate-500">{item.code} • {item.category || 'UMUM'}</p>
+                </div>
+            </div>
+
+            {/* INFO BAR */}
+            <div className="px-[15mm] py-4 flex justify-between items-center bg-slate-50 border-b border-slate-200 text-xs">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-slate-400"/>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent font-bold text-slate-700 outline-none w-24 cursor-pointer hover:text-blue-600"/>
+                        <span className="text-slate-400">-</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent font-bold text-slate-700 outline-none w-24 cursor-pointer hover:text-blue-600"/>
+                    </div>
+                    <div className="h-4 w-px bg-slate-300"></div>
+                    <div className="font-bold text-slate-500">
+                        Base Unit: <span className="text-slate-800">{item.baseUnit}</span>
+                    </div>
+                </div>
+                <button onClick={loadData} className="flex items-center gap-1 text-slate-400 hover:text-blue-600 print:hidden">
+                    <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''}/> Refresh
                 </button>
             </div>
-        </div>
 
-        {/* SUMMARY BAR (VERY DENSE) */}
-        <div className="h-12 bg-white border-b border-slate-200 flex items-center px-2 shrink-0 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-            <MiniStat label="Saldo Awal" value={openingBalance} />
-            <MiniStat label="Total Masuk" value={summary.totalIn} color="text-emerald-600" />
-            <MiniStat label="Total Keluar" value={summary.totalOut} color="text-rose-600" />
-            <div className="flex flex-col px-4 bg-slate-800 rounded mx-2 py-1 shadow-sm">
-                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Saldo Akhir</span>
-                <span className="text-[13px] font-bold font-mono text-white leading-none">{summary.closing.toLocaleString()} <span className="text-[9px] font-medium opacity-50 ml-0.5">{item.baseUnit}</span></span>
+            {/* SUMMARY BOXES (A4 Width) */}
+            <div className="px-[15mm] py-6 grid grid-cols-4 gap-4">
+                <div className="p-3 border border-slate-200 rounded bg-white">
+                    <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Saldo Awal</div>
+                    <div className="text-lg font-mono font-bold text-slate-600 mt-1">{openingBalance.toLocaleString()}</div>
+                </div>
+                <div className="p-3 border border-emerald-100 rounded bg-emerald-50/30">
+                    <div className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">Total Masuk</div>
+                    <div className="text-lg font-mono font-bold text-emerald-700 mt-1">+{summary.totalIn.toLocaleString()}</div>
+                </div>
+                <div className="p-3 border border-rose-100 rounded bg-rose-50/30">
+                    <div className="text-[10px] text-rose-600 uppercase font-bold tracking-wider">Total Keluar</div>
+                    <div className="text-lg font-mono font-bold text-rose-700 mt-1">-{summary.totalOut.toLocaleString()}</div>
+                </div>
+                <div className="p-3 border border-slate-800 rounded bg-slate-900 text-white">
+                    <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Saldo Akhir</div>
+                    <div className="text-lg font-mono font-bold text-white mt-1">{summary.closing.toLocaleString()}</div>
+                </div>
             </div>
-        </div>
 
-        {/* ULTRA DENSE LEDGER GRID */}
-        <div className="flex-1 overflow-auto">
-            <table className="w-full border-collapse table-fixed text-left">
-                <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-                    <tr className="h-8">
-                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-24">Tanggal</th>
-                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">No. Referensi</th>
-                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-16 text-center">Tipe</th>
-                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Partner / Keterangan</th>
-                        <th className="px-3 text-[10px] font-bold text-emerald-600 uppercase w-24 text-right">Masuk</th>
-                        <th className="px-3 text-[10px] font-bold text-rose-600 uppercase w-24 text-right">Keluar</th>
-                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-28 text-right bg-slate-50/50">Saldo</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {/* OPENING ROW */}
-                    <tr className="h-7 bg-slate-50/50">
-                        <td className="px-3 text-[11px] font-mono text-slate-400">{startDate}</td>
-                        <td className="px-3 text-[10px] font-bold text-slate-300 italic text-center">—</td>
-                        <td className="px-3 text-center">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">OPEN</span>
-                        </td>
-                        <td className="px-3 text-[11px] text-slate-400 italic">Saldo Awal Periode</td>
-                        <td className="px-3 text-right text-[11px] font-mono text-slate-300">—</td>
-                        <td className="px-3 text-right text-[11px] font-mono text-slate-300">—</td>
-                        <td className="px-3 text-right text-[11px] font-mono font-bold text-slate-500 bg-slate-50">{openingBalance.toLocaleString()}</td>
-                    </tr>
-
-                    {ledgerRows.length === 0 ? (
-                        <tr>
-                            <td colSpan={7} className="h-20 text-center text-slate-300 text-[11px] font-medium uppercase tracking-widest italic">Tidak ada mutasi transaksi</td>
+            {/* LEDGER TABLE */}
+            <div className="flex-1 px-[15mm] pb-[15mm]">
+                <table className="w-full text-left border-collapse border-t-2 border-slate-800">
+                    <thead>
+                        <tr className="border-b border-slate-300">
+                            <th className="py-2 text-[10px] font-bold text-slate-500 uppercase w-20">Tanggal</th>
+                            <th className="py-2 text-[10px] font-bold text-slate-500 uppercase w-28">No. Bukti</th>
+                            <th className="py-2 text-[10px] font-bold text-slate-500 uppercase">Keterangan / Partner</th>
+                            <th className="py-2 text-[10px] font-bold text-slate-800 uppercase w-20 text-right bg-slate-50">Masuk</th>
+                            <th className="py-2 text-[10px] font-bold text-slate-800 uppercase w-20 text-right bg-slate-50">Keluar</th>
+                            <th className="py-2 text-[10px] font-bold text-slate-800 uppercase w-24 text-right">Saldo</th>
                         </tr>
-                    ) : (
-                        ledgerRows.map((row) => (
-                            <tr key={row.id} className="h-7 hover:bg-slate-50 transition-colors group">
-                                <td className="px-3 text-[11px] font-mono text-slate-500">{row.date}</td>
-                                <td className="px-3 text-[11px] font-mono font-semibold text-blue-600 truncate cursor-default">{row.ref}</td>
-                                <td className="px-3 text-center">
-                                    <span className={`px-1 rounded text-[9px] font-bold border ${
-                                        row.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                                        row.type === 'OUT' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                                        'bg-slate-100 text-slate-500 border-slate-200'
-                                    }`}>{row.type}</span>
-                                </td>
-                                <td className="px-3 text-[11px] font-medium text-slate-700 truncate">
-                                    {row.partner !== '-' ? <span className="text-blue-700 mr-2">{row.partner}</span> : null}
-                                    <span className="text-slate-500 italic font-normal">{row.note}</span>
-                                </td>
-                                <td className={`px-3 text-right text-[11px] font-mono font-semibold ${row.inQty > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
-                                    {row.inQty > 0 ? row.inQty.toLocaleString() : '—'}
-                                </td>
-                                <td className={`px-3 text-right text-[11px] font-mono font-semibold ${row.outQty > 0 ? 'text-rose-600' : 'text-slate-300'}`}>
-                                    {row.outQty > 0 ? row.outQty.toLocaleString() : '—'}
-                                </td>
-                                <td className="px-3 text-right text-[11px] font-mono font-bold text-slate-700 bg-slate-50/30 group-hover:bg-blue-50/50">
-                                    {row.balance.toLocaleString()}
-                                </td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[11px]">
+                        {/* Opening Balance Row */}
+                        <tr className="bg-slate-50/50">
+                            <td className="py-2 font-mono text-slate-400 italic">{startDate}</td>
+                            <td className="py-2 text-slate-300 text-center">—</td>
+                            <td className="py-2 font-bold text-slate-500">SALDO AWAL</td>
+                            <td className="py-2 text-right font-mono text-slate-300 bg-slate-50/30">—</td>
+                            <td className="py-2 text-right font-mono text-slate-300 bg-slate-50/30">—</td>
+                            <td className="py-2 text-right font-mono font-bold text-slate-700 bg-slate-100">{openingBalance.toLocaleString()}</td>
+                        </tr>
 
-        {/* MINI STATUS BAR */}
-        <div className="h-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between px-3 text-[9px] font-bold text-slate-400 shrink-0">
-            <div className="flex items-center gap-2">
-                <Info size={10}/>
-                <span className="uppercase tracking-widest">Gudang: {item.category || 'SEMUA'}</span>
-                <span className="text-slate-200">|</span>
-                <span className="uppercase tracking-widest">Satuan: {item.baseUnit}</span>
+                        {ledgerRows.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="py-12 text-center text-slate-400 italic">Tidak ada transaksi pada periode ini.</td>
+                            </tr>
+                        ) : (
+                            ledgerRows.map((row) => (
+                                <tr key={row.id} className="hover:bg-blue-50/30 transition-colors group">
+                                    <td className="py-2 font-mono text-slate-600">{row.date}</td>
+                                    <td className="py-2 font-mono text-blue-600 group-hover:underline cursor-pointer" onClick={() => handleEditTransaction(row.originalTx)}>
+                                        {row.ref}
+                                    </td>
+                                    <td className="py-2 text-slate-700 truncate max-w-[250px]">
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold">{row.partner !== '-' ? row.partner : row.whName}</span>
+                                            {row.note && <span className="text-[10px] text-slate-400 italic">{row.note}</span>}
+                                        </div>
+                                    </td>
+                                    
+                                    {/* CLICKABLE IN QTY */}
+                                    <td 
+                                        className={`py-2 text-right font-mono cursor-pointer border-l border-slate-100 bg-slate-50/30 hover:bg-blue-100 hover:text-blue-700 transition-colors ${row.inQty > 0 ? 'font-bold text-emerald-700' : 'text-slate-200'}`}
+                                        onClick={() => handleEditTransaction(row.originalTx)}
+                                        title="Klik untuk edit transaksi"
+                                    >
+                                        {row.inQty > 0 ? row.inQty.toLocaleString() : '—'}
+                                    </td>
+
+                                    {/* CLICKABLE OUT QTY */}
+                                    <td 
+                                        className={`py-2 text-right font-mono cursor-pointer border-l border-slate-100 bg-slate-50/30 hover:bg-blue-100 hover:text-blue-700 transition-colors ${row.outQty > 0 ? 'font-bold text-rose-700' : 'text-slate-200'}`}
+                                        onClick={() => handleEditTransaction(row.originalTx)}
+                                        title="Klik untuk edit transaksi"
+                                    >
+                                        {row.outQty > 0 ? row.outQty.toLocaleString() : '—'}
+                                    </td>
+
+                                    <td className="py-2 text-right font-mono font-bold text-slate-800 bg-slate-50 border-l border-slate-200">
+                                        {row.balance.toLocaleString()}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
-            <div className="italic opacity-60">System Accurate Interface V2.0</div>
+
+            {/* FOOTER */}
+            <div className="px-[15mm] py-4 border-t border-slate-200 text-[10px] text-slate-400 flex justify-between items-center print:hidden">
+                <span>GudangPro Inventory System • Dicetak pada {new Date().toLocaleDateString()}</span>
+                <span className="italic">Page 1 of 1</span>
+            </div>
         </div>
+        
         <style>{`
-            .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+            @media print {
+                @page { size: A4; margin: 0; }
+                body { background: white; }
+                .print\\:hidden { display: none !important; }
+                .print\\:shadow-none { box-shadow: none !important; }
+                .print\\:w-full { width: 100% !important; }
+                .print\\:absolute { position: absolute !important; }
+                .print\\:inset-0 { inset: 0 !important; }
+            }
         `}</style>
     </div>
   );
