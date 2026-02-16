@@ -116,8 +116,10 @@ export const RejectView: React.FC = () => {
     const filteredItems = useMemo(() => {
         if (!query || pendingItem) return [];
         const lower = query.toLowerCase();
+        // Filter by isActive here for Reject Items autocomplete
         return rejectMasterItems.filter(it => 
-            it.code.toLowerCase().includes(lower) || it.name.toLowerCase().includes(lower)
+            (it.isActive !== false) && 
+            (it.code.toLowerCase().includes(lower) || it.name.toLowerCase().includes(lower))
         ).slice(0, 10);
     }, [query, rejectMasterItems, pendingItem]);
 
@@ -206,7 +208,7 @@ export const RejectView: React.FC = () => {
     };
 
     const handleExportMatrix = async () => {
-        // Filter data berdasarkan outlet dan periode
+        // ... (Export Logic kept same)
         const filteredBatches = batches.filter(b => 
             (selectedOutlet === 'ALL' || !selectedOutlet || b.outlet === selectedOutlet) &&
             b.date >= exportStart && b.date <= exportEnd
@@ -218,7 +220,6 @@ export const RejectView: React.FC = () => {
             const workbook = new ExcelJS.Workbook();
             const sheet = workbook.addWorksheet('Matrix Reject');
             
-            // Generate List Tanggal
             const dateList: string[] = [];
             let curr = new Date(exportStart);
             const end = new Date(exportEnd);
@@ -227,7 +228,6 @@ export const RejectView: React.FC = () => {
                 curr.setDate(curr.getDate() + 1); 
             }
 
-            // Agregasi Data Per Barang
             const itemMap = new Map<string, any>();
             filteredBatches.forEach(batch => {
                 batch.items.forEach(it => {
@@ -245,13 +245,11 @@ export const RejectView: React.FC = () => {
                 });
             });
 
-            // 1. Title Row
             const titleRow = sheet.addRow(['LAPORAN REJECT MINGGUAN']);
             titleRow.font = { bold: true, size: 12, name: 'Arial' };
             titleRow.alignment = { horizontal: 'center' };
             sheet.mergeCells(1, 1, 1, 5 + dateList.length);
 
-            // 2. Header Row
             const headers = [
                 'NO', 'KODE', 'NAMA BARANG', 'SATUAN', 
                 ...dateList.map(d => {
@@ -262,30 +260,26 @@ export const RejectView: React.FC = () => {
             ];
             const headerRow = sheet.addRow(headers);
             
-            // Apply Excel AutoFilter
             sheet.autoFilter = {
                 from: { row: 2, column: 1 },
                 to: { row: 2, column: headers.length }
             };
             
-            // Styling Header (Warna Kuning & Underline Border ONLY)
             headerRow.eachCell((cell) => {
                 cell.fill = {
                     type: 'pattern',
                     pattern: 'solid',
-                    fgColor: { argb: 'FFFF00' } // Kuning
+                    fgColor: { argb: 'FFFF00' }
                 };
                 cell.font = { bold: true, size: 10, name: 'Arial' };
-                // REMOVE FULL BORDER, ONLY BOTTOM UNDERLINE
                 cell.border = {
                     bottom: { style: 'medium' }
                 };
                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
             });
 
-            // 3. Data Rows
             let rowCounter = 1;
-            const itemsArray = Array.from(itemMap.values()); // Convert to array for index check
+            const itemsArray = Array.from(itemMap.values());
 
             itemsArray.forEach((item, index) => {
                 const rowData = [rowCounter++, item.code, item.name, item.unit];
@@ -299,41 +293,28 @@ export const RejectView: React.FC = () => {
                 
                 rowData.push(total.toNumber() || null);
                 const row = sheet.addRow(rowData);
-
                 const isLastRow = index === itemsArray.length - 1;
 
-                // Styling Sel Data
                 row.eachCell((cell, colNumber) => {
-                    // BORDER LOGIC: Only bottom border on the last row
                     if (isLastRow) {
-                        cell.border = {
-                            bottom: { style: 'medium' }
-                        };
+                        cell.border = { bottom: { style: 'medium' } };
                     } else {
-                        cell.border = {}; // Clear borders for standard rows
+                        cell.border = {};
                     }
-
                     cell.font = { name: 'Arial', size: 10 };
                     
                     if (colNumber === 1) cell.alignment = { horizontal: 'center' };
                     if (colNumber > 4) {
                         cell.alignment = { horizontal: 'right' };
                         cell.numFmt = '#,##0.0'; 
-                        
-                        // Style Kolom Total
                         if (colNumber === rowData.length) {
                             cell.font = { bold: true, name: 'Arial', size: 10 };
-                            cell.fill = {
-                                type: 'pattern',
-                                pattern: 'solid',
-                                fgColor: { argb: 'FFF9F9F9' } // Sedikit abu-abu untuk total
-                            };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
                         }
                     }
                 });
             });
 
-            // Auto Column Width
             sheet.columns.forEach((col, idx) => {
                 if (idx === 0) col.width = 5;
                 else if (idx === 1) col.width = 15;
@@ -342,7 +323,6 @@ export const RejectView: React.FC = () => {
                 else col.width = 8;
             });
 
-            // 4. Filename Logic (Format: Laporan Reject Mingguan [Outlet] [DD MMM] - [DD MMM] [YYYY])
             const monthNames = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"];
             const formatD = (dStr: string) => {
                 const d = new Date(dStr);
@@ -360,7 +340,6 @@ export const RejectView: React.FC = () => {
             
             const fileName = `Laporan Reject Mingguan ${outletName} ${startF} - ${endF} ${yearF}.xlsx`;
 
-            // Download
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer]);
             const url = window.URL.createObjectURL(blob);
@@ -402,7 +381,6 @@ export const RejectView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2 pr-2 h-full">
-                    {/* Global Outlet Filter */}
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
                         <Filter size={10} className="text-slate-400"/>
                         <select 
@@ -554,6 +532,7 @@ export const RejectView: React.FC = () => {
                         </div>
                     </div>
                 ) : activeTab === 'HISTORY' ? (
+                    // ... (History View remains unchanged)
                     <div className="h-full flex flex-col">
                         <div className="h-9 px-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-4">
@@ -602,8 +581,9 @@ export const RejectView: React.FC = () => {
                         </div>
                     </div>
                 ) : activeTab === 'MASTER_ITEMS' ? (
+                    // ... (Master Items View remains unchanged)
                     <div className="h-full flex flex-col">
-                        <div className="h-9 px-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+                         <div className="h-9 px-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
                                 <input type="text" placeholder="Cari master barang..." value={masterSearch} onChange={e => setMasterSearch(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-slate-200 rounded text-[10px] font-semibold w-48 outline-none focus:border-blue-400" />
@@ -812,5 +792,3 @@ export const RejectView: React.FC = () => {
         </div>
     );
 };
-
-export default RejectView;

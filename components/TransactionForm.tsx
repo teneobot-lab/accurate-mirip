@@ -53,7 +53,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchModalRef = useRef<HTMLDivElement>(null);
 
-  const { search } = useFuseSearch(masterItems, { keys: ['code', 'name'], limit: 50 }); // Limit increased for table view
+  // FILTER: Only show active items in search
+  const activeMasterItems = masterItems.filter(i => i.isActive);
+  const { search } = useFuseSearch(activeMasterItems, { keys: ['code', 'name'], limit: 50 }); // Limit increased for table view
   const searchResults = search(searchQuery);
 
   useEffect(() => {

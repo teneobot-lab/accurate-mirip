@@ -23,7 +23,9 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { search } = useFuseSearch(masterItems, SEARCH_OPTIONS);
+  // Filter only active items for global search
+  const activeMasterItems = masterItems.filter(i => i.isActive);
+  const { search } = useFuseSearch(activeMasterItems, SEARCH_OPTIONS);
   const filteredItems = search(query);
 
   useEffect(() => {
