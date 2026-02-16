@@ -300,7 +300,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     <div className="flex flex-col h-full bg-[#f8fafc] animate-in fade-in duration-300 font-sans relative">
       
       {/* 1. COMPACT HEADER ACTION BAR */}
-      <div className="bg-white px-4 py-2 border-b border-slate-200 flex justify-between items-center shadow-sm shrink-0">
+      <div className="bg-white px-4 py-2 border-b border-mist-300 flex justify-between items-center shadow-sm shrink-0">
           <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                   <Package size={18}/>
@@ -308,81 +308,82 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               <div>
                   <h1 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{type === 'IN' ? 'Penerimaan Barang' : 'Pengiriman Barang'}</h1>
                   <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono font-medium text-slate-500 bg-slate-100 px-1.5 rounded">{refNo}</span>
+                      <span className="text-[10px] font-mono font-medium text-slate-500 bg-mist-100 px-1.5 rounded">{refNo}</span>
                       {isEditMode && <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 rounded uppercase">Edit Mode</span>}
                   </div>
               </div>
           </div>
           <div className="flex gap-2">
               <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx, .xls, .csv" onChange={handleExcelImport} />
-              <button onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 rounded text-xs font-bold transition-all flex items-center gap-1.5">
+              <button onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 bg-white hover:bg-mist-50 text-slate-600 border border-mist-300 rounded text-xs font-bold transition-all flex items-center gap-1.5">
                   <FileSpreadsheet size={14}/> Import
               </button>
-              <div className="w-px h-6 bg-slate-300 mx-1"></div>
-              <button onClick={() => handleSave(true)} disabled={isSubmitting} className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50">
+              <div className="w-px h-6 bg-mist-300 mx-1"></div>
+              <button onClick={() => handleSave(true)} disabled={isSubmitting} className="px-3 py-1.5 bg-white hover:bg-mist-50 text-slate-700 border border-mist-300 rounded text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50">
                   <Plus size={14}/> Simpan & Baru
               </button>
               <button onClick={() => handleSave(false)} disabled={isSubmitting} className="px-4 py-1.5 bg-brand hover:bg-brand/90 text-white rounded text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50">
                   {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Simpan
               </button>
-              <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded text-slate-400"><X size={18}/></button>
+              <button onClick={onClose} className="p-1.5 hover:bg-mist-100 rounded text-slate-400"><X size={18}/></button>
           </div>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           
           {/* 2. COMPACT FORM HEADER */}
-          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 border-b border-slate-200 text-xs shrink-0">
+          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-3 bg-mist-50 border-b border-mist-200 text-xs shrink-0">
               <div className="space-y-0.5">
                   <label className="font-bold text-slate-500 uppercase text-[10px]">Tanggal</label>
-                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand" />
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand" />
               </div>
               <div className="space-y-0.5">
                   <label className="font-bold text-slate-500 uppercase text-[10px]">Gudang</label>
-                  <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand">
+                  <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand">
                       {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select>
               </div>
               <div className="space-y-0.5">
                   <label className="font-bold text-slate-500 uppercase text-[10px]">{type === 'IN' ? 'Supplier' : 'Customer'}</label>
-                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand">
+                  <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand">
                       <option value="">-- Pilih --</option>
                       {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
               </div>
               <div className="space-y-0.5">
                   <label className="font-bold text-slate-500 uppercase text-[10px]">Catatan Global</label>
-                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-white border border-slate-300 rounded p-1.5 font-medium outline-none focus:border-brand" placeholder="Keterangan..." />
+                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand" placeholder="Keterangan..." />
               </div>
           </div>
 
           {/* 3. DENSE SPREADSHEET GRID */}
           <div className="flex-1 bg-white overflow-auto relative">
               <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
-                  <thead className="bg-slate-100 text-[10px] font-bold text-slate-600 sticky top-0 z-10 border-b border-slate-300 h-8">
+                  {/* SILVER MIST HEADER */}
+                  <thead className="bg-mist-300 text-[10px] font-bold text-slate-700 sticky top-0 z-10 border-b border-mist-300 h-8">
                       <tr>
-                          <th className="px-2 w-8 text-center border-r border-slate-200">#</th>
-                          <th className="px-2 border-r border-slate-200">Nama Barang / SKU</th>
-                          <th className="px-2 w-20 text-right border-r border-slate-200">Stok</th>
-                          <th className="px-2 w-20 text-right border-r border-slate-200 bg-brand/5 text-brand">Kuantitas</th>
-                          <th className="px-2 w-20 text-center border-r border-slate-200">Satuan</th>
-                          <th className="px-2 w-24 text-right border-r border-slate-200">Total Base</th>
-                          <th className="px-2 w-48 border-r border-slate-200">Catatan Baris</th>
+                          <th className="px-2 w-8 text-center border-r border-mist-400/30">#</th>
+                          <th className="px-2 border-r border-mist-400/30">Nama Barang / SKU</th>
+                          <th className="px-2 w-20 text-right border-r border-mist-400/30">Stok</th>
+                          <th className="px-2 w-20 text-right border-r border-mist-400/30 bg-brand/5 text-brand">Kuantitas</th>
+                          <th className="px-2 w-20 text-center border-r border-mist-400/30">Satuan</th>
+                          <th className="px-2 w-24 text-right border-r border-mist-400/30">Total Base</th>
+                          <th className="px-2 w-48 border-r border-mist-400/30">Catatan Baris</th>
                           <th className="px-2 w-8 text-center">Act</th>
                       </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
+                  <tbody className="divide-y divide-mist-100 text-xs">
                       {lines.map((l, i) => (
-                        <tr key={i} className="hover:bg-slate-50 h-8">
-                            <td className="px-2 text-center text-slate-400 border-r border-slate-100">{i + 1}</td>
-                            <td className="px-2 border-r border-slate-100 truncate">
+                        <tr key={i} className="hover:bg-mist-50 h-8">
+                            <td className="px-2 text-center text-slate-400 border-r border-mist-100">{i + 1}</td>
+                            <td className="px-2 border-r border-mist-100 truncate">
                                 <span className="font-semibold text-slate-700">{l.name}</span>
                                 <span className="ml-2 text-[10px] text-slate-400 font-mono">{l.code}</span>
                             </td>
-                            <td className="px-2 text-right border-r border-slate-100 font-mono text-slate-500">
+                            <td className="px-2 text-right border-r border-mist-100 font-mono text-slate-500">
                                 {getStockQty(l.itemId).toLocaleString()}
                             </td>
-                            <td className="p-0 border-r border-slate-100">
+                            <td className="p-0 border-r border-mist-100">
                                 <input 
                                     id={`input-${i}-qty`}
                                     type="number" 
@@ -392,7 +393,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     className="w-full h-full bg-transparent text-right px-2 font-bold text-slate-800 outline-none focus:bg-blue-50" 
                                 />
                             </td>
-                            <td className="p-0 border-r border-slate-100">
+                            <td className="p-0 border-r border-mist-100">
                                 <select 
                                     value={l.unit} 
                                     onChange={e => updateLine(i, 'unit', e.target.value)} 
@@ -404,10 +405,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     )}
                                 </select>
                             </td>
-                            <td className="px-2 text-right border-r border-slate-100 font-mono text-slate-600">
+                            <td className="px-2 text-right border-r border-mist-100 font-mono text-slate-600">
                                 {(l.qty * (l.ratio || 1)).toLocaleString()}
                             </td>
-                            <td className="p-0 border-r border-slate-100">
+                            <td className="p-0 border-r border-mist-100">
                                 <input 
                                     id={`input-${i}-note`}
                                     type="text" 
@@ -425,9 +426,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       ))}
 
                       {/* --- NEW ENTRY ROW (ALWAYS ACTIVE) --- */}
-                      <tr className="bg-emerald-50/30 h-9 border-b-2 border-slate-200">
-                          <td className="px-2 text-center font-bold text-[9px] text-emerald-600 border-r border-slate-200">BARU</td>
-                          <td className="p-0 border-r border-slate-200 relative">
+                      <tr className="bg-emerald-50/30 h-9 border-b-2 border-mist-200">
+                          <td className="px-2 text-center font-bold text-[9px] text-emerald-600 border-r border-mist-200">BARU</td>
+                          <td className="p-0 border-r border-mist-200 relative">
                               <div className="relative w-full h-full">
                                   <input 
                                       ref={inlineSearchTriggerRef}
@@ -449,10 +450,10 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                   {pendingItem && <button onClick={() => { setPendingItem(null); setSearchQuery(''); inlineSearchTriggerRef.current?.focus(); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={12}/></button>}
                               </div>
                           </td>
-                          <td className="px-2 text-right border-r border-slate-200 font-mono text-slate-400">
+                          <td className="px-2 text-right border-r border-mist-200 font-mono text-slate-400">
                               {pendingItem ? getStockQty(pendingItem.id).toLocaleString() : '-'}
                           </td>
-                          <td className="p-0 border-r border-slate-200">
+                          <td className="p-0 border-r border-mist-200">
                               <input 
                                   ref={qtyInputRef}
                                   type="number" 
@@ -461,16 +462,16 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                   value={pendingQty}
                                   onChange={e => setPendingQty(e.target.value)}
                                   onKeyDown={e => handleNewEntryKeyDown(e, 'qty')}
-                                  className="w-full h-full bg-white text-right px-2 font-bold text-brand outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-slate-50 disabled:text-slate-300" 
+                                  className="w-full h-full bg-white text-right px-2 font-bold text-brand outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 disabled:text-slate-300" 
                               />
                           </td>
-                          <td className="px-2 text-center border-r border-slate-200 font-bold text-slate-500">
+                          <td className="px-2 text-center border-r border-mist-200 font-bold text-slate-500">
                               {pendingItem?.baseUnit || '-'}
                           </td>
-                          <td className="px-2 text-right border-r border-slate-200 font-mono text-slate-300">
+                          <td className="px-2 text-right border-r border-mist-200 font-mono text-slate-300">
                               {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '-'}
                           </td>
-                          <td className="p-0 border-r border-slate-200">
+                          <td className="p-0 border-r border-mist-200">
                               <input 
                                   ref={noteInputRef}
                                   type="text" 
@@ -479,7 +480,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                   value={pendingNote}
                                   onChange={e => setPendingNote(e.target.value)}
                                   onKeyDown={e => handleNewEntryKeyDown(e, 'note')}
-                                  className="w-full h-full bg-white px-2 italic text-slate-600 outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-slate-50" 
+                                  className="w-full h-full bg-white px-2 italic text-slate-600 outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50" 
                               />
                           </td>
                           <td className="text-center p-0">
@@ -491,26 +492,26 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       
                       {/* FILLER */}
                       {[...Array(Math.max(0, 10 - lines.length))].map((_, i) => (
-                          <tr key={`fill-${i}`} className="h-8"><td colSpan={8} className="border-r border-slate-100"></td></tr>
+                          <tr key={`fill-${i}`} className="h-8"><td colSpan={8} className="border-r border-mist-100"></td></tr>
                       ))}
                   </tbody>
               </table>
           </div>
           
           {/* 4. FOOTER INFO */}
-          <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs shrink-0">
+          <div className="px-4 py-2 bg-mist-50 border-t border-mist-300 flex justify-between items-center text-xs shrink-0">
                <div className="flex gap-6 text-slate-500 font-medium">
                    <span>Total Baris: <strong className="text-slate-800">{lines.length}</strong></span>
                    <span>Total Qty: <strong className="text-slate-800">{lines.reduce((acc, l) => acc + (l.qty * (l.ratio||1)), 0).toLocaleString()}</strong> <span className="text-[10px]">BASE</span></span>
                </div>
                <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                   <span className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-slate-200"><Search size={10}/> Cari Barang</span>
+                   <span className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-mist-300"><Search size={10}/> Cari Barang</span>
                    <span>→</span>
-                   <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">Pilih</span>
+                   <span className="bg-white px-1.5 py-0.5 rounded border border-mist-300">Pilih</span>
                    <span>→</span>
-                   <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200">Isi Qty</span>
+                   <span className="bg-white px-1.5 py-0.5 rounded border border-mist-300">Isi Qty</span>
                    <span>→</span>
-                   <span className="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-bold">Arrow Down / Enter</span>
+                   <span className="bg-white px-1.5 py-0.5 rounded border border-mist-300 font-bold">Arrow Down / Enter</span>
                    <span>=</span>
                    <span className="text-emerald-600 font-bold">Simpan</span>
                </div>
@@ -520,9 +521,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           {isSearching && searchQuery && (
             <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
                  {/* No backdrop blur/dim, just center placement */}
-                 <div ref={searchModalRef} className="pointer-events-auto bg-white w-[650px] max-h-[400px] flex flex-col shadow-2xl border border-slate-400 rounded-lg overflow-hidden animate-in fade-in zoom-in-95">
+                 <div ref={searchModalRef} className="pointer-events-auto bg-white w-[650px] max-h-[400px] flex flex-col shadow-2xl border border-mist-300 rounded-lg overflow-hidden animate-in fade-in zoom-in-95">
                      {/* Header */}
-                     <div className="bg-gradient-to-r from-slate-100 to-slate-200 px-3 py-2 border-b border-slate-300 flex justify-between items-center">
+                     <div className="bg-gradient-to-r from-mist-100 to-mist-200 px-3 py-2 border-b border-mist-300 flex justify-between items-center">
                          <div className="flex items-center gap-2">
                              <ListFilter size={14} className="text-slate-600"/>
                              <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Cari Barang / Item Search</span>
@@ -533,11 +534,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                      {/* Table Content */}
                      <div className="flex-1 overflow-auto bg-white">
                          <table className="w-full text-left border-collapse table-fixed">
-                             <thead className="bg-slate-100 sticky top-0 z-10">
-                                 <tr className="border-b border-slate-300 text-[10px] font-bold text-slate-600 uppercase">
-                                     <th className="px-3 py-1.5 w-32 border-r border-slate-300">Kode Item</th>
-                                     <th className="px-3 py-1.5 border-r border-slate-300">Nama Barang</th>
-                                     <th className="px-3 py-1.5 w-24 text-right border-r border-slate-300">Stok</th>
+                             <thead className="bg-mist-50 sticky top-0 z-10">
+                                 <tr className="border-b border-mist-300 text-[10px] font-bold text-slate-600 uppercase">
+                                     <th className="px-3 py-1.5 w-32 border-r border-mist-300">Kode Item</th>
+                                     <th className="px-3 py-1.5 border-r border-mist-300">Nama Barang</th>
+                                     <th className="px-3 py-1.5 w-24 text-right border-r border-mist-300">Stok</th>
                                      <th className="px-3 py-1.5 w-20 text-center">Satuan</th>
                                  </tr>
                              </thead>
@@ -551,7 +552,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                      <tr 
                                         key={item.id} 
                                         onMouseDown={() => handleSelectItem(item)} // MouseDown to trigger before blur
-                                        className={`cursor-pointer border-b border-slate-100 last:border-0 transition-colors ${idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                        className={`cursor-pointer border-b border-mist-100 last:border-0 transition-colors ${idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-mist-50 text-slate-700'}`}
                                      >
                                          <td className={`px-3 py-1.5 border-r border-transparent font-mono ${idx===selectedIndex?'text-blue-100':'text-slate-500'}`}>
                                              {highlightMatch(item.code, searchQuery)}
@@ -573,7 +574,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                      </div>
                      
                      {/* Footer Hint */}
-                     <div className="bg-slate-50 px-3 py-1.5 border-t border-slate-200 text-[9px] text-slate-400 flex justify-between items-center">
+                     <div className="bg-mist-50 px-3 py-1.5 border-t border-mist-200 text-[9px] text-slate-400 flex justify-between items-center">
                          <span>Gunakan <strong>↑ ↓</strong> untuk navigasi, <strong>Enter</strong> untuk memilih.</span>
                          <span className="font-mono">{selectedIndex + 1} / {searchResults.length}</span>
                      </div>

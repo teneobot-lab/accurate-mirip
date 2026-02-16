@@ -58,8 +58,8 @@ function App() {
       }}
       className={`flex items-center w-full px-3 py-2 mb-0.5 text-[12px] font-medium rounded-lg transition-all ${
         activeTab === id && !viewingItem && !activeTransaction
-        ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' 
-        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+        ? 'bg-mist-300/30 text-slate-800 shadow-sm border border-mist-300' 
+        : 'text-slate-500 hover:text-slate-800 hover:bg-mist-200/50'
       }`}
     >
       <Icon size={16} className="mr-3 flex-shrink-0" />
@@ -67,19 +67,19 @@ function App() {
     </button>
   );
 
-  if (isLoadingSession) return <div className="min-h-screen bg-white"></div>;
+  if (isLoadingSession) return <div className="min-h-screen bg-mist-50"></div>;
   if (!isLoggedIn) return <LoginPage onLogin={(user) => { setCurrentUser(user); setIsLoggedIn(true); StorageService.saveSession(user); }} />;
 
   return (
     <ToastProvider>
       <SearchProvider>
-        <div className="min-h-screen bg-white relative overflow-hidden font-sans">
+        <div className="min-h-screen bg-mist-50 relative overflow-hidden font-sans">
           {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/10 z-40 lg:hidden backdrop-blur-[1px]" onClick={() => setIsSidebarOpen(false)}></div>}
 
           <div className="flex h-screen overflow-hidden">
-              <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-slate-50 flex flex-col text-slate-600 border-r border-slate-200 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-mist-100 flex flex-col text-slate-600 border-r border-mist-300 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                   {/* BRAND HEADER */}
-                  <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200 bg-white/50 backdrop-blur-md">
+                  <div className="h-14 flex items-center justify-between px-4 border-b border-mist-300 bg-mist-100/50 backdrop-blur-md">
                       <div className="flex items-center gap-2">
                           <div className="w-6 h-6 flex items-center justify-center bg-slate-800 rounded">
                               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4">
@@ -112,7 +112,7 @@ function App() {
                           </button>
                       </div>
                       
-                      <div className="mt-auto border-t border-slate-200 pt-2">
+                      <div className="mt-auto border-t border-mist-300 pt-2">
                           <NavItem id="SETTINGS" label="Pengaturan" icon={Settings} />
                           <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-[12px] font-medium rounded-lg transition-all text-slate-500 hover:text-rose-600 hover:bg-rose-50 mt-0.5">
                               <LogOut size={16} className="mr-3 flex-shrink-0" />
@@ -122,11 +122,11 @@ function App() {
                   </div>
               </aside>
 
-              <main className="flex-1 flex flex-col overflow-hidden bg-white">
-                  {/* LIGHT TOPBAR */}
-                  <header className="h-12 bg-slate-50 border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0">
+              <main className="flex-1 flex flex-col overflow-hidden bg-mist-50">
+                  {/* LIGHT TOPBAR WITH MIST BORDER */}
+                  <header className="h-12 bg-white border-b border-mist-300 flex items-center justify-between px-4 z-30 shrink-0">
                       <div className="flex items-center gap-3">
-                          <button onClick={() => setIsSidebarOpen(true)} className={`p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={16} /></button>
+                          <button onClick={() => setIsSidebarOpen(true)} className={`p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-mist-100 lg:${isSidebarOpen ? 'hidden' : 'block'}`}><Menu size={16} /></button>
                           <div className="text-xs font-medium text-slate-500">
                               {(viewingItem || activeTransaction) ? (
                                   <button onClick={() => { setViewingItem(null); setActiveTransaction(null); }} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors">
@@ -147,19 +147,19 @@ function App() {
                       <div className="flex items-center gap-2 shrink-0">
                           <LowStockAlert />
                           <MusicPlayer />
-                          <div className="flex items-center gap-2 pl-3 border-l border-slate-200 ml-1">
+                          <div className="flex items-center gap-2 pl-3 border-l border-mist-300 ml-1">
                               <div className="hidden md:block text-right">
                                   <p className="text-[11px] font-semibold text-slate-700 leading-none">{currentUser?.name}</p>
                                   <p className="text-[9px] text-slate-400 font-medium uppercase mt-1 tracking-tight">{currentUser?.role}</p>
                               </div>
-                              <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 flex items-center justify-center font-bold text-[10px] shadow-sm">
+                              <div className="w-7 h-7 rounded-lg bg-white border border-mist-300 text-slate-500 flex items-center justify-center font-bold text-[10px] shadow-sm">
                                   {currentUser?.name.substring(0,2).toUpperCase()}
                               </div>
                           </div>
                       </div>
                   </header>
 
-                  <div className="flex-1 overflow-auto bg-white">
+                  <div className="flex-1 overflow-auto bg-mist-50">
                       {activeTransaction ? (
                           <TransactionForm 
                               type={activeTransaction.type} 
@@ -170,7 +170,7 @@ function App() {
                       ) : viewingItem ? (
                           <StockCardView item={viewingItem} onBack={() => setViewingItem(null)} />
                       ) : (
-                          <div className="bg-white min-h-full">
+                          <div className="bg-mist-50 min-h-full">
                             {activeTab === 'DASHBOARD' && <DashboardView />}
                             {activeTab === 'INVENTORY' && <InventoryView onViewItem={(item) => setViewingItem(item)} />}
                             {activeTab === 'REPORTS' && (
@@ -189,8 +189,8 @@ function App() {
           <style>{`
             .custom-scrollbar::-webkit-scrollbar { width: 3px; }
             .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #cdcfdb; border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #aeb1c2; }
             
             /* Animasi Fade */
             .animate-in { animation: fadeIn 0.3s ease-in-out; }

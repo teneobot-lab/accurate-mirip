@@ -82,7 +82,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     const ToolBtn = ({ icon: Icon, label, onClick, disabled = false, color = "text-slate-600", active = false, customRef }: any) => (
         <button 
             ref={customRef} onClick={onClick} disabled={disabled}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border-r border-slate-200 transition-colors disabled:opacity-30 ${active ? 'bg-slate-100' : 'hover:bg-slate-50'} ${color}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border-r border-mist-300 transition-colors disabled:opacity-30 ${active ? 'bg-mist-200' : 'hover:bg-mist-100'} ${color}`}
         >
             <Icon size={14} />
             <span className="text-[11px] font-bold uppercase tracking-tight">{label}</span>
@@ -90,20 +90,19 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     );
 
     return (
-        <div className="flex flex-col h-full bg-white font-sans overflow-hidden relative">
+        <div className="flex flex-col h-full bg-mist-50 font-sans overflow-hidden relative">
             {/* COMPACT TOOLBAR - FIXED TOP */}
-            <div className="h-10 border-b border-slate-200 bg-slate-50/80 backdrop-blur-sm flex items-center justify-between px-2 shrink-0 z-30">
+            <div className="h-10 border-b border-mist-300 bg-white flex items-center justify-between px-2 shrink-0 z-30">
                 <div className="flex items-center h-full">
                     <div className="relative h-full flex items-center">
                         <ToolBtn icon={Plus} label="Baru" onClick={() => setShowNewDropdown(!showNewDropdown)} active={showNewDropdown} customRef={newButtonRef} color="text-emerald-600" />
                         {showNewDropdown && (
-                            <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 shadow-xl z-[100] w-40 rounded-lg overflow-hidden py-1 animate-in fade-in slide-in-from-top-1">
-                                <button onClick={()=>{onCreateTransaction('IN'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-[11px] font-semibold text-emerald-600 flex items-center gap-2"><ArrowDown size={12}/> Penerimaan (IN)</button>
-                                <button onClick={()=>{onCreateTransaction('OUT'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-[11px] font-semibold text-rose-600 flex items-center gap-2"><ArrowUp size={12}/> Pengiriman (OUT)</button>
+                            <div className="absolute top-full left-0 mt-1 bg-white border border-mist-300 shadow-xl z-[100] w-40 rounded-lg overflow-hidden py-1 animate-in fade-in slide-in-from-top-1">
+                                <button onClick={()=>{onCreateTransaction('IN'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-1.5 hover:bg-mist-50 text-[11px] font-semibold text-emerald-600 flex items-center gap-2"><ArrowDown size={12}/> Penerimaan (IN)</button>
+                                <button onClick={()=>{onCreateTransaction('OUT'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-1.5 hover:bg-mist-50 text-[11px] font-semibold text-rose-600 flex items-center gap-2"><ArrowUp size={12}/> Pengiriman (OUT)</button>
                             </div>
                         )}
                     </div>
-                    {/* Standard Edit/Delete kept for accessibility, but main interaction is floating */}
                     <div className="hidden md:flex h-full items-center">
                         <ToolBtn icon={Edit3} label="Ubah" onClick={handleEdit} disabled={!selectedTxId} color="text-blue-600" />
                         <ToolBtn icon={Trash2} label="Hapus" onClick={handleDelete} disabled={!selectedTxId} color="text-rose-600" />
@@ -113,7 +112,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </div>
                 
                 <div className="flex items-center gap-2 px-2 h-full">
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-0.5">
+                    <div className="flex items-center gap-2 bg-white border border-mist-300 rounded px-2 py-0.5">
                         <Calendar size={12} className="text-slate-400" />
                         <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
                         <span className="text-slate-300">/</span>
@@ -121,44 +120,45 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                     </div>
                     <div className="relative">
                         <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Cari Ref..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold outline-none w-32 focus:border-blue-400" />
+                        <input type="text" placeholder="Cari Ref..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-mist-300 rounded text-[10px] font-bold outline-none w-32 focus:border-blue-400" />
                     </div>
                 </div>
             </div>
 
             {/* DENSE DATA GRID */}
-            <div className="flex-1 overflow-auto bg-slate-50/30 pb-20"> {/* pb-20 to allow scroll space for floating bar */}
+            <div className="flex-1 overflow-auto bg-mist-50 pb-20"> 
                 <table className="w-full border-collapse table-fixed text-left min-w-[800px]">
-                    <thead className="bg-white sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-slate-300">
+                    {/* SILVER MIST HEADER */}
+                    <thead className="bg-mist-300 sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-mist-300">
                         <tr className="h-9">
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[15%] border-r border-slate-200/60 tracking-tight">Referensi</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[12%] border-r border-slate-200/60 tracking-tight">Tanggal</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[8%] text-center border-r border-slate-200/60 tracking-tight">Tipe</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[35%] border-r border-slate-200/60 tracking-tight">Partner / Keterangan</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[20%] border-r border-slate-200/60 tracking-tight">Gudang</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[10%] text-center tracking-tight">Items</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[15%] border-r border-mist-400/30 tracking-tight">Referensi</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[12%] border-r border-mist-400/30 tracking-tight">Tanggal</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[8%] text-center border-r border-mist-400/30 tracking-tight">Tipe</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[35%] border-r border-mist-400/30 tracking-tight">Partner / Keterangan</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[20%] border-r border-mist-400/30 tracking-tight">Gudang</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[10%] text-center tracking-tight">Items</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white">
+                    <tbody className="divide-y divide-mist-200 bg-white">
                         {filteredTransactions.map(tx => {
                             const isSelected = selectedTxId === tx.id;
                             return (
                                 <tr 
                                     key={tx.id} 
                                     onClick={() => setSelectedTxId(isSelected ? null : tx.id)}
-                                    className={`h-8 cursor-pointer transition-all border-b border-slate-50 group ${
+                                    className={`h-8 cursor-pointer transition-all border-b border-mist-100 group ${
                                         isSelected 
                                         ? 'bg-blue-600 text-white shadow-inner' 
-                                        : 'hover:bg-blue-50/50 text-slate-700'
+                                        : 'hover:bg-mist-100 text-slate-700'
                                     }`}
                                 >
-                                    <td className={`px-3 py-1 text-[11px] font-mono truncate border-r border-slate-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-600 group-hover:text-blue-600'}`}>
+                                    <td className={`px-3 py-1 text-[11px] font-mono truncate border-r border-mist-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-600 group-hover:text-blue-600'}`}>
                                         {tx.referenceNo}
                                     </td>
-                                    <td className={`px-3 py-1 text-[11px] truncate border-r border-slate-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
+                                    <td className={`px-3 py-1 text-[11px] truncate border-r border-mist-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
                                         {tx.date}
                                     </td>
-                                    <td className={`px-3 py-1 text-center border-r border-slate-100 ${isSelected ? 'border-blue-500' : ''}`}>
+                                    <td className={`px-3 py-1 text-center border-r border-mist-100 ${isSelected ? 'border-blue-500' : ''}`}>
                                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
                                             isSelected 
                                             ? 'bg-white/20 text-white border-white/20' 
@@ -167,10 +167,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                                             {tx.type}
                                         </span>
                                     </td>
-                                    <td className={`px-3 py-1 text-[11px] font-medium truncate border-r border-slate-100 ${isSelected ? 'text-white border-blue-500' : 'text-slate-700'}`}>
+                                    <td className={`px-3 py-1 text-[11px] font-medium truncate border-r border-mist-100 ${isSelected ? 'text-white border-blue-500' : 'text-slate-700'}`}>
                                         {tx.partnerName || tx.notes || '-'}
                                     </td>
-                                    <td className={`px-3 py-1 text-[10px] font-bold uppercase truncate border-r border-slate-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
+                                    <td className={`px-3 py-1 text-[10px] font-bold uppercase truncate border-r border-mist-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
                                         {warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}
                                     </td>
                                     <td className={`px-3 py-1 text-center text-[11px] font-bold font-mono ${isSelected ? 'text-white' : 'text-slate-400'}`}>
@@ -228,7 +228,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
             )}
 
             {/* STATUS BAR */}
-            <div className="h-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between px-3 text-[10px] font-semibold text-slate-400 shrink-0">
+            <div className="h-6 bg-mist-100 border-t border-mist-300 flex items-center justify-between px-3 text-[10px] font-semibold text-slate-400 shrink-0">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1"><Info size={10}/> Total: {filteredTransactions.length} Transaksi</span>
                     <span className="uppercase tracking-widest text-[8px] opacity-60">Database: MySQL Local</span>
@@ -238,7 +238,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
             
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cdcfdb; border-radius: 10px; }
             `}</style>
         </div>
     );

@@ -357,7 +357,7 @@ export const RejectView: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-white font-sans overflow-hidden">
             {/* COMPACT TOOLBAR */}
-            <div className="h-10 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between px-2 shrink-0">
+            <div className="h-10 border-b border-mist-300 bg-mist-50 flex items-center justify-between px-2 shrink-0">
                 <div className="flex items-center h-full">
                     {[
                         { id: 'NEW', label: 'Input', icon: Plus },
@@ -368,7 +368,7 @@ export const RejectView: React.FC = () => {
                         <button 
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex items-center gap-1.5 px-3 h-full border-r border-slate-200 transition-colors ${
+                            className={`flex items-center gap-1.5 px-3 h-full border-r border-mist-200 transition-colors ${
                                 activeTab === tab.id 
                                 ? 'bg-white text-blue-600 shadow-[0_-2px_0_inset_currentColor]' 
                                 : 'text-slate-500 hover:bg-white/50'
@@ -381,7 +381,7 @@ export const RejectView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2 pr-2 h-full">
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white rounded border border-mist-300">
                         <Filter size={10} className="text-slate-400"/>
                         <select 
                             value={selectedOutlet} 
@@ -395,7 +395,7 @@ export const RejectView: React.FC = () => {
 
                     {activeTab === 'NEW' && (
                         <>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-slate-200 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400" />
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-mist-300 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400" />
                             <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5">
                                 <Save size={13}/> Simpan
                             </button>
@@ -413,19 +413,20 @@ export const RejectView: React.FC = () => {
                     <div className="h-full flex flex-col">
                         <div className="flex-1 overflow-auto">
                             <table className="w-full text-left border-collapse table-fixed">
-                                <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+                                {/* SILVER MIST HEADER */}
+                                <thead className="bg-mist-300 sticky top-0 z-10 border-b border-mist-300 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
                                     <tr className="h-8">
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-10 text-center">#</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Barang & SKU</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-24 text-right">Qty Base</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-20 text-center">Satuan</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Catatan / Alasan</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-10"></th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-10 text-center">#</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Barang & SKU</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-24 text-right">Qty Base</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Satuan</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Catatan / Alasan</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-10"></th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-mist-100">
                                     {rejectLines.map((line, idx) => (
-                                        <tr key={idx} className="h-7 hover:bg-slate-50 group transition-colors">
+                                        <tr key={idx} className="h-7 hover:bg-mist-50 group transition-colors">
                                             <td className="px-3 text-center text-slate-400 font-mono text-[10px]">{idx + 1}</td>
                                             <td className="px-3 truncate">
                                                 <span className="font-semibold text-slate-700 text-[11px]">{line.name}</span>
@@ -443,7 +444,7 @@ export const RejectView: React.FC = () => {
                                     ))}
                                     
                                     {/* INLINE ENTRY ROW */}
-                                    <tr className="h-9 bg-blue-50/20 border-t-2 border-slate-200">
+                                    <tr className="h-9 bg-blue-50/20 border-t-2 border-mist-200">
                                         <td className="px-3 py-1 text-center"><Plus size={13} className="text-blue-500 mx-auto"/></td>
                                         <td className="p-0 relative">
                                             <input 
@@ -461,13 +462,13 @@ export const RejectView: React.FC = () => {
                                                 autoComplete="off"
                                             />
                                             {isDropdownOpen && query && filteredItems.length > 0 && (
-                                                <div ref={dropdownRef} className="fixed w-full max-w-sm mt-1 bg-white border border-slate-300 shadow-2xl rounded-lg z-[999] overflow-hidden animate-in fade-in slide-in-from-top-1" style={{ top: itemInputRef.current?.getBoundingClientRect().bottom, left: itemInputRef.current?.getBoundingClientRect().left }}>
+                                                <div ref={dropdownRef} className="fixed w-full max-w-sm mt-1 bg-white border border-mist-300 shadow-2xl rounded-lg z-[999] overflow-hidden animate-in fade-in slide-in-from-top-1" style={{ top: itemInputRef.current?.getBoundingClientRect().bottom, left: itemInputRef.current?.getBoundingClientRect().left }}>
                                                     {filteredItems.map((it, idx) => (
                                                         <div 
                                                             key={it.id} 
                                                             onMouseDown={() => selectItem(it)} 
                                                             onMouseEnter={()=>setSelectedIndex(idx)} 
-                                                            className={`px-3 py-2 cursor-pointer text-[11px] flex justify-between items-center border-b border-slate-50 last:border-0 ${idx===selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
+                                                            className={`px-3 py-2 cursor-pointer text-[11px] flex justify-between items-center border-b border-mist-50 last:border-0 ${idx===selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-mist-50 text-slate-700'}`}
                                                         >
                                                             <div className="min-w-0">
                                                                 <div className={`font-semibold truncate ${idx===selectedIndex ? 'text-white' : 'text-slate-700'}`}>{highlightMatch(it.name, query)}</div>
@@ -534,7 +535,7 @@ export const RejectView: React.FC = () => {
                 ) : activeTab === 'HISTORY' ? (
                     // ... (History View remains unchanged)
                     <div className="h-full flex flex-col">
-                        <div className="h-9 px-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+                        <div className="h-9 px-3 border-b border-mist-300 bg-mist-50 flex items-center justify-between shrink-0">
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase">Periode:</span>
@@ -549,20 +550,20 @@ export const RejectView: React.FC = () => {
                         </div>
                         <div className="flex-1 overflow-auto">
                             <table className="w-full border-collapse table-fixed text-left">
-                                <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+                                <thead className="bg-mist-300 sticky top-0 z-10 border-b border-mist-300 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
                                     <tr className="h-8">
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">ID Batch</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-24">Tanggal</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Outlet</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-20 text-center">Items</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-24 text-center">Aksi</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-32">ID Batch</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-24">Tanggal</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Outlet</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Items</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-24 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-mist-100">
                                     {batches
                                         .filter(b => (selectedOutlet === 'ALL' || b.outlet === selectedOutlet) && b.date >= exportStart && b.date <= exportEnd)
                                         .map(b => (
-                                        <tr key={b.id} className="h-7 hover:bg-slate-50 group transition-colors">
+                                        <tr key={b.id} className="h-7 hover:bg-mist-50 group transition-colors">
                                             <td className="px-3 text-[11px] font-mono text-slate-500">{b.id}</td>
                                             <td className="px-3 text-[11px] text-slate-600">{b.date}</td>
                                             <td className="px-3 text-[11px] font-semibold text-slate-700 uppercase">{b.outlet}</td>
@@ -583,10 +584,10 @@ export const RejectView: React.FC = () => {
                 ) : activeTab === 'MASTER_ITEMS' ? (
                     // ... (Master Items View remains unchanged)
                     <div className="h-full flex flex-col">
-                         <div className="h-9 px-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+                         <div className="h-9 px-3 border-b border-mist-300 bg-mist-50 flex items-center justify-between shrink-0">
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
-                                <input type="text" placeholder="Cari master barang..." value={masterSearch} onChange={e => setMasterSearch(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-slate-200 rounded text-[10px] font-semibold w-48 outline-none focus:border-blue-400" />
+                                <input type="text" placeholder="Cari master barang..." value={masterSearch} onChange={e => setMasterSearch(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-mist-300 rounded text-[10px] font-semibold w-48 outline-none focus:border-blue-400" />
                             </div>
                             <button onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }} className="px-3 py-1 bg-blue-600 text-white rounded text-[10px] font-bold hover:bg-blue-700 shadow-sm transition-colors">
                                 + BARANG BARU
@@ -594,18 +595,18 @@ export const RejectView: React.FC = () => {
                         </div>
                         <div className="flex-1 overflow-auto">
                             <table className="w-full border-collapse table-fixed text-left">
-                                <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+                                <thead className="bg-mist-300 sticky top-0 z-10 border-b border-mist-300 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
                                     <tr className="h-8">
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">Kode SKU</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Nama Produk</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-20 text-center">Unit</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">Multi-Unit</th>
-                                        <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-20 text-center">Aksi</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-32">Kode SKU</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Nama Produk</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Unit</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-32">Multi-Unit</th>
+                                        <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-mist-100">
                                     {filteredMasterItems.map(item => (
-                                        <tr key={item.id} className="h-7 hover:bg-slate-50 group transition-colors">
+                                        <tr key={item.id} className="h-7 hover:bg-mist-50 group transition-colors">
                                             <td className="px-3 text-[11px] font-mono text-slate-500">{item.code}</td>
                                             <td className="px-3 text-[11px] font-semibold text-slate-700 truncate">{item.name}</td>
                                             <td className="px-3 text-center">
@@ -629,8 +630,8 @@ export const RejectView: React.FC = () => {
                 ) : (
                     /* MASTER OUTLET */
                     <div className="p-6 max-w-md mx-auto h-full overflow-auto">
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                            <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center gap-3">
+                        <div className="bg-white border border-mist-300 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                            <div className="p-3 bg-mist-50 border-b border-mist-300 flex items-center gap-3">
                                 <MapPin size={16} className="text-slate-400"/>
                                 <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">Master Outlet</h3>
                             </div>
@@ -638,7 +639,7 @@ export const RejectView: React.FC = () => {
                                 <div className="flex gap-2">
                                     <input 
                                         type="text" placeholder="Nama outlet baru..." 
-                                        className="flex-1 px-3 py-1.5 border border-slate-200 rounded text-[11px] font-semibold outline-none focus:border-blue-400"
+                                        className="flex-1 px-3 py-1.5 border border-mist-300 rounded text-[11px] font-semibold outline-none focus:border-blue-400"
                                         onKeyDown={e => {
                                             if(e.key === 'Enter' && e.currentTarget.value) {
                                                 StorageService.saveRejectOutlet(e.currentTarget.value).then(loadData);
@@ -648,7 +649,7 @@ export const RejectView: React.FC = () => {
                                     />
                                     <button className="px-4 py-1.5 bg-blue-600 text-white rounded text-[11px] font-bold shadow-sm hover:bg-blue-700 transition-colors">TAMBAH</button>
                                 </div>
-                                <div className="space-y-1 divide-y divide-slate-100 border-t border-slate-100">
+                                <div className="space-y-1 divide-y divide-mist-100 border-t border-mist-100">
                                     {outlets.map(o => (
                                         <div key={o} className="py-2 flex justify-between items-center group">
                                             <span className="text-[11px] font-semibold text-slate-700 uppercase">{o}</span>
@@ -665,8 +666,8 @@ export const RejectView: React.FC = () => {
             {/* MODAL MASTER ITEM (HIGH DENSITY) */}
             {showItemModal && (
                 <div className="fixed inset-0 bg-slate-900/10 z-[1000] flex items-center justify-center p-4 backdrop-blur-[1px] animate-in fade-in">
-                    <div className="bg-white rounded-lg w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-                         <div className="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+                    <div className="bg-white rounded-lg w-full max-w-md shadow-2xl border border-mist-300 overflow-hidden flex flex-col max-h-[90vh]">
+                         <div className="px-4 py-3 border-b border-mist-200 flex justify-between items-center bg-mist-50">
                              <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">{editingItem ? 'Edit Barang' : 'Barang Baru'}</h3>
                              <button onClick={()=>setShowItemModal(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={16}/></button>
                          </div>
@@ -675,19 +676,19 @@ export const RejectView: React.FC = () => {
                              <div className="grid grid-cols-2 gap-4">
                                  <div className="space-y-1">
                                      <label className="text-[10px] font-bold text-slate-400 uppercase">Kode SKU</label>
-                                     <input type="text" className="w-full px-2 py-1.5 border border-slate-200 rounded text-[11px] font-mono font-semibold uppercase outline-none focus:border-blue-400" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value.toUpperCase()})} />
+                                     <input type="text" className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-mono font-semibold uppercase outline-none focus:border-blue-400" value={itemForm.code} onChange={e=>setItemForm({...itemForm, code:e.target.value.toUpperCase()})} />
                                  </div>
                                  <div className="space-y-1">
                                      <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Dasar</label>
-                                     <input type="text" className="w-full px-2 py-1.5 border border-slate-200 rounded text-[11px] font-semibold uppercase text-center outline-none focus:border-blue-400" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value.toUpperCase()})} />
+                                     <input type="text" className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-semibold uppercase text-center outline-none focus:border-blue-400" value={itemForm.baseUnit} onChange={e=>setItemForm({...itemForm, baseUnit:e.target.value.toUpperCase()})} />
                                  </div>
                                  <div className="col-span-2 space-y-1">
                                      <label className="text-[10px] font-bold text-slate-400 uppercase">Nama Lengkap Barang</label>
-                                     <input type="text" className="w-full px-2 py-1.5 border border-slate-200 rounded text-[11px] font-medium text-slate-700 outline-none focus:border-blue-400" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} />
+                                     <input type="text" className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-medium text-slate-700 outline-none focus:border-blue-400" value={itemForm.name} onChange={e=>setItemForm({...itemForm, name:e.target.value})} />
                                  </div>
                              </div>
 
-                             <div className="pt-4 border-t border-slate-100">
+                             <div className="pt-4 border-t border-mist-100">
                                 <div className="flex justify-between items-center mb-2">
                                     <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Konversi Multi-Unit</h4>
                                     <button 
@@ -698,13 +699,13 @@ export const RejectView: React.FC = () => {
                                 
                                 <div className="space-y-2">
                                     {(itemForm.conversions || []).map((c, i) => (
-                                        <div key={i} className="flex gap-2 items-center bg-slate-50 p-2 rounded border border-slate-100">
-                                            <input type="text" placeholder="BOX" className="w-16 px-1.5 py-1 border border-slate-200 rounded text-[10px] uppercase font-semibold outline-none focus:bg-white" value={c.name} onChange={e => {
+                                        <div key={i} className="flex gap-2 items-center bg-mist-50 p-2 rounded border border-mist-100">
+                                            <input type="text" placeholder="BOX" className="w-16 px-1.5 py-1 border border-mist-200 rounded text-[10px] uppercase font-semibold outline-none focus:bg-white" value={c.name} onChange={e => {
                                                 const next = [...(itemForm.conversions || [])];
                                                 next[i].name = e.target.value.toUpperCase();
                                                 setItemForm({...itemForm, conversions: next});
                                             }} />
-                                            <select className="px-1.5 py-1 border border-slate-200 rounded text-[10px] font-semibold outline-none bg-white" value={c.operator} onChange={e => {
+                                            <select className="px-1.5 py-1 border border-mist-200 rounded text-[10px] font-semibold outline-none bg-white" value={c.operator} onChange={e => {
                                                 const next = [...(itemForm.conversions || [])];
                                                 next[i].operator = e.target.value as any;
                                                 setItemForm({...itemForm, conversions: next});
@@ -712,7 +713,7 @@ export const RejectView: React.FC = () => {
                                                 <option value="*">x</option>
                                                 <option value="/">/</option>
                                             </select>
-                                            <input type="number" placeholder="Rasio" className="w-16 px-1.5 py-1 border border-slate-200 rounded text-[10px] font-mono font-semibold outline-none text-right focus:bg-white" value={c.ratio} onChange={e => {
+                                            <input type="number" placeholder="Rasio" className="w-16 px-1.5 py-1 border border-mist-200 rounded text-[10px] font-mono font-semibold outline-none text-right focus:bg-white" value={c.ratio} onChange={e => {
                                                 const next = [...(itemForm.conversions || [])];
                                                 next[i].ratio = Number(e.target.value);
                                                 setItemForm({...itemForm, conversions: next});
@@ -725,8 +726,8 @@ export const RejectView: React.FC = () => {
                              </div>
                          </div>
 
-                         <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
-                             <button onClick={()=>setShowItemModal(false)} className="px-4 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-200 rounded transition-colors">Batal</button>
+                         <div className="px-4 py-3 bg-mist-50 border-t border-mist-200 flex justify-end gap-2">
+                             <button onClick={()=>setShowItemModal(false)} className="px-4 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-mist-200 rounded transition-colors">Batal</button>
                              <button onClick={handleSaveMasterItem} className="px-6 py-1.5 bg-blue-600 text-white rounded text-[11px] font-bold shadow-sm hover:bg-blue-700 transition-all active:scale-95">
                                  SIMPAN
                              </button>
@@ -738,8 +739,8 @@ export const RejectView: React.FC = () => {
             {/* DETAIL RIWAYAT MODAL (DENSE) */}
             {viewingBatch && (
                 <div className="fixed inset-0 bg-slate-900/10 z-[1100] flex items-center justify-center p-4 backdrop-blur-[1px] animate-in fade-in">
-                     <div className="bg-white rounded-lg w-full max-w-xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-                         <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                     <div className="bg-white rounded-lg w-full max-w-xl border border-mist-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+                         <div className="px-4 py-3 bg-mist-50 border-b border-mist-200 flex justify-between items-center">
                              <div>
                                  <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Detail Batch Reject</h3>
                                  <p className="text-[11px] font-mono text-slate-400 mt-0.5">{viewingBatch.id} • {viewingBatch.outlet} • {viewingBatch.date}</p>
@@ -747,7 +748,7 @@ export const RejectView: React.FC = () => {
                              <div className="flex items-center gap-2">
                                 <button 
                                     onClick={() => handleCopyToClipboard(viewingBatch)}
-                                    className="flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-white border border-mist-200 rounded text-[10px] font-bold text-slate-600 hover:bg-mist-50 transition-colors"
                                 >
                                     <Copy size={12}/> COPY TEKS
                                 </button>
@@ -756,7 +757,7 @@ export const RejectView: React.FC = () => {
                          </div>
                          <div className="overflow-auto custom-scrollbar">
                             <table className="w-full text-[11px] text-left border-collapse">
-                                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 uppercase tracking-tighter">
+                                <thead className="bg-mist-50 border-b border-mist-200 sticky top-0 uppercase tracking-tighter">
                                     <tr className="h-7">
                                         <th className="px-3 text-[10px] font-bold text-slate-400 w-10 text-center">#</th>
                                         <th className="px-3 text-[10px] font-bold text-slate-400">Nama Barang</th>
@@ -765,9 +766,9 @@ export const RejectView: React.FC = () => {
                                         <th className="px-3 text-[10px] font-bold text-slate-400">Alasan</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-mist-100">
                                     {viewingBatch.items.map((it,i)=>(
-                                        <tr key={i} className="hover:bg-slate-50 h-7 transition-colors">
+                                        <tr key={i} className="hover:bg-mist-50 h-7 transition-colors">
                                             <td className="px-3 text-center text-slate-400 font-mono text-[10px]">{i + 1}</td>
                                             <td className="px-3">
                                                 <div className="font-semibold text-slate-700 truncate max-w-[200px]">{it.name}</div>
@@ -787,7 +788,7 @@ export const RejectView: React.FC = () => {
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cdcfdb; border-radius: 10px; }
             `}</style>
         </div>
     );

@@ -21,6 +21,19 @@
               gable: '#ffffff', // White
               daintree: '#f8fafc', // Slate 50 (Main Canvas)
               brand: '#0369a1', // Sky 700
+              // SILVER MIST THEME (#cdcfdb based)
+              mist: {
+                50: '#f4f5f7',  // App Background (Lighter)
+                100: '#e8eaee', // Sidebar/Card BG
+                200: '#dbdde6', // Borders
+                300: '#cdcfdb', // *** PRIMARY SILVER MIST (#cdcfdb) - Used for Headers ***
+                400: '#aeb1c2', // Icons / Placeholders
+                500: '#757991', // Text
+                600: '#4b4e63', // Dark Text
+                700: '#3a3d4d',
+                800: '#2b2d38',
+                900: '#1e2029',
+              }
             },
             fontFamily: {
               sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
@@ -38,14 +51,14 @@
         height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #f1f5f9; 
+        background: #f4f5f7; /* mist-50 */
       }
       ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
+        background: #cdcfdb; /* mist-300 */
         border-radius: 10px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+        background: #aeb1c2; /* mist-400 */
       }
       
       /* Global Transitions */
@@ -56,14 +69,14 @@
       body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        background-color: #f8fafc;
+        background-color: #f4f5f7; /* mist-50 */
         color: #1e293b;
       }
 
-      /* Global Input Overrides for Clarity */
+      /* Global Input Overrides for Clarity within Silver Theme */
       input, select, textarea {
         background-color: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #cdcfdb !important; /* mist-300 */
         color: #0f172a !important;
         font-weight: 500 !important;
       }
@@ -75,7 +88,7 @@
       }
       
       input::placeholder {
-        color: #94a3b8 !important;
+        color: #aeb1c2 !important; /* mist-400 */
         font-weight: 400 !important;
       }
 
@@ -108,7 +121,7 @@
 }
 </script>
 </head>
-  <body class="bg-daintree text-slate-800 antialiased overflow-hidden">
+  <body class="bg-mist-50 text-slate-800 antialiased overflow-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   </body>
