@@ -120,35 +120,52 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </div>
             </div>
 
-            {/* DENSE DATA GRID */}
-            <div className="flex-1 overflow-auto">
-                <table className="w-full border-collapse table-fixed text-left">
-                    <thead className="bg-white sticky top-0 z-10 border-b border-slate-200 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+            {/* DENSE DATA GRID - FIXED LAYOUT */}
+            <div className="flex-1 overflow-auto bg-slate-50/30">
+                <table className="w-full border-collapse table-fixed text-left min-w-[800px]">
+                    <thead className="bg-slate-100 sticky top-0 z-20 shadow-sm border-b border-slate-300">
                         <tr className="h-8">
-                            <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">Referensi</th>
-                            <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-24">Tanggal</th>
-                            <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-16 text-center">Tipe</th>
-                            <th className="px-3 text-[10px] font-bold text-slate-400 uppercase">Partner / Keterangan</th>
-                            <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-32">Gudang</th>
-                            <th className="px-3 text-[10px] font-bold text-slate-400 uppercase w-16 text-center">Items</th>
+                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[15%] border-r border-slate-200">Referensi</th>
+                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[12%] border-r border-slate-200">Tanggal</th>
+                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[8%] text-center border-r border-slate-200">Tipe</th>
+                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[35%] border-r border-slate-200">Partner / Keterangan</th>
+                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[20%] border-r border-slate-200">Gudang</th>
+                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[10%] text-center">Items</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 bg-white">
                         {filteredTransactions.map(tx => (
                             <tr 
                                 key={tx.id} onClick={()=>setSelectedTxId(tx.id)}
-                                className={`h-7 cursor-default group transition-colors ${selectedTxId === tx.id ? 'bg-blue-50/80' : 'hover:bg-slate-50/50'}`}
+                                className={`h-8 cursor-pointer transition-colors border-b border-slate-50 ${selectedTxId === tx.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
                             >
-                                <td className="px-3 text-[11px] font-mono text-slate-500 truncate">{tx.referenceNo}</td>
-                                <td className="px-3 text-[11px] text-slate-600">{tx.date}</td>
-                                <td className="px-3 text-center">
-                                    <span className={`px-1 rounded text-[9px] font-bold border ${tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>{tx.type}</span>
+                                <td className={`px-3 py-1 text-[11px] font-mono truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-blue-100' : 'text-slate-600'}`}>{tx.referenceNo}</td>
+                                <td className={`px-3 py-1 text-[11px] truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-blue-100' : 'text-slate-500'}`}>{tx.date}</td>
+                                <td className="px-3 py-1 text-center border-r border-slate-100">
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                                        selectedTxId === tx.id 
+                                        ? 'bg-white/20 text-white border-white/20' 
+                                        : (tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100')
+                                    }`}>
+                                        {tx.type}
+                                    </span>
                                 </td>
-                                <td className="px-3 text-[11px] font-medium text-slate-700 truncate">{tx.partnerName || tx.notes || '-'}</td>
-                                <td className="px-3 text-[11px] text-slate-500 uppercase truncate">{warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}</td>
-                                <td className="px-3 text-center text-[11px] font-bold text-slate-400">{tx.items.length}</td>
+                                <td className={`px-3 py-1 text-[11px] font-medium truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-white' : 'text-slate-700'}`}>
+                                    {tx.partnerName || tx.notes || '-'}
+                                </td>
+                                <td className={`px-3 py-1 text-[10px] font-bold uppercase truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-blue-100' : 'text-slate-500'}`}>
+                                    {warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}
+                                </td>
+                                <td className={`px-3 py-1 text-center text-[11px] font-bold font-mono ${selectedTxId === tx.id ? 'text-white' : 'text-slate-400'}`}>
+                                    {tx.items.length}
+                                </td>
                             </tr>
                         ))}
+                        {filteredTransactions.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="py-8 text-center text-slate-400 italic text-xs">Tidak ada data transaksi ditemukan</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
