@@ -2,11 +2,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { StorageService } from '../services/storage';
 import { Transaction, Warehouse, TransactionType } from '../types';
-import { Plus, Edit3, Trash2, RefreshCw, Printer, Search, Calendar, ChevronDown, X, Info, FileSpreadsheet, ArrowDown, ArrowUp } from 'lucide-react';
+import { Plus, Edit3, Trash2, RefreshCw, Printer, Search, Calendar, ChevronDown, X, Info, FileSpreadsheet, ArrowDown, ArrowUp, CheckCircle2 } from 'lucide-react';
 import { useToast } from './Toast';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 interface Props {
     onEditTransaction: (tx: Transaction) => void;
@@ -67,6 +65,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
         } catch (e: any) { showToast(e.message, 'error'); }
     };
 
+    const handleEdit = () => {
+        const tx = transactions.find(t => t.id === selectedTxId);
+        if (tx) onEditTransaction(tx);
+    };
+
     const handleExportExcel = () => {
         const ws = XLSX.utils.json_to_sheet(filteredTransactions.map(tx => ({
             'Ref': tx.referenceNo, 'Tgl': tx.date, 'Tipe': tx.type, 'Gudang': warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || '-', 'Partner': tx.partnerName || '-', 'Items': tx.items.length
@@ -87,9 +90,9 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     );
 
     return (
-        <div className="flex flex-col h-full bg-white font-sans overflow-hidden">
-            {/* COMPACT TOOLBAR */}
-            <div className="h-10 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between px-2 shrink-0">
+        <div className="flex flex-col h-full bg-white font-sans overflow-hidden relative">
+            {/* COMPACT TOOLBAR - FIXED TOP */}
+            <div className="h-10 border-b border-slate-200 bg-slate-50/80 backdrop-blur-sm flex items-center justify-between px-2 shrink-0 z-30">
                 <div className="flex items-center h-full">
                     <div className="relative h-full flex items-center">
                         <ToolBtn icon={Plus} label="Baru" onClick={() => setShowNewDropdown(!showNewDropdown)} active={showNewDropdown} customRef={newButtonRef} color="text-emerald-600" />
@@ -100,8 +103,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                             </div>
                         )}
                     </div>
-                    <ToolBtn icon={Edit3} label="Ubah" onClick={() => { const tx = transactions.find(t=>t.id===selectedTxId); if(tx) onEditTransaction(tx); }} disabled={!selectedTxId} color="text-blue-600" />
-                    <ToolBtn icon={Trash2} label="Hapus" onClick={handleDelete} disabled={!selectedTxId} color="text-rose-600" />
+                    {/* Standard Edit/Delete kept for accessibility, but main interaction is floating */}
+                    <div className="hidden md:flex h-full items-center">
+                        <ToolBtn icon={Edit3} label="Ubah" onClick={handleEdit} disabled={!selectedTxId} color="text-blue-600" />
+                        <ToolBtn icon={Trash2} label="Hapus" onClick={handleDelete} disabled={!selectedTxId} color="text-rose-600" />
+                    </div>
                     <ToolBtn icon={RefreshCw} label="Segarkan" onClick={refreshData} />
                     <ToolBtn icon={FileSpreadsheet} label="Excel" onClick={handleExportExcel} color="text-emerald-600" />
                 </div>
@@ -115,60 +121,111 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                     </div>
                     <div className="relative">
                         <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Cari..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold outline-none w-32 focus:border-blue-400" />
+                        <input type="text" placeholder="Cari Ref..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="pl-7 pr-3 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold outline-none w-32 focus:border-blue-400" />
                     </div>
                 </div>
             </div>
 
-            {/* DENSE DATA GRID - FIXED LAYOUT */}
-            <div className="flex-1 overflow-auto bg-slate-50/30">
+            {/* DENSE DATA GRID */}
+            <div className="flex-1 overflow-auto bg-slate-50/30 pb-20"> {/* pb-20 to allow scroll space for floating bar */}
                 <table className="w-full border-collapse table-fixed text-left min-w-[800px]">
-                    <thead className="bg-slate-100 sticky top-0 z-20 shadow-sm border-b border-slate-300">
-                        <tr className="h-8">
-                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[15%] border-r border-slate-200">Referensi</th>
-                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[12%] border-r border-slate-200">Tanggal</th>
-                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[8%] text-center border-r border-slate-200">Tipe</th>
-                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[35%] border-r border-slate-200">Partner / Keterangan</th>
-                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[20%] border-r border-slate-200">Gudang</th>
-                            <th className="px-3 py-1.5 text-[10px] font-bold text-slate-600 uppercase w-[10%] text-center">Items</th>
+                    <thead className="bg-white sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-slate-300">
+                        <tr className="h-9">
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[15%] border-r border-slate-200/60 tracking-tight">Referensi</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[12%] border-r border-slate-200/60 tracking-tight">Tanggal</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[8%] text-center border-r border-slate-200/60 tracking-tight">Tipe</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[35%] border-r border-slate-200/60 tracking-tight">Partner / Keterangan</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[20%] border-r border-slate-200/60 tracking-tight">Gudang</th>
+                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-600 uppercase w-[10%] text-center tracking-tight">Items</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {filteredTransactions.map(tx => (
-                            <tr 
-                                key={tx.id} onClick={()=>setSelectedTxId(tx.id)}
-                                className={`h-8 cursor-pointer transition-colors border-b border-slate-50 ${selectedTxId === tx.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-50 text-slate-700'}`}
-                            >
-                                <td className={`px-3 py-1 text-[11px] font-mono truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-blue-100' : 'text-slate-600'}`}>{tx.referenceNo}</td>
-                                <td className={`px-3 py-1 text-[11px] truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-blue-100' : 'text-slate-500'}`}>{tx.date}</td>
-                                <td className="px-3 py-1 text-center border-r border-slate-100">
-                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                                        selectedTxId === tx.id 
-                                        ? 'bg-white/20 text-white border-white/20' 
-                                        : (tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100')
-                                    }`}>
-                                        {tx.type}
-                                    </span>
-                                </td>
-                                <td className={`px-3 py-1 text-[11px] font-medium truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-white' : 'text-slate-700'}`}>
-                                    {tx.partnerName || tx.notes || '-'}
-                                </td>
-                                <td className={`px-3 py-1 text-[10px] font-bold uppercase truncate border-r border-slate-100 ${selectedTxId === tx.id ? 'text-blue-100' : 'text-slate-500'}`}>
-                                    {warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}
-                                </td>
-                                <td className={`px-3 py-1 text-center text-[11px] font-bold font-mono ${selectedTxId === tx.id ? 'text-white' : 'text-slate-400'}`}>
-                                    {tx.items.length}
-                                </td>
-                            </tr>
-                        ))}
+                        {filteredTransactions.map(tx => {
+                            const isSelected = selectedTxId === tx.id;
+                            return (
+                                <tr 
+                                    key={tx.id} 
+                                    onClick={() => setSelectedTxId(isSelected ? null : tx.id)}
+                                    className={`h-8 cursor-pointer transition-all border-b border-slate-50 group ${
+                                        isSelected 
+                                        ? 'bg-blue-600 text-white shadow-inner' 
+                                        : 'hover:bg-blue-50/50 text-slate-700'
+                                    }`}
+                                >
+                                    <td className={`px-3 py-1 text-[11px] font-mono truncate border-r border-slate-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-600 group-hover:text-blue-600'}`}>
+                                        {tx.referenceNo}
+                                    </td>
+                                    <td className={`px-3 py-1 text-[11px] truncate border-r border-slate-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
+                                        {tx.date}
+                                    </td>
+                                    <td className={`px-3 py-1 text-center border-r border-slate-100 ${isSelected ? 'border-blue-500' : ''}`}>
+                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                                            isSelected 
+                                            ? 'bg-white/20 text-white border-white/20' 
+                                            : (tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100')
+                                        }`}>
+                                            {tx.type}
+                                        </span>
+                                    </td>
+                                    <td className={`px-3 py-1 text-[11px] font-medium truncate border-r border-slate-100 ${isSelected ? 'text-white border-blue-500' : 'text-slate-700'}`}>
+                                        {tx.partnerName || tx.notes || '-'}
+                                    </td>
+                                    <td className={`px-3 py-1 text-[10px] font-bold uppercase truncate border-r border-slate-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
+                                        {warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}
+                                    </td>
+                                    <td className={`px-3 py-1 text-center text-[11px] font-bold font-mono ${isSelected ? 'text-white' : 'text-slate-400'}`}>
+                                        {tx.items.length}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                         {filteredTransactions.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="py-8 text-center text-slate-400 italic text-xs">Tidak ada data transaksi ditemukan</td>
+                                <td colSpan={6} className="py-12 text-center text-slate-400 italic text-xs flex flex-col items-center justify-center gap-2">
+                                    <Info size={16} className="opacity-50"/>
+                                    Tidak ada data transaksi ditemukan
+                                </td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+
+            {/* FLOATING ACTION BAR (DYNAMIC ISLAND) */}
+            {selectedTxId && (
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+                    <div className="flex items-center gap-1.5 p-1.5 bg-slate-800/95 text-white rounded-full shadow-2xl backdrop-blur-md border border-slate-700/50">
+                        <div className="px-4 py-1.5 text-xs font-bold border-r border-slate-600/50 flex items-center gap-2 text-slate-200">
+                            <CheckCircle2 size={14} className="text-emerald-400 fill-emerald-400/20"/>
+                            1 Terpilih
+                        </div>
+                        
+                        <button 
+                            onClick={handleEdit}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-full text-xs font-bold transition-all shadow-lg shadow-blue-900/20 active:scale-95 group"
+                        >
+                            <Edit3 size={14} className="group-hover:-translate-y-0.5 transition-transform"/> 
+                            Ubah
+                        </button>
+                        
+                        <button 
+                            onClick={handleDelete}
+                            className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-500 rounded-full text-xs font-bold transition-all shadow-lg shadow-rose-900/20 active:scale-95 group"
+                        >
+                            <Trash2 size={14} className="group-hover:-translate-y-0.5 transition-transform"/> 
+                            Hapus
+                        </button>
+
+                        <button 
+                            onClick={() => setSelectedTxId(null)}
+                            className="p-2 hover:bg-slate-700/80 rounded-full text-slate-400 hover:text-white transition-all ml-1"
+                            title="Batal Pilih"
+                        >
+                            <X size={16}/>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* STATUS BAR */}
             <div className="h-6 bg-slate-50 border-t border-slate-200 flex items-center justify-between px-3 text-[10px] font-semibold text-slate-400 shrink-0">
@@ -178,6 +235,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </div>
                 <div className="italic">GudangPro Management System v2.1</div>
             </div>
+            
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
