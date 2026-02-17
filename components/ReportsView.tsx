@@ -91,8 +91,8 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
 
     return (
         <div className="flex flex-col h-full bg-mist-50 font-sans overflow-hidden relative">
-            {/* COMPACT TOOLBAR - FIXED TOP */}
-            <div className="h-10 border-b border-mist-300 bg-white flex items-center justify-between px-2 shrink-0 z-30">
+            {/* COMPACT TOOLBAR - STICKY TOP */}
+            <div className="sticky top-0 h-10 border-b border-mist-300 bg-white flex items-center justify-between px-2 shrink-0 z-30 shadow-sm">
                 <div className="flex items-center h-full">
                     <div className="relative h-full flex items-center">
                         <ToolBtn icon={Plus} label="Baru" onClick={() => setShowNewDropdown(!showNewDropdown)} active={showNewDropdown} customRef={newButtonRef} color="text-emerald-600" />
@@ -128,7 +128,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
             {/* DENSE DATA GRID */}
             <div className="flex-1 overflow-auto bg-mist-50 pb-20"> 
                 <table className="w-full border-collapse table-fixed text-left min-w-[800px]">
-                    {/* SILVER MIST HEADER */}
+                    {/* SILVER MIST HEADER - STICKY (Below Toolbar) */}
                     <thead className="bg-mist-300 sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-mist-300">
                         <tr className="h-9">
                             <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[15%] border-r border-mist-400/30 tracking-tight">Referensi</th>
