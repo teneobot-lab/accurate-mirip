@@ -130,36 +130,36 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 <table className="w-full border-collapse table-fixed text-left min-w-[800px]">
                     {/* SILVER MIST HEADER - STICKY (Below Toolbar) */}
                     <thead className="bg-mist-300 sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-mist-300">
-                        <tr className="h-9">
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[15%] border-r border-mist-400/30 tracking-tight">Referensi</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[12%] border-r border-mist-400/30 tracking-tight">Tanggal</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[8%] text-center border-r border-mist-400/30 tracking-tight">Tipe</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[35%] border-r border-mist-400/30 tracking-tight">Partner / Keterangan</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[20%] border-r border-mist-400/30 tracking-tight">Gudang</th>
-                            <th className="px-3 py-1.5 text-[10px] font-extrabold text-slate-700 uppercase w-[10%] text-center tracking-tight">Items</th>
+                        <tr className="h-7">
+                            <th className="px-3 py-1 text-[10px] font-extrabold text-slate-700 uppercase w-[15%] tracking-tight">Referensi</th>
+                            <th className="px-3 py-1 text-[10px] font-extrabold text-slate-700 uppercase w-[12%] tracking-tight">Tanggal</th>
+                            <th className="px-3 py-1 text-[10px] font-extrabold text-slate-700 uppercase w-[8%] text-center tracking-tight">Tipe</th>
+                            <th className="px-3 py-1 text-[10px] font-extrabold text-slate-700 uppercase w-[35%] tracking-tight">Partner / Keterangan</th>
+                            <th className="px-3 py-1 text-[10px] font-extrabold text-slate-700 uppercase w-[20%] tracking-tight">Gudang</th>
+                            <th className="px-3 py-1 text-[10px] font-extrabold text-slate-700 uppercase w-[10%] text-center tracking-tight">Items</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-mist-200 bg-white">
+                    <tbody className="divide-y divide-mist-50 bg-white">
                         {filteredTransactions.map(tx => {
                             const isSelected = selectedTxId === tx.id;
                             return (
                                 <tr 
                                     key={tx.id} 
                                     onClick={() => setSelectedTxId(isSelected ? null : tx.id)}
-                                    className={`h-8 cursor-pointer transition-all border-b border-mist-100 group ${
+                                    className={`h-7 cursor-pointer transition-all group ${
                                         isSelected 
                                         ? 'bg-blue-600 text-white shadow-inner' 
                                         : 'hover:bg-mist-100 text-slate-700'
                                     }`}
                                 >
-                                    <td className={`px-3 py-1 text-[11px] font-mono truncate border-r border-mist-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-600 group-hover:text-blue-600'}`}>
+                                    <td className={`px-3 py-0.5 text-[10px] font-mono truncate ${isSelected ? 'text-blue-100' : 'text-slate-600 group-hover:text-blue-600'}`}>
                                         {tx.referenceNo}
                                     </td>
-                                    <td className={`px-3 py-1 text-[11px] truncate border-r border-mist-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
+                                    <td className={`px-3 py-0.5 text-[10px] truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
                                         {tx.date}
                                     </td>
-                                    <td className={`px-3 py-1 text-center border-r border-mist-100 ${isSelected ? 'border-blue-500' : ''}`}>
-                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                                    <td className="px-3 py-0.5 text-center">
+                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${
                                             isSelected 
                                             ? 'bg-white/20 text-white border-white/20' 
                                             : (tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100')
@@ -167,13 +167,13 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                                             {tx.type}
                                         </span>
                                     </td>
-                                    <td className={`px-3 py-1 text-[11px] font-medium truncate border-r border-mist-100 ${isSelected ? 'text-white border-blue-500' : 'text-slate-700'}`}>
+                                    <td className={`px-3 py-0.5 text-[10px] font-medium truncate ${isSelected ? 'text-white' : 'text-slate-700'}`}>
                                         {tx.partnerName || tx.notes || '-'}
                                     </td>
-                                    <td className={`px-3 py-1 text-[10px] font-bold uppercase truncate border-r border-mist-100 ${isSelected ? 'text-blue-100 border-blue-500' : 'text-slate-500'}`}>
+                                    <td className={`px-3 py-0.5 text-[9px] font-bold uppercase truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
                                         {warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}
                                     </td>
-                                    <td className={`px-3 py-1 text-center text-[11px] font-bold font-mono ${isSelected ? 'text-white' : 'text-slate-400'}`}>
+                                    <td className={`px-3 py-0.5 text-center text-[10px] font-bold font-mono ${isSelected ? 'text-white' : 'text-slate-400'}`}>
                                         {tx.items.length}
                                     </td>
                                 </tr>
