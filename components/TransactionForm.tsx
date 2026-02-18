@@ -360,30 +360,30 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           <div className="flex-1 bg-white overflow-auto relative">
               <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
                   {/* SILVER MIST HEADER */}
-                  <thead className="bg-mist-300 text-[10px] font-bold text-slate-700 sticky top-0 z-10 border-b border-mist-300 h-8">
+                  <thead className="bg-mist-300 text-[10px] font-bold text-slate-700 sticky top-0 z-10 border-b border-mist-300 shadow-sm h-7">
                       <tr>
-                          <th className="px-2 w-8 text-center border-r border-mist-400/30">#</th>
-                          <th className="px-2 border-r border-mist-400/30">Nama Barang / SKU</th>
-                          <th className="px-2 w-20 text-right border-r border-mist-400/30">Stok</th>
-                          <th className="px-2 w-20 text-right border-r border-mist-400/30 bg-brand/5 text-brand">Kuantitas</th>
-                          <th className="px-2 w-20 text-center border-r border-mist-400/30">Satuan</th>
-                          <th className="px-2 w-24 text-right border-r border-mist-400/30">Total Base</th>
-                          <th className="px-2 w-48 border-r border-mist-400/30">Catatan Baris</th>
+                          <th className="px-2 w-8 text-center">#</th>
+                          <th className="px-2">Nama Barang / SKU</th>
+                          <th className="px-2 w-20 text-right">Stok</th>
+                          <th className="px-2 w-20 text-right bg-brand/5 text-brand">Kuantitas</th>
+                          <th className="px-2 w-20 text-center">Satuan</th>
+                          <th className="px-2 w-24 text-right">Total Base</th>
+                          <th className="px-2 w-48">Catatan Baris</th>
                           <th className="px-2 w-8 text-center">Act</th>
                       </tr>
                   </thead>
-                  <tbody className="divide-y divide-mist-100 text-xs">
+                  <tbody className="divide-y divide-mist-50 text-[11px]">
                       {lines.map((l, i) => (
-                        <tr key={i} className="hover:bg-mist-50 h-8">
-                            <td className="px-2 text-center text-slate-400 border-r border-mist-100">{i + 1}</td>
-                            <td className="px-2 border-r border-mist-100 truncate">
+                        <tr key={i} className="hover:bg-mist-50 h-7 group">
+                            <td className="px-2 text-center text-slate-400">{i + 1}</td>
+                            <td className="px-2 truncate">
                                 <span className="font-semibold text-slate-700">{l.name}</span>
                                 <span className="ml-2 text-[10px] text-slate-400 font-mono">{l.code}</span>
                             </td>
-                            <td className="px-2 text-right border-r border-mist-100 font-mono text-slate-500">
+                            <td className="px-2 text-right font-mono text-slate-500">
                                 {getStockQty(l.itemId).toLocaleString()}
                             </td>
-                            <td className="p-0 border-r border-mist-100">
+                            <td className="p-0">
                                 <input 
                                     id={`input-${i}-qty`}
                                     type="number" 
@@ -393,11 +393,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     className="w-full h-full bg-transparent text-right px-2 font-bold text-slate-800 outline-none focus:bg-blue-50" 
                                 />
                             </td>
-                            <td className="p-0 border-r border-mist-100">
+                            <td className="p-0">
                                 <select 
                                     value={l.unit} 
                                     onChange={e => updateLine(i, 'unit', e.target.value)} 
-                                    className="w-full h-full bg-transparent text-center px-1 outline-none appearance-none focus:bg-blue-50 cursor-pointer"
+                                    className="w-full h-full bg-transparent text-center px-1 outline-none appearance-none focus:bg-blue-50 cursor-pointer text-[10px]"
                                 >
                                     <option value={l.unit}>{l.unit}</option>
                                     {masterItems.find(it => it.id === l.itemId)?.conversions?.map(c => 
@@ -405,30 +405,30 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                     )}
                                 </select>
                             </td>
-                            <td className="px-2 text-right border-r border-mist-100 font-mono text-slate-600">
+                            <td className="px-2 text-right font-mono text-slate-600">
                                 {(l.qty * (l.ratio || 1)).toLocaleString()}
                             </td>
-                            <td className="p-0 border-r border-mist-100">
+                            <td className="p-0">
                                 <input 
                                     id={`input-${i}-note`}
                                     type="text" 
                                     value={l.note || ''} 
                                     onChange={e => updateLine(i, 'note', e.target.value)} 
                                     onKeyDown={e => handleGridKeyDown(e, i, 'note')}
-                                    className="w-full h-full bg-transparent px-2 text-slate-600 italic outline-none focus:bg-blue-50" 
+                                    className="w-full h-full bg-transparent px-2 text-slate-600 italic outline-none focus:bg-blue-50 truncate" 
                                     placeholder="..." 
                                 />
                             </td>
                             <td className="px-0 text-center">
-                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-rose-500 p-1"><Trash2 size={12}/></button>
+                                <button onClick={() => setLines(lines.filter((_, idx) => idx !== i))} className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
                             </td>
                         </tr>
                       ))}
 
                       {/* --- NEW ENTRY ROW (ALWAYS ACTIVE) --- */}
-                      <tr className="bg-emerald-50/30 h-9 border-b-2 border-mist-200">
-                          <td className="px-2 text-center font-bold text-[9px] text-emerald-600 border-r border-mist-200">BARU</td>
-                          <td className="p-0 border-r border-mist-200 relative">
+                      <tr className="bg-emerald-50/30 h-8 border-b border-mist-200">
+                          <td className="px-2 text-center font-bold text-[9px] text-emerald-600">BARU</td>
+                          <td className="p-0 relative">
                               <div className="relative w-full h-full">
                                   <input 
                                       ref={inlineSearchTriggerRef}
@@ -444,16 +444,16 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                       onFocus={() => {
                                           if (searchQuery) setIsSearching(true);
                                       }}
-                                      className={`w-full h-full px-2 text-xs outline-none bg-transparent placeholder:text-slate-400 ${pendingItem ? 'font-bold text-slate-800' : 'font-normal'}`}
+                                      className={`w-full h-full px-2 text-[11px] outline-none bg-transparent placeholder:text-slate-400 ${pendingItem ? 'font-bold text-slate-800' : 'font-normal'}`}
                                       autoComplete="off"
                                   />
                                   {pendingItem && <button onClick={() => { setPendingItem(null); setSearchQuery(''); inlineSearchTriggerRef.current?.focus(); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={12}/></button>}
                               </div>
                           </td>
-                          <td className="px-2 text-right border-r border-mist-200 font-mono text-slate-400">
+                          <td className="px-2 text-right font-mono text-slate-400">
                               {pendingItem ? getStockQty(pendingItem.id).toLocaleString() : '-'}
                           </td>
-                          <td className="p-0 border-r border-mist-200">
+                          <td className="p-0">
                               <input 
                                   ref={qtyInputRef}
                                   type="number" 
@@ -462,25 +462,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                                   value={pendingQty}
                                   onChange={e => setPendingQty(e.target.value)}
                                   onKeyDown={e => handleNewEntryKeyDown(e, 'qty')}
-                                  className="w-full h-full bg-white text-right px-2 font-bold text-brand outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 disabled:text-slate-300" 
+                                  className="w-full h-full bg-white text-right px-2 font-bold text-brand outline-none focus:ring-1 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 disabled:text-slate-300" 
                               />
                           </td>
-                          <td className="px-2 text-center border-r border-mist-200 font-bold text-slate-500">
+                          <td className="px-2 text-center font-bold text-slate-500">
                               {pendingItem?.baseUnit || '-'}
                           </td>
-                          <td className="px-2 text-right border-r border-mist-200 font-mono text-slate-300">
+                          <td className="px-2 text-right font-mono text-slate-300">
                               {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '-'}
                           </td>
-                          <td className="p-0 border-r border-mist-200">
+                          <td className="p-0">
                               <input 
                                   ref={noteInputRef}
                                   type="text" 
-                                  placeholder="Catatan baris..." 
+                                  placeholder="Catatan..." 
                                   disabled={!pendingItem}
                                   value={pendingNote}
                                   onChange={e => setPendingNote(e.target.value)}
                                   onKeyDown={e => handleNewEntryKeyDown(e, 'note')}
-                                  className="w-full h-full bg-white px-2 italic text-slate-600 outline-none focus:ring-2 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50" 
+                                  className="w-full h-full bg-white px-2 italic text-slate-600 outline-none focus:ring-1 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 truncate" 
                               />
                           </td>
                           <td className="text-center p-0">
@@ -491,8 +491,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       </tr>
                       
                       {/* FILLER */}
-                      {[...Array(Math.max(0, 10 - lines.length))].map((_, i) => (
-                          <tr key={`fill-${i}`} className="h-8"><td colSpan={8} className="border-r border-mist-100"></td></tr>
+                      {[...Array(Math.max(0, 15 - lines.length))].map((_, i) => (
+                          <tr key={`fill-${i}`} className="h-7"><td colSpan={8} className=""></td></tr>
                       ))}
                   </tbody>
               </table>
