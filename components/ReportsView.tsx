@@ -125,10 +125,9 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </div>
             </div>
 
-            {/* 2. DATA GRID AREA (Only this scrolls) */}
+            {/* 2. DATA GRID AREA */}
             <div className="flex-1 overflow-auto bg-white pb-20 scroll-smooth"> 
                 <table className="w-full border-collapse table-fixed text-left min-w-[800px]">
-                    {/* STICKY COLUMN HEADERS (Fixed within scroll container) */}
                     <thead className="bg-mist-300 sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-mist-400">
                         <tr className="h-6">
                             <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[15%] tracking-tight">Referensi</th>
@@ -191,22 +190,34 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </table>
             </div>
 
-            {/* 3. FLOATING ACTION BAR (Hanya muncul saat baris dipilih) */}
+            {/* 3. CENTERED FLOATING ACTION BAR (DYNAMIC ISLAND) */}
             {selectedTxId && (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-                    <div className="flex items-center gap-1.5 p-1 bg-slate-800 text-white rounded-full shadow-2xl border border-slate-700">
-                        <div className="px-3 py-1.5 text-[10px] font-bold border-r border-slate-700 flex items-center gap-2 text-slate-200">
-                            <CheckCircle2 size={12} className="text-emerald-400"/>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] animate-in zoom-in-95 fade-in duration-300">
+                    <div className="flex items-center gap-1.5 p-1.5 bg-slate-800/95 text-white rounded-full shadow-[0_0_50px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-slate-700 ring-4 ring-black/5">
+                        <div className="px-4 py-1.5 text-[11px] font-bold border-r border-slate-700/50 flex items-center gap-2 text-slate-200">
+                            <CheckCircle2 size={14} className="text-emerald-400"/>
                             1 Terpilih
                         </div>
-                        <button onClick={handleEdit} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-full text-[10px] font-bold transition-all">
-                            <Edit3 size={12}/> Ubah
+                        
+                        <button 
+                            onClick={handleEdit}
+                            className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-full text-[11px] font-bold transition-all shadow-lg active:scale-95 group"
+                        >
+                            <Edit3 size={14}/> Ubah
                         </button>
-                        <button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 rounded-full text-[10px] font-bold transition-all">
-                            <Trash2 size={12}/> Hapus
+                        
+                        <button 
+                            onClick={handleDelete}
+                            className="flex items-center gap-2 px-5 py-2 bg-rose-600 hover:bg-rose-500 rounded-full text-[11px] font-bold transition-all shadow-lg active:scale-95 group"
+                        >
+                            <Trash2 size={14}/> Hapus
                         </button>
-                        <button onClick={() => setSelectedTxId(null)} className="p-1.5 hover:bg-slate-700 rounded-full text-slate-400 ml-1">
-                            <X size={14}/>
+
+                        <button 
+                            onClick={() => setSelectedTxId(null)}
+                            className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-all ml-1"
+                        >
+                            <X size={18}/>
                         </button>
                     </div>
                 </div>
