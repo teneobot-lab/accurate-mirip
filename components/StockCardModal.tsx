@@ -383,6 +383,14 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
                          </tr>
                      )}
                 </tbody>
+                <tfoot className="bg-mist-200 sticky bottom-0 z-10 shadow-[0_-1px_0_rgba(0,0,0,0.05)] border-t border-mist-300">
+                    <tr className="h-9">
+                        <td colSpan={5} className="px-3 text-right text-[11px] font-extrabold text-slate-700 uppercase border-r border-mist-400/30">Total Periode</td>
+                        <td className="px-3 text-right font-mono text-[11px] font-bold text-emerald-700 bg-emerald-100/30 border-r border-mist-400/30">{summary.totalIn.toLocaleString()}</td>
+                        <td className="px-3 text-right font-mono text-[11px] font-bold text-rose-700 bg-rose-100/30 border-r border-mist-400/30">{summary.totalOut.toLocaleString()}</td>
+                        <td className="px-3 text-right font-mono text-[12px] font-black text-slate-800">{summary.closing.toLocaleString()}</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
         

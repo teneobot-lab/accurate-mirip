@@ -4,6 +4,7 @@ import { StorageService } from '../services/storage';
 import { Item, Stock, Warehouse, UnitConversion } from '../types';
 import { Search, Trash2, RefreshCw, Plus, Edit3, Eye, Package, X, Save, AlertCircle, Layers, ArrowRight, Settings2 } from 'lucide-react';
 import { useToast } from './Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface InventoryViewProps {
     onViewItem?: (item: Item) => void;
@@ -21,6 +22,9 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     
+    // Delete Confirmation State
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
     // Form State
     const [formData, setFormData] = useState<Partial<Item>>({
         code: '', name: '', category: '', baseUnit: 'PCS', minStock: 0, isActive: true, conversions: []
@@ -107,6 +111,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
         }
     };
 
+    const handleDeleteItem = async () => {
+        if (!itemToDelete) return;
+        try {
+            await StorageService.deleteItems([itemToDelete]);
+            showToast("Barang berhasil dihapus", "success");
+            loadData();
+        } catch (error: any) {
+            showToast(error.message || "Gagal menghapus barang", "error");
+        } finally {
+            setItemToDelete(null);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-mist-50 font-sans">
             {/* COMPACT TOOLBAR */}
@@ -173,6 +190,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                                             <button onClick={() => onViewItem(item)} className="p-1 text-blue-500 hover:bg-blue-100 rounded" title="Lihat Kartu Stok"><Eye size={14}/></button>
                                         )}
                                         <button onClick={() => handleOpenModal(item)} className="p-1 text-amber-500 hover:bg-amber-100 rounded" title="Edit Barang"><Edit3 size={14}/></button>
+                                        <button onClick={() => setItemToDelete(item.id)} className="p-1 text-rose-500 hover:bg-rose-100 rounded" title="Hapus Barang"><Trash2 size={14}/></button>
                                     </div>
                                 </td>
                             </tr>
@@ -290,6 +308,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={!!itemToDelete}
+                title="Hapus Master Barang"
+                message="Apakah Anda yakin ingin menghapus barang ini? Stok dan riwayat yang terkait dengan barang ini mungkin akan terpengaruh."
+                onConfirm={handleDeleteItem}
+                onCancel={() => setItemToDelete(null)}
+            />
         </div>
     );
 };

@@ -4,6 +4,7 @@ import { StorageService } from '../services/storage';
 import { Item, RejectBatch, RejectItem, Stock } from '../types';
 import { Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search, Calendar, X, Eye, Save, Database, Tag, Edit3, Info, Copy, FileSpreadsheet, Check, RefreshCw, ChevronRight, Filter } from 'lucide-react';
 import { useToast } from './Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 import ExcelJS from 'exceljs';
 import { Decimal } from 'decimal.js';
 import { highlightMatch } from '../search/highlightMatch';
@@ -53,6 +54,11 @@ export const RejectView: React.FC = () => {
     // History & Export States
     const [batches, setBatches] = useState<RejectBatch[]>([]);
     const [viewingBatch, setViewingBatch] = useState<RejectBatch | null>(null);
+    
+    // Delete Confirmation States
+    const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
+    const [masterItemToDelete, setMasterItemToDelete] = useState<string | null>(null);
+    const [outletToDelete, setOutletToDelete] = useState<string | null>(null);
     
     const [exportStart, setExportStart] = useState(() => {
         const d = new Date();
@@ -188,6 +194,32 @@ export const RejectView: React.FC = () => {
             loadData();
         } catch (error: any) {
             showToast(error.message || "Gagal menyimpan data", "error");
+        }
+    };
+
+    const handleDeleteBatch = async () => {
+        if (!batchToDelete) return;
+        try {
+            await StorageService.deleteRejectBatch(batchToDelete);
+            showToast("Riwayat reject dihapus", "success");
+            loadData();
+        } catch (e) {
+            showToast("Gagal menghapus riwayat", "error");
+        } finally {
+            setBatchToDelete(null);
+        }
+    };
+
+    const handleDeleteMasterItem = async () => {
+        if (!masterItemToDelete) return;
+        try {
+            await StorageService.deleteRejectMasterItem(masterItemToDelete);
+            showToast("Master item dihapus", "success");
+            loadData();
+        } catch (e) {
+            showToast("Gagal menghapus master item", "error");
+        } finally {
+            setMasterItemToDelete(null);
         }
     };
 
@@ -572,7 +604,7 @@ export const RejectView: React.FC = () => {
                                                 <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => setViewingBatch(b)} className="p-1 text-blue-500 hover:bg-blue-100 rounded" title="Lihat Detail"><Eye size={12}/></button>
                                                     <button onClick={() => handleCopyToClipboard(b)} className="p-1 text-slate-400 hover:bg-slate-200 rounded" title="Copy Teks"><Copy size={12}/></button>
-                                                    <button onClick={() => { if(confirm('Hapus riwayat ini?')) StorageService.deleteRejectBatch(b.id).then(loadData); }} className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12}/></button>
+                                                    <button onClick={() => setBatchToDelete(b.id)} className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12}/></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -618,7 +650,7 @@ export const RejectView: React.FC = () => {
                                             <td className="px-3 text-center">
                                                 <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => { setEditingItem(item); setItemForm({...item, conversions: item.conversions ? [...item.conversions] : []}); setShowItemModal(true); }} className="p-1 text-amber-500 hover:bg-amber-100 rounded" title="Edit"><Edit3 size={12}/></button>
-                                                    <button onClick={() => { if(confirm('Hapus master item ini?')) StorageService.deleteRejectMasterItem(item.id).then(loadData); }} className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12}/></button>
+                                                    <button onClick={() => setMasterItemToDelete(item.id)} className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12}/></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -785,6 +817,23 @@ export const RejectView: React.FC = () => {
                      </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={!!batchToDelete}
+                title="Hapus Riwayat Reject"
+                message="Apakah Anda yakin ingin menghapus riwayat reject ini?"
+                onConfirm={handleDeleteBatch}
+                onCancel={() => setBatchToDelete(null)}
+            />
+
+            <ConfirmDialog
+                isOpen={!!masterItemToDelete}
+                title="Hapus Master Item"
+                message="Apakah Anda yakin ingin menghapus master item ini?"
+                onConfirm={handleDeleteMasterItem}
+                onCancel={() => setMasterItemToDelete(null)}
+            />
+
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

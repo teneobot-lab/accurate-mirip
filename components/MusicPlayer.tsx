@@ -4,6 +4,7 @@ import { Music, Plus, Play, Trash2, ListMusic, X, SkipForward, SkipBack, Edit3, 
 import { StorageService } from '../services/storage';
 import { Playlist } from '../types';
 import { useToast } from './Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 
 const MusicPlayer: React.FC = () => {
   const { showToast } = useToast();
@@ -18,6 +19,8 @@ const MusicPlayer: React.FC = () => {
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [newSongTitle, setNewSongTitle] = useState('');
   const [newSongUrl, setNewSongUrl] = useState('');
+  
+  const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -53,6 +56,19 @@ const MusicPlayer: React.FC = () => {
       showToast("Playlist dibuat", "success");
       loadData();
     } catch (e) { showToast("Gagal buat playlist", "error"); }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!playlistToDelete) return;
+    try {
+      await StorageService.deletePlaylist(playlistToDelete);
+      showToast("Playlist dihapus", "success");
+      loadData();
+    } catch (e) {
+      showToast("Gagal menghapus playlist", "error");
+    } finally {
+      setPlaylistToDelete(null);
+    }
   };
 
   return (
@@ -112,7 +128,7 @@ const MusicPlayer: React.FC = () => {
                   {playlists.map(p => (
                     <div key={p.id} className="flex justify-between items-center p-2 bg-slate-50 rounded border border-slate-100">
                       <span className="text-[11px] font-semibold text-slate-700">{p.name}</span>
-                      <button onClick={() => StorageService.deletePlaylist(p.id).then(loadData)} className="text-slate-400 hover:text-rose-500"><Trash2 size={12}/></button>
+                      <button onClick={() => setPlaylistToDelete(p.id)} className="text-slate-400 hover:text-rose-500"><Trash2 size={12}/></button>
                     </div>
                   ))}
                 </div>
@@ -133,6 +149,14 @@ const MusicPlayer: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!playlistToDelete}
+        title="Hapus Playlist"
+        message="Apakah Anda yakin ingin menghapus playlist ini?"
+        onConfirm={handleDeletePlaylist}
+        onCancel={() => setPlaylistToDelete(null)}
+      />
     </div>
   );
 };

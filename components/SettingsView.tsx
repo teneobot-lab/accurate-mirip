@@ -4,6 +4,7 @@ import { StorageService } from '../services/storage';
 import { Warehouse, Partner, AppUser } from '../types';
 import { Plus, Edit3, Trash2, Search, Building2, UserCircle, Save, X, Phone, Loader2, Share2, FileSpreadsheet, Calendar, Link as LinkIcon, Code, Copy, Check, Users, ToggleLeft, ToggleRight, Lock, MapPin, Mail, Key } from 'lucide-react';
 import { useToast } from './Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS' | 'EXTERNAL_SYNC';
 
@@ -17,6 +18,7 @@ export const SettingsView: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editData, setEditData] = useState<any>(null);
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
     const [scriptUrl, setScriptUrl] = useState('');
     const [syncStart, setSyncStart] = useState(() => {
@@ -130,15 +132,16 @@ function processSheet(sheetName, newRows, headers) {
 
     useEffect(() => { refreshData(); }, []);
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Hapus data secara permanen dari Database?')) return;
+    const handleDelete = async () => {
+        if (!itemToDelete) return;
         try {
-            if (activeTab === 'WAREHOUSE') await StorageService.deleteWarehouse(id);
-            else if (activeTab === 'USERS') await StorageService.deleteUser(id);
-            else await StorageService.deletePartner(id);
+            if (activeTab === 'WAREHOUSE') await StorageService.deleteWarehouse(itemToDelete);
+            else if (activeTab === 'USERS') await StorageService.deleteUser(itemToDelete);
+            else await StorageService.deletePartner(itemToDelete);
             showToast("Berhasil dihapus dari server", "success");
             refreshData();
         } catch (e) { showToast("Gagal menghapus data", "error"); }
+        finally { setItemToDelete(null); }
     };
 
     const handleSave = async (data: any) => {
@@ -316,7 +319,7 @@ function processSheet(sheetName, newRows, headers) {
                                                 <td className="px-4 py-2 text-center">
                                                     <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit3 size={14}/></button>
-                                                        <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"><Trash2 size={14}/></button>
+                                                        <button onClick={() => setItemToDelete(item.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"><Trash2 size={14}/></button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -442,6 +445,14 @@ function processSheet(sheetName, newRows, headers) {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={!!itemToDelete}
+                title="Konfirmasi Hapus"
+                message="Apakah Anda yakin ingin menghapus data ini secara permanen dari Database?"
+                onConfirm={handleDelete}
+                onCancel={() => setItemToDelete(null)}
+            />
         </div>
     );
 };

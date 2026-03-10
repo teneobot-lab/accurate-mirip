@@ -4,6 +4,7 @@ import { StorageService } from '../services/storage';
 import { Transaction, Warehouse, TransactionType } from '../types';
 import { Plus, Edit3, Trash2, RefreshCw, Printer, Search, Calendar, ChevronDown, X, Info, FileSpreadsheet, ArrowDown, ArrowUp, CheckCircle2 } from 'lucide-react';
 import { useToast } from './Toast';
+import { ConfirmDialog } from './ConfirmDialog';
 import * as XLSX from 'xlsx';
 
 interface Props {
@@ -17,6 +18,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const [showNewDropdown, setShowNewDropdown] = useState(false);
     const newButtonRef = useRef<HTMLButtonElement>(null);
@@ -56,13 +58,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     }, [transactions, searchQuery, filterWhFrom]);
 
     const handleDelete = async () => {
-        if (!selectedTxId || !confirm('Hapus transaksi ini? Stok akan dikembalikan.')) return;
+        if (!selectedTxId) return;
         try {
             await StorageService.deleteTransaction(selectedTxId);
             showToast('Transaksi dihapus', 'success');
             setSelectedTxId(null);
             refreshData();
         } catch (e: any) { showToast(e.message, 'error'); }
+        finally { setIsDeleteDialogOpen(false); }
     };
 
     const handleEdit = () => {
@@ -105,7 +108,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                     </div>
                     <div className="hidden md:flex h-full items-center">
                         <ToolBtn icon={Edit3} label="Ubah" onClick={handleEdit} disabled={!selectedTxId} color="text-blue-600" />
-                        <ToolBtn icon={Trash2} label="Hapus" onClick={handleDelete} disabled={!selectedTxId} color="text-rose-600" />
+                        <ToolBtn icon={Trash2} label="Hapus" onClick={() => setIsDeleteDialogOpen(true)} disabled={!selectedTxId} color="text-rose-600" />
                     </div>
                     <ToolBtn icon={RefreshCw} label="Segarkan" onClick={refreshData} />
                     <ToolBtn icon={FileSpreadsheet} label="Excel" onClick={handleExportExcel} color="text-emerald-600" />
@@ -207,7 +210,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                         </button>
                         
                         <button 
-                            onClick={handleDelete}
+                            onClick={() => setIsDeleteDialogOpen(true)}
                             className="flex items-center gap-2 px-5 py-2 bg-rose-600 hover:bg-rose-500 rounded-full text-[11px] font-bold transition-all shadow-lg active:scale-95 group"
                         >
                             <Trash2 size={14}/> Hapus
@@ -231,6 +234,14 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 <div className="italic">GudangPro System v2.1</div>
             </div>
             
+            <ConfirmDialog
+                isOpen={isDeleteDialogOpen}
+                title="Hapus Transaksi"
+                message="Apakah Anda yakin ingin menghapus transaksi ini? Stok barang akan dikembalikan seperti semula."
+                onConfirm={handleDelete}
+                onCancel={() => setIsDeleteDialogOpen(false)}
+            />
+
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar { width: 3px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cdcfdb; border-radius: 10px; }
