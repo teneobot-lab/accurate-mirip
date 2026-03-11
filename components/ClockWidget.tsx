@@ -11,16 +11,16 @@ export const ClockWidget: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex items-center gap-3 text-slate-600 bg-mist-50/50 border border-mist-300 px-3 py-1.5 rounded-lg">
-      <div className="flex items-center gap-1.5 border-r border-mist-300 pr-3">
-        <Clock size={14} className="text-brand" />
-        <span className="font-mono text-[11px] font-bold text-slate-700">
+    <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300">
+      <div className="flex items-center gap-1.5 border-r border-slate-200 dark:border-slate-700 pr-4">
+        <Clock size={16} className="text-blue-500" />
+        <span className="font-mono text-sm font-bold">
           {time.toLocaleTimeString([], { hour12: false })}
         </span>
       </div>
       <div className="flex items-center gap-1.5">
-        <Calendar size={14} className="text-emerald-600" />
-        <span className="text-[10px] font-bold uppercase tracking-tight text-slate-500">
+        <Calendar size={16} className="text-emerald-500" />
+        <span className="text-xs font-bold uppercase tracking-tight">
           {time.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       </div>

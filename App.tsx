@@ -12,7 +12,6 @@ import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { LowStockAlert } from './components/LowStockAlert';
-import { ClockWidget } from './components/ClockWidget';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
 import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus } from 'lucide-react';
@@ -146,7 +145,6 @@ function App() {
                       )}
 
                       <div className="flex items-center gap-2 shrink-0">
-                          <ClockWidget />
                           <LowStockAlert />
                           <MusicPlayer />
                           <div className="flex items-center gap-2 pl-3 border-l border-mist-300 ml-1">
