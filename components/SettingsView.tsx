@@ -199,43 +199,43 @@ function processSheet(sheetName, newRows, headers) {
     const TabBtn = ({ active, onClick, icon, label, count }: any) => (
         <button 
             onClick={onClick} 
-            className={`w-full text-left px-3 py-2 mb-0.5 rounded-lg text-[12px] font-medium flex items-center justify-between transition-all ${
+            className={`w-full text-left px-4 py-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
                 active 
-                ? 'bg-mist-300/30 text-slate-800 shadow-sm border border-mist-300' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-mist-200/50 border border-transparent'
+                ? 'bg-brand/10 text-brand' 
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
             }`}
         >
             <div className="flex items-center gap-3">
                 {icon} <span className="tracking-tight">{label}</span>
             </div>
-            {count !== undefined && <span className={`px-1.5 py-0.5 rounded text-[10px] ${active ? 'bg-white/60 text-slate-600 border border-mist-300/50' : 'bg-white border border-slate-200 text-slate-400'}`}>{count}</span>}
+            {count !== undefined && <span className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[10px] text-slate-400">{count}</span>}
         </button>
     );
 
     return (
-        <div className="flex h-full bg-transparent font-sans">
+        <div className="flex h-full bg-[#f8fafc] font-sans">
             {/* 1. SIDEBAR */}
-            <div className="w-60 bg-mist-50/50 border-r border-mist-300 flex flex-col p-4 z-10">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-3 mt-2">Data Master</div>
-                <div className="space-y-0.5">
+            <div className="w-60 bg-white border-r border-slate-200 flex flex-col p-4 shadow-sm z-10">
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">Data Master</div>
+                <div className="space-y-1">
                     <TabBtn active={activeTab === 'WAREHOUSE'} onClick={() => setActiveTab('WAREHOUSE')} icon={<Building2 size={16}/>} label="Gudang" count={warehouses.length} />
                     <TabBtn active={activeTab === 'SUPPLIER'} onClick={() => setActiveTab('SUPPLIER')} icon={<Users size={16}/>} label="Supplier" count={partners.filter(p=>p.type==='SUPPLIER').length} />
                     <TabBtn active={activeTab === 'CUSTOMER'} onClick={() => setActiveTab('CUSTOMER')} icon={<Users size={16}/>} label="Customer" count={partners.filter(p=>p.type==='CUSTOMER').length} />
                 </div>
                 
-                <div className="mt-6 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-3">Keamanan</div>
-                <div className="space-y-0.5">
+                <div className="mt-8 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">Keamanan</div>
+                <div className="space-y-1">
                     <TabBtn active={activeTab === 'USERS'} onClick={() => setActiveTab('USERS')} icon={<UserCircle size={16}/>} label="Pengguna" count={users.length} />
                 </div>
 
-                <div className="mt-6 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-3">Integrasi</div>
-                <div className="space-y-0.5">
+                <div className="mt-8 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">Integrasi</div>
+                <div className="space-y-1">
                     <TabBtn active={activeTab === 'EXTERNAL_SYNC'} onClick={() => setActiveTab('EXTERNAL_SYNC')} icon={<Share2 size={16}/>} label="Google Sync" />
                 </div>
             </div>
 
             {/* 2. MAIN CONTENT */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-transparent">
+            <div className="flex-1 flex flex-col overflow-hidden bg-[#f8fafc]">
                 {activeTab !== 'EXTERNAL_SYNC' ? (
                     <div className="p-6 h-full flex flex-col">
                         {/* HEADER TOOLBAR */}
