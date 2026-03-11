@@ -37,6 +37,7 @@ export const RejectView: React.FC = () => {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedOutlet, setSelectedOutlet] = useState('');
     const [rejectLines, setRejectLines] = useState<RejectItem[]>([]);
+    const [editingBatchId, setEditingBatchId] = useState<string | null>(null);
     const [query, setQuery] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [selectedIndex, setSelectedIndex] = useState(0);
@@ -171,15 +172,26 @@ export const RejectView: React.FC = () => {
         if (rejectLines.length === 0) return showToast("Item kosong", "warning");
         try {
             await StorageService.saveRejectBatch({
-                id: `REJ-${Date.now().toString().slice(-6)}`,
+                id: editingBatchId || `REJ-${Date.now().toString().slice(-6)}`,
                 date,
                 outlet: selectedOutlet,
                 createdAt: Date.now(),
                 items: rejectLines
             });
-            showToast("Data Reject Tersimpan", "success");
-            setRejectLines([]); loadData();
+            showToast(editingBatchId ? "Data Reject Diperbarui" : "Data Reject Tersimpan", "success");
+            setRejectLines([]); 
+            setEditingBatchId(null);
+            loadData();
+            setActiveTab('HISTORY');
         } catch (e) { showToast("Gagal simpan", "error"); }
+    };
+
+    const handleEditBatch = (batch: RejectBatch) => {
+        setEditingBatchId(batch.id);
+        setDate(batch.date);
+        setSelectedOutlet(batch.outlet);
+        setRejectLines(batch.items);
+        setActiveTab('NEW');
     };
 
     const handleSaveMasterItem = async () => {
@@ -428,8 +440,13 @@ export const RejectView: React.FC = () => {
                     {activeTab === 'NEW' && (
                         <>
                             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-mist-300 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400" />
-                            <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5">
-                                <Save size={13}/> Simpan
+                            {editingBatchId && (
+                                <button onClick={() => { setEditingBatchId(null); setRejectLines([]); }} className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
+                                    <X size={13}/> Batal Edit
+                                </button>
+                            )}
+                            <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
+                                <Save size={13}/> {editingBatchId ? 'Update' : 'Simpan'}
                             </button>
                         </>
                     )}
@@ -603,6 +620,7 @@ export const RejectView: React.FC = () => {
                                             <td className="px-3 text-center">
                                                 <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button onClick={() => setViewingBatch(b)} className="p-1 text-blue-500 hover:bg-blue-100 rounded" title="Lihat Detail"><Eye size={12}/></button>
+                                                    <button onClick={() => handleEditBatch(b)} className="p-1 text-amber-500 hover:bg-amber-100 rounded" title="Edit"><Edit3 size={12}/></button>
                                                     <button onClick={() => handleCopyToClipboard(b)} className="p-1 text-slate-400 hover:bg-slate-200 rounded" title="Copy Teks"><Copy size={12}/></button>
                                                     <button onClick={() => setBatchToDelete(b.id)} className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12}/></button>
                                                 </div>
