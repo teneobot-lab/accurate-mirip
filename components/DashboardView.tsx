@@ -76,9 +76,28 @@ export const DashboardView: React.FC = () => {
             {/* TOP COMPACT STATS BAR */}
             <div className="h-12 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between px-4 shrink-0">
                 <div className="flex h-full items-center">
-                    <StatMini label="Stok Tersedia" value={data.summary.totalStock} icon={Package} colorClass="text-blue-600" />
-                    <StatMini label="Masuk (Periode)" value={data.summary.totalIn} icon={ArrowDownRight} colorClass="text-emerald-600" />
-                    <StatMini label="Keluar (Periode)" value={data.summary.totalOut} icon={ArrowUpRight} colorClass="text-rose-600" />
+                    {isLoading ? (
+                        <>
+                            <div className="flex items-center gap-3 px-4 border-r border-slate-200 last:border-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-200 animate-pulse"></div>
+                                <div><div className="h-2 w-16 bg-slate-200 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-slate-200 rounded animate-pulse"></div></div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 border-r border-slate-200 last:border-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-200 animate-pulse"></div>
+                                <div><div className="h-2 w-16 bg-slate-200 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-slate-200 rounded animate-pulse"></div></div>
+                            </div>
+                            <div className="flex items-center gap-3 px-4 border-r border-slate-200 last:border-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-200 animate-pulse"></div>
+                                <div><div className="h-2 w-16 bg-slate-200 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-slate-200 rounded animate-pulse"></div></div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <StatMini label="Stok Tersedia" value={data.summary.totalStock} icon={Package} colorClass="text-blue-600" />
+                            <StatMini label="Masuk (Periode)" value={data.summary.totalIn} icon={ArrowDownRight} colorClass="text-emerald-600" />
+                            <StatMini label="Keluar (Periode)" value={data.summary.totalOut} icon={ArrowUpRight} colorClass="text-rose-600" />
+                        </>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-2 py-1">
@@ -105,29 +124,45 @@ export const DashboardView: React.FC = () => {
                         <span className="text-[9px] font-bold bg-rose-100 text-rose-600 px-1.5 rounded-full">{data.lowStock.length}</span>
                     </div>
                     <div className="flex-1 overflow-auto custom-scrollbar">
-                        {data.lowStock.map(it => (
-                            <div key={it.id} className="p-3 border-b border-slate-100 hover:bg-white transition-colors">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="text-[11px] font-semibold text-slate-700 truncate w-40">{it.name}</span>
-                                    <span className="text-[9px] font-mono text-slate-400">{it.code}</span>
-                                </div>
-                                <div className="flex justify-between items-end">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] text-slate-400 uppercase leading-none">Status Stok</span>
-                                        <span className="text-[12px] font-bold text-rose-600 mt-1">
-                                            {it.current.toLocaleString()} <span className="text-[10px] font-medium text-slate-400">{it.baseUnit}</span>
-                                        </span>
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="p-3 border-b border-slate-100">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="h-3 w-32 bg-slate-200 rounded animate-pulse"></div>
+                                        <div className="h-2 w-12 bg-slate-200 rounded animate-pulse"></div>
                                     </div>
-                                    <div className="text-right">
-                                        <span className="text-[9px] text-slate-400 block leading-none">Min. Stock</span>
-                                        <span className="text-[10px] font-semibold text-slate-500">{it.minStock}</span>
+                                    <div className="flex justify-between items-end mb-2">
+                                        <div className="h-4 w-16 bg-slate-200 rounded animate-pulse"></div>
+                                        <div className="h-3 w-10 bg-slate-200 rounded animate-pulse"></div>
+                                    </div>
+                                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden"></div>
+                                </div>
+                            ))
+                        ) : (
+                            data.lowStock.map(it => (
+                                <div key={it.id} className="p-3 border-b border-slate-100 hover:bg-white transition-colors">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="text-[11px] font-semibold text-slate-700 truncate w-40">{it.name}</span>
+                                        <span className="text-[9px] font-mono text-slate-400">{it.code}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end">
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] text-slate-400 uppercase leading-none">Status Stok</span>
+                                            <span className="text-[12px] font-bold text-rose-600 mt-1">
+                                                {it.current.toLocaleString()} <span className="text-[10px] font-medium text-slate-400">{it.baseUnit}</span>
+                                            </span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[9px] text-slate-400 block leading-none">Min. Stock</span>
+                                            <span className="text-[10px] font-semibold text-slate-500">{it.minStock}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
+                                        <div className="h-full bg-rose-500" style={{ width: `${Math.min((it.current / it.minStock) * 100, 100)}%` }}></div>
                                     </div>
                                 </div>
-                                <div className="mt-2 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                    <div className="h-full bg-rose-500" style={{ width: `${Math.min((it.current / it.minStock) * 100, 100)}%` }}></div>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -152,25 +187,38 @@ export const DashboardView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {data.recentTx.map(tx => (
-                                    <tr key={tx.id} className="h-8 hover:bg-blue-50/40 group transition-colors">
-                                        <td className="px-4 text-[11px] font-mono text-slate-500 truncate">{tx.referenceNo}</td>
-                                        <td className="px-4 text-[11px] text-slate-600">{tx.date}</td>
-                                        <td className="px-4 text-center">
-                                            <span className={`px-1 rounded text-[9px] font-bold uppercase border ${tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                                                {tx.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 text-[11px] text-slate-700 truncate font-medium">
-                                            {tx.partnerName ? <span className="uppercase text-[10px] bg-slate-100 px-1 rounded mr-2 text-slate-500">{tx.partnerName}</span> : null}
-                                            {tx.notes || (tx.items.length > 0 ? tx.items[0].name : '-')}
-                                        </td>
-                                        <td className="px-4 text-center text-[11px] font-bold text-slate-500">{tx.items.length}</td>
-                                        <td className="px-4 text-[11px] text-slate-500 truncate uppercase">
-                                            {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || '-'}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {isLoading ? (
+                                    Array.from({ length: 10 }).map((_, i) => (
+                                        <tr key={i} className="h-8">
+                                            <td className="px-4"><div className="h-3 w-20 bg-slate-200 rounded animate-pulse"></div></td>
+                                            <td className="px-4"><div className="h-3 w-16 bg-slate-200 rounded animate-pulse"></div></td>
+                                            <td className="px-4 text-center"><div className="h-3 w-8 bg-slate-200 rounded animate-pulse mx-auto"></div></td>
+                                            <td className="px-4"><div className="h-3 w-48 bg-slate-200 rounded animate-pulse"></div></td>
+                                            <td className="px-4 text-center"><div className="h-3 w-4 bg-slate-200 rounded animate-pulse mx-auto"></div></td>
+                                            <td className="px-4"><div className="h-3 w-16 bg-slate-200 rounded animate-pulse"></div></td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    data.recentTx.map(tx => (
+                                        <tr key={tx.id} className="h-8 hover:bg-blue-50/40 group transition-colors">
+                                            <td className="px-4 text-[11px] font-mono text-slate-500 truncate">{tx.referenceNo}</td>
+                                            <td className="px-4 text-[11px] text-slate-600">{tx.date}</td>
+                                            <td className="px-4 text-center">
+                                                <span className={`px-1 rounded text-[9px] font-bold uppercase border ${tx.type === 'IN' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                    {tx.type}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 text-[11px] text-slate-700 truncate font-medium">
+                                                {tx.partnerName ? <span className="uppercase text-[10px] bg-slate-100 px-1 rounded mr-2 text-slate-500">{tx.partnerName}</span> : null}
+                                                {tx.notes || (tx.items.length > 0 ? tx.items[0].name : '-')}
+                                            </td>
+                                            <td className="px-4 text-center text-[11px] font-bold text-slate-500">{tx.items.length}</td>
+                                            <td className="px-4 text-[11px] text-slate-500 truncate uppercase">
+                                                {warehouses.find(w => w.id === tx.sourceWarehouseId)?.name || '-'}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
