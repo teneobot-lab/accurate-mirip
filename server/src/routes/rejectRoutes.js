@@ -136,12 +136,9 @@ router.post('/batches', async (req, res, next) => {
         const batchId = id || uuidv4();
         
         await conn.query(
-            'INSERT INTO reject_batches (id, date, outlet) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE date=VALUES(date), outlet=VALUES(outlet)',
+            'INSERT INTO reject_batches (id, date, outlet) VALUES (?, ?, ?)',
             [batchId, date, outlet]
         );
-
-        // Clear existing items if updating
-        await conn.query('DELETE FROM reject_items WHERE batch_id = ?', [batchId]);
 
         for (const it of items) {
             // Gunakan baseQty dari payload frontend
