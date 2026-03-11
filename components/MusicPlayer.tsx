@@ -77,8 +77,8 @@ const MusicPlayer: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={`p-1.5 rounded-lg border transition-all flex items-center gap-2 ${
           currentSong 
-          ? 'bg-blue-50 text-blue-700 border-blue-200 pr-3' 
-          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+          ? 'bg-brand/10 text-brand border-brand/20 pr-3' 
+          : 'bg-mist-50/50 text-slate-400 border-mist-300 hover:border-mist-400'
         }`}
       >
         <Music size={18} className={currentSong ? 'animate-pulse' : ''} />

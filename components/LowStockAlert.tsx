@@ -59,8 +59,8 @@ export const LowStockAlert: React.FC = () => {
                 onClick={() => setIsOpen(!isOpen)} 
                 className={`relative p-1.5 rounded-lg transition-all border ${
                     isOpen 
-                    ? 'bg-slate-200 text-slate-800 border-slate-300' 
-                    : 'text-slate-400 border-transparent hover:bg-slate-100 hover:text-slate-600'
+                    ? 'bg-mist-200 text-slate-800 border-mist-300' 
+                    : 'text-slate-400 border-transparent hover:bg-mist-100 hover:text-slate-600'
                 }`}
             >
                 <Bell size={18} className={alerts.length > 0 && !isOpen ? 'animate-bounce-subtle' : ''} />

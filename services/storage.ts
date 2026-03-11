@@ -41,7 +41,7 @@ export const StorageService = {
         errorMessage = errorData.message || errorMessage;
       } catch (e) {
         if (response.status === 404) errorMessage = `Route not found: ${endpoint}.`;
-        else if (response.status === 500) errorMessage = 'Server Error: Periksa koneksi database MySQL.';
+        else if (response.status === 500) errorMessage = 'Server Error: Terjadi kesalahan pada server.';
         else errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMessage);

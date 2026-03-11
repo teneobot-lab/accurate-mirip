@@ -70,7 +70,7 @@ export const GlobalSearch: React.FC<Props> = ({ onSelectItem }) => {
         </div>
         <input
           ref={inputRef} type="text"
-          className="block w-full pl-9 pr-4 py-1.5 border border-slate-200 bg-white text-slate-700 rounded-lg placeholder:text-slate-400 focus:ring-1 focus:ring-slate-100 focus:border-slate-300 text-[11px] font-medium transition-all outline-none"
+          className="block w-full pl-9 pr-4 py-1.5 border border-mist-300 bg-mist-50/50 text-slate-700 rounded-lg placeholder:text-slate-400 focus:ring-1 focus:ring-brand/30 focus:border-brand/30 text-[11px] font-medium transition-all outline-none"
           placeholder="Cari Master Barang..."
           value={query}
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true); setSelectedIndex(0); }}

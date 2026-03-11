@@ -12,6 +12,7 @@ import { LoginPage } from './components/LoginPage';
 import MusicPlayer from './components/MusicPlayer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { LowStockAlert } from './components/LowStockAlert';
+import { ClockWidget } from './components/ClockWidget';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
 import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus } from 'lucide-react';
@@ -58,8 +59,8 @@ function App() {
       }}
       className={`flex items-center w-full px-3 py-2 mb-0.5 text-[12px] font-medium rounded-lg transition-all ${
         activeTab === id && !viewingItem && !activeTransaction
-        ? 'bg-mist-300/30 text-slate-800 shadow-sm border border-mist-300' 
-        : 'text-slate-500 hover:text-slate-800 hover:bg-mist-200/50'
+        ? 'bg-brand/10 text-brand shadow-sm border border-brand/20' 
+        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
       }`}
     >
       <Icon size={16} className="mr-3 flex-shrink-0" />
@@ -77,44 +78,44 @@ function App() {
           {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/10 z-40 lg:hidden backdrop-blur-[1px]" onClick={() => setIsSidebarOpen(false)}></div>}
 
           <div className="flex h-screen overflow-hidden">
-              <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-mist-100 flex flex-col text-slate-600 border-r border-mist-300 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 flex flex-col text-slate-300 border-r border-slate-800 transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                   {/* BRAND HEADER */}
-                  <div className="h-14 flex items-center justify-between px-4 border-b border-mist-300 bg-mist-100/50 backdrop-blur-md">
+                  <div className="h-14 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md">
                       <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 flex items-center justify-center bg-slate-800 rounded">
+                          <div className="w-6 h-6 flex items-center justify-center bg-brand rounded">
                               <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-4 h-4">
                                   <circle cx="50" cy="50" r="40" stroke="white" strokeWidth="12"/>
                                   <path d="M50 30V70M30 50H70" stroke="white" strokeWidth="12"/>
                               </svg>
                           </div>
                           <div className="flex flex-col">
-                              <span className="text-slate-800 font-semibold text-xs tracking-tight leading-none uppercase">GudangPro</span>
-                              <span className="text-slate-400 font-normal text-[9px] tracking-widest leading-none mt-1 uppercase">Research</span>
+                              <span className="text-white font-semibold text-xs tracking-tight leading-none uppercase">GudangPro</span>
+                              <span className="text-slate-500 font-normal text-[9px] tracking-widest leading-none mt-1 uppercase">Research</span>
                           </div>
                       </div>
-                      <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1.5 text-slate-400 hover:text-slate-600"><X size={16}/></button>
+                      <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-1.5 text-slate-400 hover:text-white"><X size={16}/></button>
                   </div>
 
                   <div className="p-2 flex-1 overflow-y-auto custom-scrollbar">
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase mb-2 px-3 tracking-widest mt-2">Main Menu</div>
+                      <div className="text-[10px] font-semibold text-slate-500 uppercase mb-2 px-3 tracking-widest mt-2">Main Menu</div>
                       <NavItem id="DASHBOARD" label="Dashboard" icon={LayoutDashboard} />
                       <NavItem id="INVENTORY" label="Stok Barang" icon={Package} />
                       <NavItem id="REPORTS" label="Mutasi Stok" icon={FileBarChart} />
                       <NavItem id="REJECT" label="Barang Reject" icon={AlertOctagon} />
                       
-                      <div className="mt-5 text-[10px] font-semibold text-slate-400 uppercase mb-2 px-3 tracking-widest">Transaksi</div>
+                      <div className="mt-5 text-[10px] font-semibold text-slate-500 uppercase mb-2 px-3 tracking-widest">Transaksi</div>
                       <div className="space-y-0.5 px-1">
-                          <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg flex items-center transition-all border border-transparent hover:border-emerald-100">
+                          <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center transition-all border border-transparent hover:border-emerald-500/20">
                               <Plus size={14} className="mr-3"/> Penerimaan
                           </button>
-                          <button onClick={() => { setActiveTransaction({ type: 'OUT' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] font-medium text-rose-600 hover:bg-rose-50 rounded-lg flex items-center transition-all border border-transparent hover:border-rose-100">
+                          <button onClick={() => { setActiveTransaction({ type: 'OUT' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] font-medium text-rose-400 hover:bg-rose-500/10 rounded-lg flex items-center transition-all border border-transparent hover:border-rose-500/20">
                               <Plus size={14} className="mr-3"/> Pengiriman
                           </button>
                       </div>
                       
-                      <div className="mt-auto border-t border-mist-300 pt-2">
+                      <div className="mt-auto border-t border-slate-800 pt-2">
                           <NavItem id="SETTINGS" label="Pengaturan" icon={Settings} />
-                          <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-[12px] font-medium rounded-lg transition-all text-slate-500 hover:text-rose-600 hover:bg-rose-50 mt-0.5">
+                          <button onClick={handleLogout} className="flex items-center w-full px-3 py-2 text-[12px] font-medium rounded-lg transition-all text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 mt-0.5">
                               <LogOut size={16} className="mr-3 flex-shrink-0" />
                               <span>Log Out</span>
                           </button>
@@ -145,6 +146,7 @@ function App() {
                       )}
 
                       <div className="flex items-center gap-2 shrink-0">
+                          <ClockWidget />
                           <LowStockAlert />
                           <MusicPlayer />
                           <div className="flex items-center gap-2 pl-3 border-l border-mist-300 ml-1">
