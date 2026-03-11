@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock } from 'lucide-react';
+import { CalendarDays, Clock } from 'lucide-react';
 
 export const ClockWidget: React.FC = () => {
   const [time, setTime] = useState(new Date());
@@ -11,16 +11,16 @@ export const ClockWidget: React.FC = () => {
   }, []);
 
   return (
-    <div className="flex items-center gap-3 text-slate-600 bg-mist-50/50 border border-mist-300 px-3 py-1.5 rounded-lg">
-      <div className="flex items-center gap-1.5 border-r border-mist-300 pr-3">
-        <Clock size={14} className="text-brand" />
-        <span className="font-mono text-[11px] font-bold text-slate-700">
-          {time.toLocaleTimeString([], { hour12: false })}
+    <div className="flex items-center bg-slate-800 rounded-lg shadow-inner border border-slate-700 overflow-hidden mr-1">
+      <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 border-r border-slate-700">
+        <Clock size={12} className="text-emerald-400" />
+        <span className="font-mono text-[12px] font-bold tracking-wider text-emerald-50">
+          {time.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <Calendar size={14} className="text-emerald-600" />
-        <span className="text-[10px] font-bold uppercase tracking-tight text-slate-500">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800">
+        <CalendarDays size={12} className="text-blue-400" />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
           {time.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
         </span>
       </div>
