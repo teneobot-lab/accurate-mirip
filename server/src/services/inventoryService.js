@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 /**
  * UTILS: Update Stock Function
  */
-const updateStockAtomically = async (conn, warehouseId, itemId, qty, op) => {
+const updateStockAtomically = async (conn, warehouseId, itemId, qty, op, isHardDelete = false) => {
     // 1. Ensure Stock Record Exists
     await conn.query(
         `INSERT INTO stock (warehouse_id, item_id, qty) VALUES (?, ?, 0) 
@@ -26,7 +26,7 @@ const updateStockAtomically = async (conn, warehouseId, itemId, qty, op) => {
     const changeQty = Number(qty);
 
     // 3. Logic Validation (Jangan biarkan stok minus saat transaksi OUT atau REVERT IN)
-    if (op === '-' && currentQty < changeQty) {
+    if (!isHardDelete && op === '-' && currentQty < changeQty) {
         const error = new Error(`Stok tidak cukup untuk Item ID: ${itemId}. Sisa: ${currentQty}, Dibutuhkan pengurangan: ${changeQty}`);
         error.code = 'INSUFFICIENT_STOCK';
         throw error;
@@ -43,7 +43,7 @@ const updateStockAtomically = async (conn, warehouseId, itemId, qty, op) => {
 /**
  * REVERT LOGIC
  */
-const revertTransactionEffects = async (conn, transactionId) => {
+const revertTransactionEffects = async (conn, transactionId, isHardDelete = false) => {
     // FIX: Gunakan cara akses array yang aman untuk menghindari TypeError
     const [txRows] = await conn.query('SELECT * FROM transactions WHERE id = ? FOR UPDATE', [transactionId]);
     if (txRows.length === 0) return null;
@@ -56,7 +56,7 @@ const revertTransactionEffects = async (conn, transactionId) => {
         // IN -> Revert dengan (-)
         // OUT -> Revert dengan (+)
         const op = (tx.type === 'IN' || tx.type === 'ADJUSTMENT') ? '-' : '+';
-        await updateStockAtomically(conn, tx.source_warehouse_id, item.item_id, baseQty, op);
+        await updateStockAtomically(conn, tx.source_warehouse_id, item.item_id, baseQty, op, isHardDelete);
     }
     
     return tx;
@@ -182,13 +182,13 @@ exports.updateTransaction = async (id, data, user) => {
 /**
  * DELETE TRANSACTION
  */
-exports.deleteTransaction = async (id) => {
+exports.deleteTransaction = async (id, isHardDelete = false) => {
     const conn = await db.getConnection();
     try {
         await conn.query('SET innodb_lock_wait_timeout = 10');
         await conn.beginTransaction();
 
-        const oldTx = await revertTransactionEffects(conn, id);
+        const oldTx = await revertTransactionEffects(conn, id, isHardDelete);
         if (!oldTx) {
             console.warn(`[INVENTORY_SERVICE] Delete failed: Transaction ${id} not found.`);
             throw new Error("Transaksi tidak ditemukan");

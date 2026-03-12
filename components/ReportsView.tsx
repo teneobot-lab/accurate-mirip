@@ -60,8 +60,19 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     const handleDelete = async () => {
         if (!selectedTxId) return;
         try {
-            await StorageService.deleteTransaction(selectedTxId);
+            await StorageService.deleteTransaction(selectedTxId, false);
             showToast('Transaksi dihapus', 'success');
+            setSelectedTxId(null);
+            refreshData();
+        } catch (e: any) { showToast(e.message, 'error'); }
+        finally { setIsDeleteDialogOpen(false); }
+    };
+
+    const handleHardDelete = async () => {
+        if (!selectedTxId) return;
+        try {
+            await StorageService.deleteTransaction(selectedTxId, true);
+            showToast('Transaksi dihapus paksa', 'success');
             setSelectedTxId(null);
             refreshData();
         } catch (e: any) { showToast(e.message, 'error'); }
@@ -238,7 +249,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 isOpen={isDeleteDialogOpen}
                 title="Hapus Transaksi"
                 message="Apakah Anda yakin ingin menghapus transaksi ini? Stok barang akan dikembalikan seperti semula."
+                confirmText="Hapus Normal"
+                hardDeleteText="Hapus Paksa (Abaikan Stok)"
                 onConfirm={handleDelete}
+                onHardDelete={handleHardDelete}
                 onCancel={() => setIsDeleteDialogOpen(false)}
             />
 

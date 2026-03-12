@@ -7,8 +7,10 @@ interface ConfirmDialogProps {
     message: string;
     confirmText?: string;
     cancelText?: string;
+    hardDeleteText?: string;
     onConfirm: () => void;
     onCancel: () => void;
+    onHardDelete?: () => void;
     isDestructive?: boolean;
 }
 
@@ -18,8 +20,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     message,
     confirmText = 'Hapus',
     cancelText = 'Batal',
+    hardDeleteText,
     onConfirm,
     onCancel,
+    onHardDelete,
     isDestructive = true
 }) => {
     if (!isOpen) return null;
@@ -41,13 +45,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                     <p className="text-sm text-slate-600 leading-relaxed">{message}</p>
                 </div>
                 
-                <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 flex-wrap">
                     <button 
                         onClick={onCancel} 
                         className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
                     >
                         {cancelText}
                     </button>
+                    {onHardDelete && hardDeleteText && (
+                        <button 
+                            onClick={onHardDelete} 
+                            className="px-4 py-2 text-white bg-orange-600 hover:bg-orange-700 rounded-lg text-xs font-bold shadow-sm transition-all active:scale-95"
+                        >
+                            {hardDeleteText}
+                        </button>
+                    )}
                     <button 
                         onClick={() => {
                             onConfirm();

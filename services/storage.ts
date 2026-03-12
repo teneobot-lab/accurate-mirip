@@ -94,7 +94,7 @@ export const StorageService = {
   },
   async commitTransaction(tx: Transaction) { return this.apiCall('/api/transactions', { method: 'POST', body: JSON.stringify(tx) }); },
   async updateTransaction(id: string, tx: Transaction) { return this.apiCall(`/api/transactions/${id}`, { method: 'PUT', body: JSON.stringify(tx) }); },
-  async deleteTransaction(id: string) { return this.apiCall(`/api/transactions/${id}`, { method: 'DELETE' }); },
+  async deleteTransaction(id: string, isHardDelete = false) { return this.apiCall(`/api/transactions/${id}${isHardDelete ? '?hard=true' : ''}`, { method: 'DELETE' }); },
 
   // --- REJECT MODULE ---
   async fetchRejectOutlets(): Promise<string[]> { return this.apiCall('/api/reject/outlets'); },

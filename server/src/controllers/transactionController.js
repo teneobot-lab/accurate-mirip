@@ -73,10 +73,11 @@ exports.updateTransaction = async (req, res, next) => {
  */
 exports.deleteTransaction = async (req, res, next) => {
     const { id } = req.params;
-    console.log(`[TX_CONTROLLER] ATTEMPT DELETE: ${id}`);
+    const isHardDelete = req.query.hard === 'true';
+    console.log(`[TX_CONTROLLER] ATTEMPT DELETE: ${id}, Hard: ${isHardDelete}`);
     
     try {
-        await inventoryService.deleteTransaction(id);
+        await inventoryService.deleteTransaction(id, isHardDelete);
         console.log(`[TX_CONTROLLER] DELETE SUCCESS: ${id}`);
         return res.json({ success: true, message: 'Transaksi berhasil dihapus' });
     } catch (error) {
