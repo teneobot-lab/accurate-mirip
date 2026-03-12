@@ -181,15 +181,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.baseUnit}</span>
                                 </td>
                                 <td className="px-4">
-                                    <div className="flex flex-wrap gap-1">
+                                    <div className="flex flex-wrap items-center gap-1.5">
                                         {item.conversions && item.conversions.length > 0 ? (
                                             item.conversions.map((conv, idx) => (
-                                                <span key={idx} className="text-[9px] font-medium bg-mist-100 text-slate-500 px-1.5 py-0.5 rounded border border-mist-200 whitespace-nowrap">
-                                                    1 {conv.name} = {conv.operator === '*' ? conv.ratio : `1/${conv.ratio}`} {item.baseUnit}
-                                                </span>
+                                                <div key={idx} className="flex items-center">
+                                                    <span className="text-[11px] font-bold text-slate-700">
+                                                        {conv.ratio}
+                                                    </span>
+                                                    <span className="text-[9px] font-semibold text-slate-400 ml-1 uppercase">
+                                                        {conv.name}
+                                                    </span>
+                                                    {idx < item.conversions!.length - 1 && (
+                                                        <span className="text-mist-300 mx-1.5">|</span>
+                                                    )}
+                                                </div>
                                             ))
                                         ) : (
-                                            <span className="text-[9px] text-slate-300 italic">-</span>
+                                            <span className="text-[10px] text-slate-300 font-medium">-</span>
                                         )}
                                     </div>
                                 </td>
