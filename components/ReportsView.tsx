@@ -93,10 +93,10 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
         XLSX.writeFile(wb, `Mutasi_${startDate}.xlsx`);
     };
 
-    const ToolBtn = ({ icon: Icon, label, onClick, disabled = false, color = "text-slate-600", active = false, customRef }: any) => (
+    const ToolBtn = ({ icon: Icon, label, onClick, disabled = false, color = "text-slate-300", active = false, customRef }: any) => (
         <button 
             ref={customRef} onClick={onClick} disabled={disabled}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border-r border-mist-300 transition-colors disabled:opacity-30 ${active ? 'bg-mist-200' : 'hover:bg-mist-100'} ${color}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border-r border-slate-700/50 transition-colors disabled:opacity-30 ${active ? 'bg-slate-700 text-white' : 'hover:bg-slate-700/50'} ${color}`}
         >
             <Icon size={13} />
             <span className="text-[10px] font-bold uppercase tracking-tight">{label}</span>
@@ -106,35 +106,35 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     return (
         <div className="flex flex-col h-full bg-white font-sans overflow-hidden relative">
             {/* 1. STICKY ACTION TOOLBAR */}
-            <div className="sticky top-0 h-9 border-b border-mist-300 bg-white flex items-center justify-between px-2 shrink-0 z-30 shadow-sm">
+            <div className="sticky top-0 h-10 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-2 shrink-0 z-30 shadow-md">
                 <div className="flex items-center h-full">
                     <div className="relative h-full flex items-center">
-                        <ToolBtn icon={Plus} label="Baru" onClick={() => setShowNewDropdown(!showNewDropdown)} active={showNewDropdown} customRef={newButtonRef} color="text-emerald-600" />
+                        <ToolBtn icon={Plus} label="Baru" onClick={() => setShowNewDropdown(!showNewDropdown)} active={showNewDropdown} customRef={newButtonRef} color="text-emerald-400" />
                         {showNewDropdown && (
-                            <div className="absolute top-full left-0 mt-0.5 bg-white border border-mist-300 shadow-xl z-[100] w-40 rounded-lg overflow-hidden py-1 animate-in fade-in slide-in-from-top-1">
-                                <button onClick={()=>{onCreateTransaction('IN'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-1.5 hover:bg-mist-50 text-[10px] font-semibold text-emerald-600 flex items-center gap-2"><ArrowDown size={12}/> Penerimaan (IN)</button>
-                                <button onClick={()=>{onCreateTransaction('OUT'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-1.5 hover:bg-mist-50 text-[10px] font-semibold text-rose-600 flex items-center gap-2"><ArrowUp size={12}/> Pengiriman (OUT)</button>
+                            <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 shadow-xl z-[100] w-40 rounded-lg overflow-hidden py-1 animate-in fade-in slide-in-from-top-1">
+                                <button onClick={()=>{onCreateTransaction('IN'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-[10px] font-semibold text-emerald-400 flex items-center gap-2 transition-colors"><ArrowDown size={12}/> Penerimaan (IN)</button>
+                                <button onClick={()=>{onCreateTransaction('OUT'); setShowNewDropdown(false);}} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-[10px] font-semibold text-rose-400 flex items-center gap-2 transition-colors"><ArrowUp size={12}/> Pengiriman (OUT)</button>
                             </div>
                         )}
                     </div>
                     <div className="hidden md:flex h-full items-center">
-                        <ToolBtn icon={Edit3} label="Ubah" onClick={handleEdit} disabled={!selectedTxId} color="text-blue-600" />
-                        <ToolBtn icon={Trash2} label="Hapus" onClick={() => setIsDeleteDialogOpen(true)} disabled={!selectedTxId} color="text-rose-600" />
+                        <ToolBtn icon={Edit3} label="Ubah" onClick={handleEdit} disabled={!selectedTxId} color="text-blue-400" />
+                        <ToolBtn icon={Trash2} label="Hapus" onClick={() => setIsDeleteDialogOpen(true)} disabled={!selectedTxId} color="text-rose-400" />
                     </div>
                     <ToolBtn icon={RefreshCw} label="Segarkan" onClick={refreshData} />
-                    <ToolBtn icon={FileSpreadsheet} label="Excel" onClick={handleExportExcel} color="text-emerald-600" />
+                    <ToolBtn icon={FileSpreadsheet} label="Excel" onClick={handleExportExcel} color="text-emerald-400" />
                 </div>
                 
                 <div className="flex items-center gap-2 px-2 h-full">
-                    <div className="flex items-center gap-1.5 bg-white border border-mist-300 rounded px-2 py-0.5">
+                    <div className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded px-2 py-1 shadow-inner">
                         <Calendar size={11} className="text-slate-400" />
-                        <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
-                        <span className="text-slate-300 text-[10px]">/</span>
-                        <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent w-24" />
+                        <input type="date" value={startDate} onChange={e=>setStartDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent text-slate-200 w-24 [color-scheme:dark]" />
+                        <span className="text-slate-500 text-[10px]">/</span>
+                        <input type="date" value={endDate} onChange={e=>setEndDate(e.target.value)} className="text-[10px] font-bold outline-none border-none bg-transparent text-slate-200 w-24 [color-scheme:dark]" />
                     </div>
                     <div className="relative">
-                        <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder="Cari..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="pl-7 pr-3 py-0.5 bg-white border border-mist-300 rounded text-[10px] font-bold outline-none w-28 focus:border-blue-400" />
+                        <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="text" placeholder="Cari..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="pl-8 pr-3 py-1 bg-slate-800 border border-slate-700 rounded text-[10px] font-bold outline-none w-32 text-slate-200 focus:border-blue-500 placeholder:text-slate-500 shadow-inner transition-colors" />
                     </div>
                 </div>
             </div>

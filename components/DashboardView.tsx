@@ -60,13 +60,13 @@ export const DashboardView: React.FC = () => {
     }, [items, stocks, transactions, startDate, endDate]);
 
     const StatMini = ({ label, value, icon: Icon, colorClass }: any) => (
-        <div className="flex items-center gap-3 px-4 border-r border-mist-300 last:border-0">
+        <div className="flex items-center gap-3 px-4 border-r border-slate-700/50 last:border-0">
             <div className={`p-1.5 rounded-lg ${colorClass} bg-opacity-10`}>
                 <Icon size={14} className={colorClass}/>
             </div>
             <div>
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight leading-none">{label}</p>
-                <p className="text-[13px] font-bold text-slate-700 mt-1 leading-none">{value.toLocaleString()}</p>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-tight leading-none">{label}</p>
+                <p className="text-[13px] font-bold text-slate-200 mt-1 leading-none">{value.toLocaleString()}</p>
             </div>
         </div>
     );
@@ -74,39 +74,39 @@ export const DashboardView: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-white font-sans animate-in fade-in duration-300">
             {/* TOP COMPACT STATS BAR */}
-            <div className="h-12 border-b border-mist-300 bg-mist-50 flex items-center justify-between px-4 shrink-0">
+            <div className="h-12 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 shrink-0 shadow-md">
                 <div className="flex h-full items-center">
                     {isLoading ? (
                         <>
-                            <div className="flex items-center gap-3 px-4 border-r border-mist-300 last:border-0">
-                                <div className="w-7 h-7 rounded-lg bg-mist-200 animate-pulse"></div>
-                                <div><div className="h-2 w-16 bg-mist-200 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-mist-200 rounded animate-pulse"></div></div>
+                            <div className="flex items-center gap-3 px-4 border-r border-slate-700/50 last:border-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-800 animate-pulse"></div>
+                                <div><div className="h-2 w-16 bg-slate-800 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-slate-800 rounded animate-pulse"></div></div>
                             </div>
-                            <div className="flex items-center gap-3 px-4 border-r border-mist-300 last:border-0">
-                                <div className="w-7 h-7 rounded-lg bg-mist-200 animate-pulse"></div>
-                                <div><div className="h-2 w-16 bg-mist-200 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-mist-200 rounded animate-pulse"></div></div>
+                            <div className="flex items-center gap-3 px-4 border-r border-slate-700/50 last:border-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-800 animate-pulse"></div>
+                                <div><div className="h-2 w-16 bg-slate-800 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-slate-800 rounded animate-pulse"></div></div>
                             </div>
-                            <div className="flex items-center gap-3 px-4 border-r border-mist-300 last:border-0">
-                                <div className="w-7 h-7 rounded-lg bg-mist-200 animate-pulse"></div>
-                                <div><div className="h-2 w-16 bg-mist-200 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-mist-200 rounded animate-pulse"></div></div>
+                            <div className="flex items-center gap-3 px-4 border-r border-slate-700/50 last:border-0">
+                                <div className="w-7 h-7 rounded-lg bg-slate-800 animate-pulse"></div>
+                                <div><div className="h-2 w-16 bg-slate-800 rounded animate-pulse mb-1"></div><div className="h-3 w-12 bg-slate-800 rounded animate-pulse"></div></div>
                             </div>
                         </>
                     ) : (
                         <>
                             <StatMini label="Stok Tersedia" value={data.summary.totalStock} icon={Package} colorClass="text-brand" />
-                            <StatMini label="Masuk (Periode)" value={data.summary.totalIn} icon={ArrowDownRight} colorClass="text-emerald-600" />
-                            <StatMini label="Keluar (Periode)" value={data.summary.totalOut} icon={ArrowUpRight} colorClass="text-rose-600" />
+                            <StatMini label="Masuk (Periode)" value={data.summary.totalIn} icon={ArrowDownRight} colorClass="text-emerald-400" />
+                            <StatMini label="Keluar (Periode)" value={data.summary.totalOut} icon={ArrowUpRight} colorClass="text-rose-400" />
                         </>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 bg-white border border-mist-300 rounded-md px-2 py-1">
+                    <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-md px-2 py-1 shadow-inner">
                         <Calendar size={12} className="text-slate-400"/>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-[10px] font-semibold outline-none bg-transparent w-24 text-slate-600" />
-                        <span className="text-slate-300">-</span>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-[10px] font-semibold outline-none bg-transparent w-24 text-slate-600" />
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-[10px] font-semibold outline-none bg-transparent w-24 text-slate-200 [color-scheme:dark]" />
+                        <span className="text-slate-500">-</span>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-[10px] font-semibold outline-none bg-transparent w-24 text-slate-200 [color-scheme:dark]" />
                     </div>
-                    <button onClick={loadData} className="p-1.5 hover:bg-mist-200 rounded-md text-slate-500 transition-colors">
+                    <button onClick={loadData} className="p-1.5 hover:bg-slate-800 rounded-md text-slate-400 hover:text-slate-200 transition-colors">
                         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/>
                     </button>
                 </div>

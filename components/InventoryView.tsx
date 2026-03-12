@@ -127,22 +127,22 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
     return (
         <div className="flex flex-col h-full bg-mist-50 font-sans">
             {/* COMPACT TOOLBAR */}
-            <div className="h-12 border-b border-mist-300 bg-white flex items-center justify-between px-4 shrink-0">
+            <div className="h-12 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-4 shrink-0 shadow-md">
                 <div className="flex items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                         <input 
                             type="text" placeholder="Cari Master Barang..." 
                             value={searchTerm} onChange={e => setSearchTerm(e.target.value)} 
-                            className="pl-9 pr-4 py-1.5 bg-white border border-mist-300 rounded text-[11px] font-medium text-slate-700 outline-none w-64 focus:border-blue-400 transition-all" 
+                            className="pl-9 pr-4 py-1.5 bg-slate-800 border border-slate-700 rounded text-[11px] font-medium text-slate-200 outline-none w-64 focus:border-blue-500 placeholder:text-slate-500 shadow-inner transition-all" 
                         />
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={loadData} className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors">
+                    <button onClick={loadData} className="p-1.5 text-slate-400 hover:text-blue-400 transition-colors">
                         <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''}/>
                     </button>
-                    <button onClick={() => handleOpenModal()} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-semibold flex items-center gap-2 transition-all shadow-sm">
+                    <button onClick={() => handleOpenModal()} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-semibold flex items-center gap-2 transition-all shadow-sm">
                         <Plus size={14}/> Barang Baru
                     </button>
                 </div>

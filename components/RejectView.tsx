@@ -401,7 +401,7 @@ export const RejectView: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-white font-sans overflow-hidden">
             {/* COMPACT TOOLBAR */}
-            <div className="h-10 border-b border-mist-300 bg-mist-50 flex items-center justify-between px-2 shrink-0">
+            <div className="h-10 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-2 shrink-0 shadow-md">
                 <div className="flex items-center h-full">
                     {[
                         { id: 'NEW', label: 'Input', icon: Plus },
@@ -412,10 +412,10 @@ export const RejectView: React.FC = () => {
                         <button 
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex items-center gap-1.5 px-3 h-full border-r border-mist-200 transition-colors ${
+                            className={`flex items-center gap-1.5 px-3 h-full border-r border-slate-700/50 transition-colors ${
                                 activeTab === tab.id 
-                                ? 'bg-white text-blue-600 shadow-[0_-2px_0_inset_currentColor]' 
-                                : 'text-slate-500 hover:bg-white/50'
+                                ? 'bg-slate-800 text-blue-400 shadow-[0_-2px_0_inset_currentColor]' 
+                                : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
                             }`}
                         >
                             <tab.icon size={13}/>
@@ -425,12 +425,12 @@ export const RejectView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2 pr-2 h-full">
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white rounded border border-mist-300">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 rounded border border-slate-700 shadow-inner">
                         <Filter size={10} className="text-slate-400"/>
                         <select 
                             value={selectedOutlet} 
                             onChange={e => setSelectedOutlet(e.target.value)} 
-                            className="bg-transparent text-[10px] font-bold text-slate-600 outline-none cursor-pointer"
+                            className="bg-transparent text-[10px] font-bold text-slate-200 outline-none cursor-pointer"
                         >
                             <option value="ALL">SEMUA OUTLET</option>
                             {outlets.map(o => <option key={o} value={o}>{o.toUpperCase()}</option>)}
@@ -439,13 +439,13 @@ export const RejectView: React.FC = () => {
 
                     {activeTab === 'NEW' && (
                         <>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-mist-300 rounded px-2 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:border-blue-400" />
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] font-semibold text-slate-200 outline-none focus:border-blue-500 shadow-inner [color-scheme:dark]" />
                             {editingBatchId && (
-                                <button onClick={() => { setEditingBatchId(null); setRejectLines([]); }} className="px-3 py-1 bg-slate-200 hover:bg-slate-300 text-slate-600 rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
+                                <button onClick={() => { setEditingBatchId(null); setRejectLines([]); }} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
                                     <X size={13}/> Batal Edit
                                 </button>
                             )}
-                            <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
+                            <button onClick={handleSaveBatch} className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
                                 <Save size={13}/> {editingBatchId ? 'Update' : 'Simpan'}
                             </button>
                         </>
