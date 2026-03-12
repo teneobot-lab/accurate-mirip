@@ -183,19 +183,29 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                                 <td className="px-4">
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         {item.conversions && item.conversions.length > 0 ? (
-                                            item.conversions.map((conv, idx) => (
-                                                <div key={idx} className="flex items-center">
-                                                    <span className="text-[11px] font-bold text-slate-700">
-                                                        {conv.ratio}
-                                                    </span>
-                                                    <span className="text-[9px] font-semibold text-slate-400 ml-1 uppercase">
-                                                        {conv.name}
-                                                    </span>
-                                                    {idx < item.conversions!.length - 1 && (
-                                                        <span className="text-mist-300 mx-1.5">|</span>
-                                                    )}
-                                                </div>
-                                            ))
+                                            item.conversions.map((conv, idx) => {
+                                                const convertedValue = conv.operator === '*' 
+                                                    ? item.totalStock / conv.ratio 
+                                                    : item.totalStock * conv.ratio;
+                                                
+                                                const formattedValue = Number.isInteger(convertedValue) 
+                                                    ? convertedValue.toLocaleString() 
+                                                    : convertedValue.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+                                                return (
+                                                    <div key={idx} className="flex items-center">
+                                                        <span className="text-[11px] font-bold text-slate-700">
+                                                            {formattedValue}
+                                                        </span>
+                                                        <span className="text-[9px] font-semibold text-slate-400 ml-1 uppercase">
+                                                            {conv.name}
+                                                        </span>
+                                                        {idx < item.conversions!.length - 1 && (
+                                                            <span className="text-mist-300 mx-1.5">|</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
                                         ) : (
                                             <span className="text-[10px] text-slate-300 font-medium">-</span>
                                         )}
