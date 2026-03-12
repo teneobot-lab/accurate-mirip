@@ -160,6 +160,7 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                             <th className="px-4 text-[10px] font-bold text-slate-700 uppercase w-32">Kategori</th>
                             <th className="px-4 text-[10px] font-bold text-slate-700 uppercase w-24 text-right">Stok Total</th>
                             <th className="px-4 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Satuan</th>
+                            <th className="px-4 text-[10px] font-bold text-slate-700 uppercase w-48">Konversi</th>
                             <th className="px-4 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Status</th>
                             <th className="px-4 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Aksi</th>
                         </tr>
@@ -178,6 +179,19 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onViewItem }) => {
                                 </td>
                                 <td className="px-4 text-center">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.baseUnit}</span>
+                                </td>
+                                <td className="px-4">
+                                    <div className="flex flex-wrap gap-1">
+                                        {item.conversions && item.conversions.length > 0 ? (
+                                            item.conversions.map((conv, idx) => (
+                                                <span key={idx} className="text-[9px] font-medium bg-mist-100 text-slate-500 px-1.5 py-0.5 rounded border border-mist-200 whitespace-nowrap">
+                                                    1 {conv.name} = {conv.operator === '*' ? conv.ratio : `1/${conv.ratio}`} {item.baseUnit}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="text-[9px] text-slate-300 italic">-</span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-4 text-center">
                                     <span className={`text-[9px] font-bold uppercase px-1 rounded ${item.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
