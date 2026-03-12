@@ -15,7 +15,7 @@ import { LowStockAlert } from './components/LowStockAlert';
 import { ClockWidget } from './components/ClockWidget';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus, Music } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
@@ -103,6 +103,12 @@ function App() {
                       <NavItem id="REPORTS" label="Mutasi Stok" icon={FileBarChart} />
                       <NavItem id="REJECT" label="Barang Reject" icon={AlertOctagon} />
                       
+                      <div className="mt-5 text-[10px] font-semibold text-slate-500 uppercase mb-2 px-3 tracking-widest">Aplikasi</div>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent('open-music-player')); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="flex items-center w-full px-3 py-2 mb-0.5 text-[12px] font-medium rounded-lg transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent">
+                          <Music size={16} className="mr-3 flex-shrink-0" />
+                          <span className="whitespace-nowrap tracking-tight">Music Player</span>
+                      </button>
+
                       <div className="mt-5 text-[10px] font-semibold text-slate-500 uppercase mb-2 px-3 tracking-widest">Transaksi</div>
                       <div className="space-y-0.5 px-1">
                           <button onClick={() => { setActiveTransaction({ type: 'IN' }); if(window.innerWidth < 1024) setIsSidebarOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center transition-all border border-transparent hover:border-emerald-500/20">
