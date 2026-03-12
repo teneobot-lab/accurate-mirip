@@ -15,13 +15,14 @@ import { LowStockAlert } from './components/LowStockAlert';
 import { ClockWidget } from './components/ClockWidget';
 import { ToastProvider } from './components/Toast';
 import { SearchProvider } from './search/SearchProvider';
-import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus, Music } from 'lucide-react';
+import { LayoutDashboard, Package, FileBarChart, ChevronRight, Settings, AlertOctagon, Menu, LogOut, X, ArrowLeft, Building2, Plus, Music, Loader2 } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
@@ -41,12 +42,16 @@ function App() {
   }, []);
 
   const handleLogout = () => {
-      setIsLoggedIn(false);
-      setCurrentUser(null);
-      setActiveTab('DASHBOARD');
-      setViewingItem(null);
-      setActiveTransaction(null);
-      StorageService.clearSession();
+      setIsLoggingOut(true);
+      setTimeout(() => {
+          setIsLoggedIn(false);
+          setCurrentUser(null);
+          setActiveTab('DASHBOARD');
+          setViewingItem(null);
+          setActiveTransaction(null);
+          StorageService.clearSession();
+          setIsLoggingOut(false);
+      }, 800); // 800ms delay to show the logout animation
   };
 
   const NavItem = ({ id, label, icon: Icon }: any) => (
@@ -204,6 +209,22 @@ function App() {
             .animate-in { animation: fadeIn 0.3s ease-in-out; }
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
+          
+          {/* Full Screen Logout Overlay */}
+          {isLoggingOut && (
+              <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+                  <div className="w-16 h-16 flex items-center justify-center bg-white rounded-2xl mb-4 shadow-2xl animate-pulse">
+                      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10">
+                          <circle cx="50" cy="50" r="40" stroke="#0f172a" strokeWidth="12"/>
+                          <path d="M50 30V70M30 50H70" stroke="#0f172a" strokeWidth="12"/>
+                      </svg>
+                  </div>
+                  <div className="flex items-center gap-3 text-white">
+                      <Loader2 size={20} className="animate-spin text-rose-500" />
+                      <span className="text-sm font-bold tracking-widest uppercase">Logging out...</span>
+                  </div>
+              </div>
+          )}
         </div>
       </SearchProvider>
     </ToastProvider>

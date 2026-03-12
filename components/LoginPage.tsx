@@ -28,14 +28,17 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
             const result = await response.json();
 
             if (response.ok && result.status === 'success') {
-                onLogin(result.user);
+                // Add a slight delay for the animation to be visible
+                setTimeout(() => {
+                    onLogin(result.user);
+                }, 500);
             } else {
                 setError(result.message || 'Invalid username or password.');
+                setIsLoading(false);
             }
         } catch (err) {
             console.error('Login error:', err);
             setError('Could not connect to the server. Please check your connection.');
-        } finally {
             setIsLoading(false);
         }
     };
@@ -72,6 +75,7 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
                             onChange={(e) => setUsername(e.target.value)}
                             className="w-full h-12 bg-white/10 rounded-full pl-16 pr-6 text-white placeholder:text-slate-400 outline-none focus:bg-white/20 transition-all border border-transparent focus:border-slate-500 shadow-inner"
                             required
+                            disabled={isLoading}
                         />
                     </div>
 
@@ -84,6 +88,7 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full h-12 bg-white/10 rounded-full pl-6 pr-16 text-white placeholder:text-slate-400 outline-none focus:bg-white/20 transition-all border border-transparent focus:border-slate-500 shadow-inner"
                             required
+                            disabled={isLoading}
                         />
                          <div className="absolute right-0 top-0 bottom-0 w-12 h-12 bg-white rounded-full flex items-center justify-center z-10 shadow-md">
                             <Lock size={20} className="text-slate-800" strokeWidth={2.5} />
@@ -107,6 +112,22 @@ export const LoginPage: React.FC<Props> = ({ onLogin }) => {
 
                 </form>
             </div>
+
+            {/* Full Screen Loading Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="w-16 h-16 flex items-center justify-center bg-white rounded-2xl mb-4 shadow-2xl animate-bounce">
+                        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10">
+                            <circle cx="50" cy="50" r="40" stroke="#0f172a" strokeWidth="12"/>
+                            <path d="M50 30V70M30 50H70" stroke="#0f172a" strokeWidth="12"/>
+                        </svg>
+                    </div>
+                    <div className="flex items-center gap-3 text-white">
+                        <Loader2 size={20} className="animate-spin text-brand" />
+                        <span className="text-sm font-bold tracking-widest uppercase">Authenticating...</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
