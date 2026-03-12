@@ -145,10 +145,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                     <thead className="bg-mist-300 sticky top-0 z-20 shadow-[0_2px_4px_rgba(0,0,0,0.05)] border-b border-mist-400">
                         <tr className="h-6">
                             <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[15%] tracking-tight">Referensi</th>
-                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[12%] tracking-tight">Tanggal</th>
+                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[10%] tracking-tight">Tanggal</th>
                             <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[8%] text-center tracking-tight">Tipe</th>
-                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[35%] tracking-tight">Partner / Keterangan</th>
-                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[20%] tracking-tight">Gudang</th>
+                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[20%] tracking-tight">Partner</th>
+                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[20%] tracking-tight">Keterangan</th>
+                            <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[17%] tracking-tight">Gudang</th>
                             <th className="px-3 py-1 text-[9px] font-extrabold text-slate-700 uppercase w-[10%] text-center tracking-tight">Items</th>
                         </tr>
                     </thead>
@@ -180,8 +181,11 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                                             {tx.type}
                                         </span>
                                     </td>
-                                    <td className={`px-3 py-0.5 text-[10px] font-medium truncate ${isSelected ? 'text-white' : 'text-slate-700'}`}>
-                                        {tx.partnerName || tx.notes || '-'}
+                                    <td className={`px-3 py-0.5 text-[10px] font-semibold truncate ${isSelected ? 'text-white' : 'text-slate-700'}`}>
+                                        {tx.partnerName || '-'}
+                                    </td>
+                                    <td className={`px-3 py-0.5 text-[10px] font-medium truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                        {tx.notes || '-'}
                                     </td>
                                     <td className={`px-3 py-0.5 text-[9px] font-bold uppercase truncate ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
                                         {warehouses.find(w=>w.id===tx.sourceWarehouseId)?.name || '-'}
@@ -194,7 +198,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                         })}
                         {filteredTransactions.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="py-12 text-center text-slate-400 italic text-[10px] flex flex-col items-center justify-center gap-2">
+                                <td colSpan={7} className="py-12 text-center text-slate-400 italic text-[10px] flex flex-col items-center justify-center gap-2">
                                     <Info size={14} className="opacity-50"/>
                                     Tidak ada data transaksi ditemukan
                                 </td>
