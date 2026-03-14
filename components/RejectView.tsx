@@ -739,9 +739,8 @@ export const RejectView: React.FC = () => {
                         </div>
                       )}
                     </td>
-                    {/* Input qty display column (blank in entry row) */}
-                    <td className="p-0" />
-                    <td className="p-0 relative">
+                    {/* QTY INPUT — user mengetik di sini */}
+                    <td className="p-0">
                       <input
                         ref={qtyInputRef}
                         type="number"
@@ -752,16 +751,19 @@ export const RejectView: React.FC = () => {
                         disabled={!pendingItem}
                         className="w-full h-full bg-transparent px-3 text-right text-[11px] font-semibold text-emerald-700 outline-none focus:bg-white/50 disabled:bg-transparent disabled:text-slate-300"
                       />
-                      {/* FIX #14: format baseQty display */}
-                      {conversionResult && !('error' in conversionResult) && (
-                        <div className="absolute right-0.5 -top-2.5 text-[8px] font-bold text-emerald-600 bg-white px-1 border border-emerald-100 shadow-sm rounded z-10">
-                          = {conversionResult.baseQty.toLocaleString(undefined, { maximumFractionDigits: 3 })}
-                        </div>
-                      )}
-                      {conversionResult && 'error' in conversionResult && (
-                        <div className="absolute right-0.5 -top-2.5 text-[8px] font-bold text-rose-500 bg-white px-1 border border-rose-100 shadow-sm rounded z-10 flex items-center gap-0.5">
-                          <AlertCircle size={8} /> {conversionResult.error}
-                        </div>
+                    </td>
+                    {/* QTY BASE — hasil konversi, read-only */}
+                    <td className="px-3 text-right font-mono text-[11px] relative">
+                      {conversionResult && !('error' in conversionResult) ? (
+                        <span className="font-bold text-rose-600">
+                          {conversionResult.baseQty.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                        </span>
+                      ) : conversionResult && 'error' in conversionResult ? (
+                        <span className="text-rose-400 flex items-center justify-end gap-0.5 text-[10px]">
+                          <AlertCircle size={9} /> {conversionResult.error}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">-</span>
                       )}
                     </td>
                     <td className="p-0">
