@@ -1,4 +1,3 @@
-
 export interface UnitConversion {
   name: string;
   ratio: number;
@@ -14,7 +13,7 @@ export interface Item {
   conversions: UnitConversion[];
   minStock: number;
   initialStock?: number;
-  isActive: boolean; // Added Status
+  isActive: boolean;
 }
 
 export interface Stock {
@@ -29,7 +28,7 @@ export interface Warehouse {
   location: string;
   phone?: string;
   pic?: string;
-  isActive: boolean; // Added Status
+  isActive: boolean;
 }
 
 export interface Partner {
@@ -41,15 +40,15 @@ export interface Partner {
   address: string;
   npwp?: string;
   term?: number;
-  isActive: boolean; // Added Status
+  isActive: boolean;
 }
 
 export interface AppUser {
   id: string;
   name: string;
-  username: string; 
-  password?: string; 
-  email?: string; 
+  username: string;
+  password?: string;
+  email?: string;
   role: 'ADMIN' | 'MANAGER' | 'STAFF';
   status: 'ACTIVE' | 'INACTIVE';
 }
@@ -79,7 +78,7 @@ export interface Transaction {
   targetWarehouseId?: string;
   items: TransactionItem[];
   notes?: string;
-  attachments?: string[]; // Array of Base64 strings for photos
+  attachments?: string[];
   createdAt: number;
 }
 
@@ -103,6 +102,9 @@ export interface RejectItem {
     unit: string;
     baseQty: number;
     reason: string;
+    // FIX: field untuk menyimpan qty & unit yang diketik user sebelum konversi
+    inputQty?: number;
+    inputUnit?: string;
 }
 
 export interface RejectBatch {
