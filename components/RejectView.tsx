@@ -408,7 +408,7 @@ export const RejectView: React.FC = () => {
     }
   };
 
-  // FIX #6: copy uses explicit inputQty/inputUnit fields, no regex parsing
+  // Copy uses inputQty/inputUnit — the exact qty the user typed (not converted base qty)
   const handleCopyToClipboard = (batch: RejectBatch) => {
     if (!batch.items?.length) return;
     const d = new Date(batch.date);
@@ -416,9 +416,10 @@ export const RejectView: React.FC = () => {
     let text = `Data Reject ${batch.outlet} ${formattedDate}\n`;
     batch.items.forEach(it => {
       const ext = it as RejectItemExtended;
-      const qtyStr = ext.inputQty != null
-        ? `${ext.inputQty} ${ext.inputUnit?.toLowerCase()}`
-        : `${it.qty} ${it.unit.toLowerCase()}`;
+      // Always use inputQty/inputUnit (the qty user actually typed), never base qty
+      const displayQty  = ext.inputQty  != null ? ext.inputQty  : it.qty;
+      const displayUnit = ext.inputUnit != null ? ext.inputUnit : it.unit;
+      const qtyStr = `${displayQty} ${displayUnit.toLowerCase()}`;
       const reason = it.reason?.trim().toLowerCase() || '';
       const line = `- ${it.name.toLowerCase()} ${qtyStr}${reason ? ` ${reason}` : ''}`;
       text += `${line}\n`;
@@ -442,20 +443,26 @@ export const RejectView: React.FC = () => {
         curr.setDate(curr.getDate() + 1);
       }
 
+      // Build itemMap — filter non-aktif items, use baseQty always
       const itemMap = new Map<string, any>();
       filteredBatches.forEach(batch => {
         batch.items.forEach(it => {
+          // Filter non-aktif: skip if master item exists and isActive === false
+          const masterItem = rejectMasterItems.find(mi => mi.id === it.itemId);
+          if (masterItem && masterItem.isActive === false) return;
+
           if (!itemMap.has(it.itemId)) {
             itemMap.set(it.itemId, { code: it.sku, name: it.name, unit: it.unit, dateValues: new Map() });
           }
           const data = itemMap.get(it.itemId)!;
           const currentVal = data.dateValues.get(batch.date) || new Decimal(0);
-          data.dateValues.set(batch.date, currentVal.plus(it.baseQty));
+          // Always use baseQty for matrix export
+          data.dateValues.set(batch.date, currentVal.plus(new Decimal(it.baseQty ?? it.qty)));
         });
       });
 
       const titleRow = sheet.addRow(['LAPORAN REJECT MINGGUAN']);
-      titleRow.font = { bold: true, size: 12, name: 'Arial' };
+      titleRow.font = { bold: true, size: 12, name: 'Calibri' };
       titleRow.alignment = { horizontal: 'center' };
       sheet.mergeCells(1, 1, 1, 5 + dateList.length);
 
@@ -466,13 +473,16 @@ export const RejectView: React.FC = () => {
       sheet.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: headers.length } };
       headerRow.eachCell(cell => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF00' } };
-        cell.font = { bold: true, size: 10, name: 'Arial' };
+        cell.font = { bold: true, size: 10, name: 'Calibri' };
         cell.border = { bottom: { style: 'medium' } };
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
       });
 
+      // Sort A-Z by item name before writing rows
       let rowCounter = 1;
-      const itemsArray = Array.from(itemMap.values());
+      const itemsArray = Array.from(itemMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name, 'id', { sensitivity: 'base' }));
+
       itemsArray.forEach((item, index) => {
         const rowData: any[] = [rowCounter++, item.code, item.name, item.unit];
         let total = new Decimal(0);
@@ -486,13 +496,13 @@ export const RejectView: React.FC = () => {
         const isLastRow = index === itemsArray.length - 1;
         row.eachCell((cell, colNumber) => {
           if (isLastRow) cell.border = { bottom: { style: 'medium' } };
-          cell.font = { name: 'Arial', size: 10 };
+          cell.font = { name: 'Calibri', size: 10 };
           if (colNumber === 1) cell.alignment = { horizontal: 'center' };
           if (colNumber > 4) {
             cell.alignment = { horizontal: 'right' };
             cell.numFmt = '#,##0.0';
             if (colNumber === rowData.length) {
-              cell.font = { bold: true, name: 'Arial', size: 10 };
+              cell.font = { bold: true, name: 'Calibri', size: 10 };
               cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9F9F9' } };
             }
           }
@@ -549,10 +559,10 @@ export const RejectView: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-1.5 px-3 h-full border-r border-slate-700/50 transition-colors ${
+              className={`flex items-center gap-1.5 px-4 h-full border-r border-slate-700/50 transition-all ${
                 activeTab === tab.id
-                  ? 'bg-slate-800 text-blue-400 shadow-[0_-2px_0_inset_currentColor]'
-                  : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                  ? 'bg-blue-600 text-white shadow-[inset_0_-3px_0_rgba(255,255,255,0.25)] font-bold'
+                  : 'text-slate-400 hover:bg-slate-700 hover:text-white'
               }`}
             >
               <tab.icon size={13} />
@@ -632,7 +642,7 @@ export const RejectView: React.FC = () => {
                     <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-10 text-center">#</th>
                     <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Barang & SKU</th>
                     <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-28 text-right">Qty Input</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-24 text-right">Qty Base</th>
+                    <th className="px-3 text-[10px] font-bold text-rose-700 uppercase w-24 text-right bg-rose-50">Qty Base</th>
                     <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Satuan</th>
                     <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Catatan / Alasan</th>
                     <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-10"></th>
@@ -670,8 +680,8 @@ export const RejectView: React.FC = () => {
                   ))}
 
                   {/* INLINE ENTRY ROW */}
-                  <tr className="h-9 bg-blue-50/20 border-t-2 border-mist-200">
-                    <td className="px-3 py-1 text-center"><Plus size={13} className="text-blue-500 mx-auto" /></td>
+                  <tr className="h-9 bg-emerald-50 border-t-2 border-emerald-300">
+                    <td className="px-3 py-1 text-center"><Plus size={13} className="text-emerald-600 mx-auto" /></td>
                     <td className="p-0 relative">
                       <input
                         ref={itemInputRef}
@@ -740,7 +750,7 @@ export const RejectView: React.FC = () => {
                         onChange={e => setPendingQty(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && reasonInputRef.current?.focus()}
                         disabled={!pendingItem}
-                        className="w-full h-full bg-transparent px-3 text-right text-[11px] font-semibold text-blue-600 outline-none focus:bg-white/50 disabled:bg-transparent disabled:text-slate-300"
+                        className="w-full h-full bg-transparent px-3 text-right text-[11px] font-semibold text-emerald-700 outline-none focus:bg-white/50 disabled:bg-transparent disabled:text-slate-300"
                       />
                       {/* FIX #14: format baseQty display */}
                       {conversionResult && !('error' in conversionResult) && (
@@ -785,7 +795,7 @@ export const RejectView: React.FC = () => {
                       <button
                         onClick={handleAddLine}
                         disabled={!pendingItem}
-                        className="w-full h-full flex items-center justify-center text-blue-600 hover:bg-blue-100 disabled:opacity-30 transition-colors"
+                        className="w-full h-full flex items-center justify-center text-emerald-600 hover:bg-emerald-100 disabled:opacity-30 transition-colors"
                       >
                         <CornerDownLeft size={14} />
                       </button>
@@ -853,17 +863,19 @@ export const RejectView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-mist-100">
                   {filteredBatches.map(b => (
-                    <tr key={b.id} className="h-7 hover:bg-mist-50 group transition-colors">
-                      <td className="px-3 text-[11px] font-mono text-slate-500">{b.id}</td>
-                      <td className="px-3 text-[11px] text-slate-600">{b.date}</td>
-                      <td className="px-3 text-[11px] font-semibold text-slate-700 uppercase">{b.outlet}</td>
+                    <tr key={b.id} className="h-7 hover:bg-blue-50 group transition-colors cursor-pointer">
+                      <td className="px-3 text-[11px] font-mono text-blue-600 font-semibold">{b.id}</td>
+                      <td className="px-3 text-[11px] text-slate-600 font-medium">{b.date}</td>
+                      <td className="px-3 text-[11px] font-bold text-slate-700 uppercase">
+                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px]">{b.outlet}</span>
+                      </td>
                       <td className="px-3 text-center text-[11px] font-semibold text-slate-500">{b.items.length}</td>
                       <td className="px-3 text-center">
-                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-center gap-1">
                           <button onClick={() => setViewingBatch(b)} className="p-1 text-blue-500 hover:bg-blue-100 rounded" title="Lihat Detail"><Eye size={12} /></button>
                           <button onClick={() => handleEditBatch(b)} className="p-1 text-amber-500 hover:bg-amber-100 rounded" title="Edit"><Edit3 size={12} /></button>
-                          <button onClick={() => handleCopyToClipboard(b)} className="p-1 text-slate-400 hover:bg-slate-200 rounded" title="Copy Teks"><Copy size={12} /></button>
-                          <button onClick={() => setBatchToDelete(b.id)} className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12} /></button>
+                          <button onClick={() => handleCopyToClipboard(b)} className="p-1 text-slate-500 hover:bg-slate-100 rounded" title="Copy Teks"><Copy size={12} /></button>
+                          <button onClick={() => setBatchToDelete(b.id)} className="p-1 text-rose-500 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12} /></button>
                         </div>
                       </td>
                     </tr>
@@ -926,9 +938,11 @@ export const RejectView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-mist-100">
                   {filteredMasterItems.map(item => (
-                    <tr key={item.id} className={`h-7 hover:bg-mist-50 group transition-colors ${item.isActive === false ? 'opacity-50' : ''}`}>
+                    <tr key={item.id} className={`h-7 hover:bg-mist-50 group transition-colors ${item.isActive === false ? 'bg-slate-50' : ''}`}>
                       <td className="px-3 text-[11px] font-mono text-slate-500">{item.code}</td>
-                      <td className="px-3 text-[11px] font-semibold text-slate-700 truncate">{item.name}</td>
+                      <td className="px-3 text-[11px] font-semibold truncate">
+                        <span className={item.isActive === false ? 'text-slate-400 line-through' : 'text-slate-700'}>{item.name}</span>
+                      </td>
                       <td className="px-3 text-center">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.baseUnit}</span>
                       </td>
@@ -1123,7 +1137,7 @@ export const RejectView: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleCopyToClipboard(viewingBatch)}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-white border border-mist-200 rounded text-[10px] font-bold text-slate-600 hover:bg-mist-50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 border border-blue-500 rounded text-[10px] font-bold text-white hover:bg-blue-700 transition-colors"
                 >
                   <Copy size={12} /> COPY TEKS
                 </button>
