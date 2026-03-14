@@ -24,6 +24,15 @@ router.post('/outlets', async (req, res, next) => {
     }
 });
 
+router.delete('/outlets/:name', async (req, res, next) => {
+    try {
+        await db.query('DELETE FROM reject_outlets WHERE name = ?', [req.params.name]);
+        res.json({ status: 'success' });
+    } catch (e) { 
+        next(e); 
+    }
+});
+
 // --- MASTER ITEMS (ISOLATED) ---
 router.get('/master-items', async (req, res, next) => {
     try {
@@ -45,30 +54,29 @@ router.post('/master-items', async (req, res, next) => {
         conn = await db.getConnection();
         await conn.beginTransaction();
 
-        const { id, code, name, category, baseUnit, conversions } = req.body;
+        const { id, code, name, category, baseUnit, conversions, isActive } = req.body;
         
         if (!code || !name || !baseUnit) {
             throw new Error("Field Code, Name, dan Base Unit wajib diisi");
         }
 
         const itemId = id || uuidv4();
+        const activeVal = isActive === false ? 0 : 1;
         
-        // Save Master Item Header
         await conn.query(
-            `INSERT INTO reject_master_items (id, code, name, category, base_unit) 
-             VALUES (?, ?, ?, ?, ?) 
+            `INSERT INTO reject_master_items (id, code, name, category, base_unit, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?) 
              ON DUPLICATE KEY UPDATE 
                 code = VALUES(code), 
                 name = VALUES(name), 
                 category = VALUES(category), 
-                base_unit = VALUES(base_unit)`,
-            [itemId, code, name, category || null, baseUnit]
+                base_unit = VALUES(base_unit),
+                is_active = VALUES(is_active)`,
+            [itemId, code, name, category || null, baseUnit, activeVal]
         );
 
-        // Clear existing conversions
         await conn.query('DELETE FROM reject_master_units WHERE item_id = ?', [itemId]);
         
-        // Save new conversions
         if (Array.isArray(conversions)) {
             for (const conv of conversions) {
                 if (conv.name && conv.ratio) {
@@ -101,21 +109,23 @@ router.delete('/master-items/:id', async (req, res, next) => {
     }
 });
 
-// --- TRANSACTIONS (ISOLATED) ---
+// --- BATCHES ---
 router.get('/batches', async (req, res, next) => {
     try {
         const [batches] = await db.query('SELECT * FROM reject_batches ORDER BY date DESC, created_at DESC');
         for (let b of batches) {
             const [items] = await db.query('SELECT * FROM reject_items WHERE batch_id = ?', [b.id]);
-            // PENTING: Map properti database ke format yang dimengerti Frontend
             b.items = items.map(it => ({
-                itemId: it.item_id,
-                sku: it.sku,
-                name: it.name,
-                qty: Number(it.qty),
-                unit: it.unit,
-                baseQty: Number(it.base_qty), // Mapping dari base_qty ke baseQty
-                reason: it.reason
+                itemId:    it.item_id,
+                sku:       it.sku,
+                name:      it.name,
+                qty:       Number(it.qty),
+                unit:      it.unit,
+                baseQty:   Number(it.base_qty),
+                // FIX: kirim inputQty & inputUnit ke frontend agar copy clipboard pakai qty user, bukan base qty
+                inputQty:  it.input_qty  != null ? Number(it.input_qty) : null,
+                inputUnit: it.input_unit || null,
+                reason:    it.reason,
             }));
         }
         res.json(batches);
@@ -140,16 +150,18 @@ router.post('/batches', async (req, res, next) => {
             [batchId, date, outlet]
         );
 
-        // Clear existing items if updating
         await conn.query('DELETE FROM reject_items WHERE batch_id = ?', [batchId]);
 
         for (const it of items) {
-            // Gunakan baseQty dari payload frontend
-            const baseQty = Number(it.baseQty || it.qty); 
+            const baseQty = Number(it.baseQty || it.qty);
+            // FIX: simpan inputQty & inputUnit dari payload frontend ke kolom DB
+            const inputQty  = it.inputQty  != null ? Number(it.inputQty)  : null;
+            const inputUnit = it.inputUnit || null;
+
             await conn.query(
-                `INSERT INTO reject_items (batch_id, item_id, sku, name, qty, unit, base_qty, reason)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                [batchId, it.itemId, it.sku, it.name, Number(it.qty), it.unit, baseQty, it.reason || null]
+                `INSERT INTO reject_items (batch_id, item_id, sku, name, qty, unit, base_qty, input_qty, input_unit, reason)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [batchId, it.itemId, it.sku, it.name, Number(it.qty), it.unit, baseQty, inputQty, inputUnit, it.reason || null]
             );
         }
 
