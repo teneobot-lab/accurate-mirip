@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { ConfirmDialog } from './ConfirmDialog';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 // ─── FIX: ModalPortal — render modal langsung ke document.body
 // Mengatasi modal yang terjebak di overflow/transform parent
@@ -263,96 +263,376 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     setShowExportModal(true);
   };
 
-  // ─── Export Excel ───
-  const handleRunExport = () => {
+  // ─── Export Excel — ExcelJS Professional ───
+  const handleRunExport = async () => {
     if (exportPreviewData.length === 0) {
       showToast('Tidak ada data untuk diekspor', 'warning');
       return;
     }
 
-    const wb = XLSX.utils.book_new();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'GudangPro System';
+    wb.created = new Date();
+
     const whName = warehouses.find(w => w.id === exportWh)?.name;
 
-    if (exportMode === 'summary') {
-      // Satu baris per transaksi
-      const rows = exportPreviewData.map((tx, i) => ({
-        'No': i + 1,
-        'No. Referensi': tx.referenceNo,
-        'Tanggal': tx.date,
-        'Tipe': tx.type,
-        'Gudang': warehouses.find(w => w.id === tx.sourceWarehouseId)?.name ?? '-',
-        'Partner': tx.partnerName ?? '-',
-        'Keterangan': tx.notes ?? '-',
-        'Jumlah Item': tx.items.length,
-      }));
-      const ws = XLSX.utils.json_to_sheet(rows);
-      ws['!cols'] = [
-        { wch: 5 }, { wch: 18 }, { wch: 12 }, { wch: 8 },
-        { wch: 18 }, { wch: 20 }, { wch: 25 }, { wch: 10 },
-      ];
-      XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan');
-    } else {
-      // Satu baris per item transaksi
-      const rows: object[] = [];
-      let rowNo = 1;
-      exportPreviewData.forEach(tx => {
-        const gudang = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name ?? '-';
-        if (tx.items.length === 0) {
-          rows.push({
-            'No': rowNo++,
-            'No. Referensi': tx.referenceNo,
-            'Tanggal': tx.date,
-            'Tipe': tx.type,
-            'Gudang': gudang,
-            'Partner': tx.partnerName ?? '-',
-            'Keterangan': tx.notes ?? '-',
-            'Kode SKU': '-',
-            'Nama Barang': '(tidak ada item)',
-            'Qty Input': '-',
-            'Satuan': '-',
-            'Qty Base': '-',
-            'Catatan Item': '-',
-          });
-        } else {
-          tx.items.forEach((item: any, idx) => {
-            rows.push({
-              'No': rowNo++,
-              'No. Referensi': idx === 0 ? tx.referenceNo : '',
-              'Tanggal': idx === 0 ? tx.date : '',
-              'Tipe': idx === 0 ? tx.type : '',
-              'Gudang': idx === 0 ? gudang : '',
-              'Partner': idx === 0 ? (tx.partnerName ?? '-') : '',
-              'Keterangan': idx === 0 ? (tx.notes ?? '-') : '',
-              'Kode SKU': item.code ?? item.sku ?? '-',
-              'Nama Barang': item.name ?? '-',
-              'Qty Input': item.qty ?? '-',
-              'Satuan': item.unit ?? '-',
-              'Qty Base': item.baseQty ?? item.qty ?? '-',
-              'Catatan Item': item.note ?? item.reason ?? '-',
-            });
-          });
-        }
+    // ─── Warna tema ───
+    const COLOR = {
+      HEADER_BG:    '1E3A5F',   // Navy gelap
+      HEADER_FONT:  'FFFFFF',   // Putih
+      TITLE_BG:     '2563EB',   // Biru brand
+      TITLE_FONT:   'FFFFFF',
+      META_BG:      'EFF6FF',   // Biru sangat muda
+      META_FONT:    '1E40AF',
+      ROW_ODD:      'F8FAFC',   // Abu sangat muda
+      ROW_EVEN:     'FFFFFF',
+      IN_BG:        'F0FDF4',   // Hijau muda
+      IN_FONT:      '166534',
+      OUT_BG:       'FFF1F2',   // Merah muda
+      OUT_FONT:     '9F1239',
+      TRANSFER_BG:  'F0F9FF',   // Biru muda
+      TRANSFER_FONT:'0C4A6E',
+      TOTAL_BG:     'F1F5F9',   // Abu terang
+      TOTAL_FONT:   '0F172A',
+      BORDER:       'CBD5E1',
+    };
+
+    // ─── Helper: apply border ke cell ───
+    const applyBorder = (cell: ExcelJS.Cell, style: ExcelJS.BorderStyle = 'thin') => {
+      const b = { style, color: { argb: 'FF' + COLOR.BORDER } };
+      cell.border = { top: b, left: b, bottom: b, right: b };
+    };
+
+    // ─── Helper: style header cell ───
+    const styleHeader = (cell: ExcelJS.Cell) => {
+      cell.font = { name: 'Arial', bold: true, size: 9, color: { argb: 'FF' + COLOR.HEADER_FONT } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.HEADER_BG } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: false };
+      applyBorder(cell, 'medium');
+    };
+
+    // ─── Helper: style data cell ───
+    const styleCell = (
+      cell: ExcelJS.Cell,
+      opts: { bold?: boolean; align?: ExcelJS.Alignment['horizontal']; color?: string; bgColor?: string; size?: number; numFmt?: string }
+    ) => {
+      cell.font = {
+        name: 'Arial',
+        size: opts.size ?? 9,
+        bold: opts.bold ?? false,
+        color: { argb: 'FF' + (opts.color ?? '334155') },
+      };
+      if (opts.bgColor) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + opts.bgColor } };
+      cell.alignment = { horizontal: opts.align ?? 'left', vertical: 'middle' };
+      if (opts.numFmt) cell.numFmt = opts.numFmt;
+      applyBorder(cell);
+    };
+
+    // ─── Helper: warna baris berdasarkan tipe transaksi ───
+    const getTypeBg = (type: string) =>
+      type === 'IN' ? COLOR.IN_BG : type === 'OUT' ? COLOR.OUT_BG : COLOR.TRANSFER_BG;
+    const getTypeFont = (type: string) =>
+      type === 'IN' ? COLOR.IN_FONT : type === 'OUT' ? COLOR.OUT_FONT : COLOR.TRANSFER_FONT;
+
+    // ─── Helper: format tanggal dd/mm/yyyy ───
+    const fmtDate = (d: string) => {
+      if (!d) return '-';
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}/${y}`;
+    };
+
+    // ─── Helper: buat baris judul + metadata di atas sheet ───
+    const buildHeader = (sheet: ExcelJS.Worksheet, title: string, colCount: number) => {
+      // Row 1 — Judul besar
+      sheet.mergeCells(1, 1, 1, colCount);
+      const titleCell = sheet.getCell(1, 1);
+      titleCell.value = title;
+      titleCell.font = { name: 'Arial', bold: true, size: 13, color: { argb: 'FF' + COLOR.TITLE_FONT } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.TITLE_BG } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 24;
+
+      // Row 2 — Metadata filter
+      sheet.mergeCells(2, 1, 2, colCount);
+      const metaCell = sheet.getCell(2, 1);
+      const whLabel = whName ?? 'Semua Gudang';
+      const typeLabel = exportType !== 'ALL' ? exportType : 'Semua Tipe';
+      const partnerLabel = exportPartner !== 'ALL' ? exportPartner : 'Semua Partner';
+      metaCell.value = `Periode: ${fmtDate(exportStart)} – ${fmtDate(exportEnd)}   |   Gudang: ${whLabel}   |   Tipe: ${typeLabel}   |   Partner: ${partnerLabel}   |   Dibuat: ${new Date().toLocaleString('id-ID')}`;
+      metaCell.font = { name: 'Arial', italic: true, size: 8, color: { argb: 'FF' + COLOR.META_FONT } };
+      metaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.META_BG } };
+      metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 16;
+
+      // Row 3 — Spacer tipis
+      sheet.getRow(3).height = 4;
+    };
+
+    // ════════════════════════════════════════════
+    // MODE: DETAIL PER ITEM
+    // ════════════════════════════════════════════
+    if (exportMode === 'detail') {
+      const sheet = wb.addWorksheet('Detail Transaksi', {
+        pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
+        views: [{ state: 'frozen', ySplit: 4 }],
       });
 
-      const ws = XLSX.utils.json_to_sheet(rows);
-      ws['!cols'] = [
-        { wch: 5 }, { wch: 18 }, { wch: 12 }, { wch: 8 },
-        { wch: 18 }, { wch: 20 }, { wch: 25 },
-        { wch: 14 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 20 },
+      const COLS = [
+        { header: 'NO',          key: 'no',      width: 5,  align: 'center' as const },
+        { header: 'NO. REFERENSI', key: 'ref',   width: 20, align: 'left' as const },
+        { header: 'TANGGAL',     key: 'date',    width: 12, align: 'center' as const },
+        { header: 'TIPE',        key: 'type',    width: 10, align: 'center' as const },
+        { header: 'GUDANG',      key: 'gudang',  width: 18, align: 'left' as const },
+        { header: 'PARTNER',     key: 'partner', width: 22, align: 'left' as const },
+        { header: 'KETERANGAN',  key: 'notes',   width: 25, align: 'left' as const },
+        { header: 'KODE SKU',    key: 'sku',     width: 15, align: 'center' as const },
+        { header: 'NAMA BARANG', key: 'name',    width: 32, align: 'left' as const },
+        { header: 'QTY INPUT',   key: 'qty',     width: 11, align: 'right' as const },
+        { header: 'SATUAN',      key: 'unit',    width: 9,  align: 'center' as const },
+        { header: 'QTY BASE',    key: 'base',    width: 11, align: 'right' as const },
+        { header: 'CATATAN ITEM', key: 'note',   width: 22, align: 'left' as const },
       ];
-      XLSX.utils.book_append_sheet(wb, ws, 'Detail Transaksi');
+
+      sheet.columns = COLS.map(c => ({ key: c.key, width: c.width }));
+      buildHeader(sheet, 'LAPORAN DETAIL MUTASI BARANG', COLS.length);
+
+      // Header kolom di row 4
+      const hRow = sheet.getRow(4);
+      hRow.height = 20;
+      COLS.forEach((col, i) => {
+        const cell = hRow.getCell(i + 1);
+        cell.value = col.header;
+        styleHeader(cell);
+      });
+
+      // Auto filter dari row 4
+      sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: COLS.length } };
+
+      // Data rows
+      let rowNo = 1;
+      let excelRow = 5;
+      let totalQtyBase = 0;
+
+      exportPreviewData.forEach(tx => {
+        const gudang = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name ?? '-';
+        const items = tx.items.length > 0 ? tx.items : [null];
+        const typeBg = getTypeBg(tx.type);
+        const typeFont = getTypeFont(tx.type);
+
+        items.forEach((item: any, idx) => {
+          const isFirstItem = idx === 0;
+          const isOdd = rowNo % 2 === 1;
+          const rowBg = isFirstItem ? typeBg : (isOdd ? COLOR.ROW_ODD : COLOR.ROW_EVEN);
+          const dataRow = sheet.getRow(excelRow);
+          dataRow.height = 16;
+
+          const vals = [
+            isFirstItem ? rowNo : '',
+            isFirstItem ? tx.referenceNo : '',
+            isFirstItem ? fmtDate(tx.date) : '',
+            isFirstItem ? tx.type : '',
+            isFirstItem ? gudang : '',
+            isFirstItem ? (tx.partnerName ?? '-') : '',
+            isFirstItem ? (tx.notes ?? '-') : '',
+            item ? (item.code ?? item.sku ?? '-') : '-',
+            item ? (item.name ?? '-') : '(tidak ada item)',
+            item ? (Number(item.qty) || '-') : '-',
+            item ? (item.unit ?? '-') : '-',
+            item ? (Number(item.baseQty ?? item.qty) || '-') : '-',
+            item ? (item.note ?? item.reason ?? '-') : '-',
+          ];
+
+          vals.forEach((val, ci) => {
+            const cell = dataRow.getCell(ci + 1);
+            cell.value = val as any;
+            const col = COLS[ci];
+            const isType = ci === 3;
+            const isNum = ci === 9 || ci === 11;
+            styleCell(cell, {
+              align: col.align,
+              bgColor: rowBg,
+              bold: ci === 1 && isFirstItem,
+              color: isType ? typeFont : (isNum ? '0F172A' : undefined),
+              numFmt: isNum ? '#,##0.##' : undefined,
+            });
+          });
+
+          if (item) totalQtyBase += Number(item.baseQty ?? item.qty) || 0;
+          excelRow++;
+          if (isFirstItem) rowNo++;
+        });
+      });
+
+      // Baris total
+      const totalRow = sheet.getRow(excelRow);
+      totalRow.height = 18;
+      COLS.forEach((_, ci) => {
+        const cell = totalRow.getCell(ci + 1);
+        if (ci === 0) {
+          cell.value = 'TOTAL';
+        } else if (ci === 11) {
+          cell.value = totalQtyBase;
+        } else if (ci === 9) {
+          cell.value = exportPreviewData.reduce((a, tx) => a + tx.items.reduce((b, it: any) => b + (Number(it.qty) || 0), 0), 0);
+        } else {
+          cell.value = '';
+        }
+        cell.font = { name: 'Arial', bold: true, size: 9, color: { argb: 'FF' + COLOR.TOTAL_FONT } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.TOTAL_BG } };
+        cell.alignment = { horizontal: ci === 0 ? 'center' : (ci >= 9 ? 'right' : 'left'), vertical: 'middle' };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF' + COLOR.HEADER_BG } },
+          left: { style: 'thin', color: { argb: 'FF' + COLOR.BORDER } },
+          bottom: { style: 'medium', color: { argb: 'FF' + COLOR.HEADER_BG } },
+          right: { style: 'thin', color: { argb: 'FF' + COLOR.BORDER } },
+        };
+        if (ci === 9 || ci === 11) cell.numFmt = '#,##0.##';
+      });
+
+    // ════════════════════════════════════════════
+    // MODE: RINGKASAN
+    // ════════════════════════════════════════════
+    } else {
+      const sheet = wb.addWorksheet('Ringkasan Transaksi', {
+        pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1 },
+        views: [{ state: 'frozen', ySplit: 4 }],
+      });
+
+      const COLS = [
+        { header: 'NO',           key: 'no',      width: 5,  align: 'center' as const },
+        { header: 'NO. REFERENSI', key: 'ref',    width: 20, align: 'left' as const },
+        { header: 'TANGGAL',      key: 'date',    width: 12, align: 'center' as const },
+        { header: 'TIPE',         key: 'type',    width: 10, align: 'center' as const },
+        { header: 'GUDANG',       key: 'gudang',  width: 20, align: 'left' as const },
+        { header: 'PARTNER',      key: 'partner', width: 24, align: 'left' as const },
+        { header: 'KETERANGAN',   key: 'notes',   width: 28, align: 'left' as const },
+        { header: 'JML ITEM',     key: 'items',   width: 10, align: 'center' as const },
+      ];
+
+      sheet.columns = COLS.map(c => ({ key: c.key, width: c.width }));
+      buildHeader(sheet, 'RINGKASAN TRANSAKSI MUTASI BARANG', COLS.length);
+
+      const hRow = sheet.getRow(4);
+      hRow.height = 20;
+      COLS.forEach((col, i) => {
+        const cell = hRow.getCell(i + 1);
+        cell.value = col.header;
+        styleHeader(cell);
+      });
+
+      sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: COLS.length } };
+
+      exportPreviewData.forEach((tx, idx) => {
+        const row = sheet.getRow(5 + idx);
+        row.height = 16;
+        const gudang = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name ?? '-';
+        const typeBg = getTypeBg(tx.type);
+        const typeFont = getTypeFont(tx.type);
+        const vals = [idx + 1, tx.referenceNo, fmtDate(tx.date), tx.type, gudang, tx.partnerName ?? '-', tx.notes ?? '-', tx.items.length];
+
+        vals.forEach((val, ci) => {
+          const cell = row.getCell(ci + 1);
+          cell.value = val as any;
+          const isType = ci === 3;
+          const isNum = ci === 7;
+          styleCell(cell, {
+            align: COLS[ci].align,
+            bgColor: typeBg,
+            bold: ci === 1,
+            color: isType ? typeFont : undefined,
+            numFmt: isNum ? '#,##0' : undefined,
+          });
+        });
+      });
+
+      // Baris total
+      const totalRow = sheet.getRow(5 + exportPreviewData.length);
+      totalRow.height = 18;
+      const inCount  = exportPreviewData.filter(t => t.type === 'IN').length;
+      const outCount = exportPreviewData.filter(t => t.type === 'OUT').length;
+      const tfCount  = exportPreviewData.filter(t => t.type === 'TRANSFER').length;
+      const totalItems = exportPreviewData.reduce((a, tx) => a + tx.items.length, 0);
+      const summaryLabels: Record<number, string | number> = {
+        0: 'TOTAL',
+        3: `IN: ${inCount}  OUT: ${outCount}  TF: ${tfCount}`,
+        7: totalItems,
+      };
+
+      COLS.forEach((col, ci) => {
+        const cell = totalRow.getCell(ci + 1);
+        cell.value = (summaryLabels[ci] ?? '') as any;
+        cell.font = { name: 'Arial', bold: true, size: 9, color: { argb: 'FF' + COLOR.TOTAL_FONT } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.TOTAL_BG } };
+        cell.alignment = { horizontal: ci === 0 ? 'center' : (ci === 7 ? 'center' : 'left'), vertical: 'middle' };
+        cell.border = {
+          top: { style: 'medium', color: { argb: 'FF' + COLOR.HEADER_BG } },
+          left: { style: 'thin', color: { argb: 'FF' + COLOR.BORDER } },
+          bottom: { style: 'medium', color: { argb: 'FF' + COLOR.HEADER_BG } },
+          right: { style: 'thin', color: { argb: 'FF' + COLOR.BORDER } },
+        };
+        if (ci === 7) cell.numFmt = '#,##0';
+      });
     }
 
-    // Buat nama file dari filter aktif
+    // ─── Sheet INFO ───
+    const infoSheet = wb.addWorksheet('Info Export');
+    infoSheet.columns = [{ width: 28 }, { width: 40 }];
+    const infoData = [
+      ['GudangPro System', ''],
+      ['', ''],
+      ['Parameter Export', ''],
+      ['Format',      exportMode === 'detail' ? 'Detail per Item' : 'Ringkasan'],
+      ['Periode Dari', fmtDate(exportStart)],
+      ['Periode Sampai', fmtDate(exportEnd)],
+      ['Gudang',      whName ?? 'Semua Gudang'],
+      ['Tipe',        exportType !== 'ALL' ? exportType : 'Semua'],
+      ['Partner',     exportPartner !== 'ALL' ? exportPartner : 'Semua'],
+      ['Pencarian',   exportSearch || '-'],
+      ['', ''],
+      ['Total Transaksi', exportPreviewData.length],
+      ['Total Baris Data', exportPreviewRowCount],
+      ['Waktu Export', new Date().toLocaleString('id-ID')],
+    ];
+    infoData.forEach(([k, v], i) => {
+      const row = infoSheet.getRow(i + 1);
+      const c1 = row.getCell(1);
+      const c2 = row.getCell(2);
+      c1.value = k; c2.value = v as any;
+      if (i === 0) {
+        c1.font = { name: 'Arial', bold: true, size: 12, color: { argb: 'FF' + COLOR.TITLE_BG } };
+      } else if (i === 2) {
+        c1.font = { name: 'Arial', bold: true, size: 9, color: { argb: 'FF' + COLOR.HEADER_FONT } };
+        c1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.HEADER_BG } };
+        c2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + COLOR.HEADER_BG } };
+      } else {
+        c1.font = { name: 'Arial', bold: true, size: 9, color: { argb: 'FF475569' } };
+        c2.font = { name: 'Arial', size: 9, color: { argb: 'FF0F172A' } };
+        if (i > 2 && i % 2 === 1) {
+          c1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+          c2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+        }
+      }
+      row.height = i === 0 ? 22 : 16;
+    });
+
+    // ─── Simpan dan download ───
     const parts = [
       'Mutasi',
       exportStart,
       exportEnd !== exportStart ? `sd_${exportEnd}` : '',
-      whName ?? '',
+      whName?.replace(/\s+/g, '_') ?? '',
       exportType !== 'ALL' ? exportType : '',
       exportPartner !== 'ALL' ? exportPartner.replace(/\s+/g, '_') : '',
     ].filter(Boolean);
-    XLSX.writeFile(wb, `${parts.join('_')}.xlsx`);
+    const fileName = `${parts.join('_')}.xlsx`;
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName; a.click();
+    URL.revokeObjectURL(url);
+
     showToast(`Berhasil mengekspor ${exportPreviewRowCount} baris`, 'success');
     setShowExportModal(false);
   };
@@ -759,7 +1039,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                     className="px-4 py-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-200 rounded-lg transition-colors">
                     Batal
                   </button>
-                  <button onClick={handleRunExport}
+                  <button onClick={() => handleRunExport()}
                     disabled={exportPreviewData.length === 0}
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-40 flex items-center gap-1.5">
                     <Download size={13} /> Export {exportPreviewRowCount} Baris
