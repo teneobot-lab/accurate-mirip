@@ -30,77 +30,83 @@ export const SettingsView: React.FC = () => {
     const [copied, setCopied] = useState(false);
 
     const GS_CODE_BOILERPLATE = `/**
- * GudangPro - Smart Sync v5.0 (Enterprise Ready)
- * Supports: Partner, Warehouse, Global Notes, Multi-Sheet, Deduplication
+ * GudangPro - Smart Sync v6.0
+ * Mode: Full Replace per Periode — Handle Tambah, Edit, Hapus
  */
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
-    
-    // Support V2 Payload (Separate Transactions & Rejects)
-    if (contents.action === "SYNC_V2") {
+    if (contents.action === 'SYNC_V2') {
       var results = [];
-      
-      // 1. Process Transactions (Sheet: Mutasi GudangPro)
-      if (contents.transactions && contents.transactions.length > 0) {
-         // Header mapping v5: Tanggal, Ref, Tipe, Gudang, Partner, SKU, Nama, Qty, Satuan, Keterangan
-         results.push(processSheet("Mutasi GudangPro", contents.transactions, ["Tanggal", "Ref No", "Tipe", "Gudang", "Partner", "Kode", "Nama", "Qty", "Satuan", "Keterangan"]));
+      var startDate = contents.startDate || null;
+      var endDate   = contents.endDate   || null;
+      if (contents.transactions) {
+        results.push(replaceSheetData("Mutasi GudangPro", contents.transactions,
+          ["Tanggal","Ref No","Tipe","Gudang","Partner","Kode","Nama","Qty","Satuan","Keterangan"],
+          startDate, endDate));
       }
-      
-      // 2. Process Rejects (Sheet: Laporan Reject)
-      if (contents.rejects && contents.rejects.length > 0) {
-         results.push(processSheet("Laporan Reject", contents.rejects, ["Tanggal", "ID Aggregasi", "SKU", "Nama Barang", "Total Base Qty", "Base Unit", "Alasan"]));
+      if (contents.rejects) {
+        results.push(replaceSheetData("Laporan Reject", contents.rejects,
+          ["Tanggal","ID Aggregasi","SKU","Nama Barang","Total Base Qty","Base Unit","Alasan"],
+          startDate, endDate));
       }
-      
-      return ContentService.createTextOutput(JSON.stringify({status: "success", details: results})).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({status:"success",details:results}))
+        .setMimeType(ContentService.MimeType.JSON);
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: "Invalid action version"}))
+    return ContentService.createTextOutput(JSON.stringify({status:"error",message:"Invalid action"}))
       .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()}))
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status:"error",message:err.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-// Generic Function to Append Data with Deduplication
-function processSheet(sheetName, newRows, headers) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+function replaceSheetData(sheetName, newRows, headers, startDate, endDate) {
+  var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(sheetName);
-  
-  // Create Sheet if not exists
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-    sheet.appendRow(headers);
-    sheet.getRange(1, 1, 1, headers.length).setBackground("#335157").setFontColor("#ffffff").setFontWeight("bold");
-    sheet.setFrozenRows(1);
-  }
-  
+  if (!sheet) { sheet = ss.insertSheet(sheetName); formatHeader(sheet, headers); }
+
   var lastRow = sheet.getLastRow();
-  var existingIds = [];
-  
-  // Get existing IDs (Column B is always the unique key: RefNo or AggID)
-  if (lastRow > 1) {
-     var data = sheet.getRange(2, 2, lastRow - 1, 1).getValues(); 
-     existingIds = data.flat().map(String); 
+  if (startDate && endDate && lastRow > 1) {
+    var allData    = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
+    var rowsToKeep = allData.filter(function(row) {
+      var d = formatDateValue(row[0]);
+      return !d || d < startDate || d > endDate;
+    });
+    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
+    if (rowsToKeep.length > 0)
+      sheet.getRange(2, 1, rowsToKeep.length, rowsToKeep[0].length).setValues(rowsToKeep);
   }
-  
-  // Filter duplicates
-  var uniqueRows = [];
-  for (var i = 0; i < newRows.length; i++) {
-     var id = String(newRows[i][1]); // Index 1 is the Key
-     if (existingIds.indexOf(id) === -1) {
-        uniqueRows.push(newRows[i]);
-     }
+
+  if (newRows.length > 0) {
+    var insertAt = sheet.getLastRow() + 1;
+    sheet.getRange(insertAt, 1, newRows.length, newRows[0].length).setValues(newRows);
+    sheet.getRange(insertAt, 1, newRows.length, 1).setNumberFormat("DD/MM/YYYY");
+    for (var r = 0; r < newRows.length; r++) {
+      var bg = ((insertAt + r) % 2 === 0) ? "#f8fafb" : "#ffffff";
+      sheet.getRange(insertAt + r, 1, 1, newRows[0].length).setBackground(bg);
+    }
   }
-  
-  // Append
-  if (uniqueRows.length > 0) {
-    sheet.getRange(lastRow + 1, 1, uniqueRows.length, uniqueRows[0].length).setValues(uniqueRows);
+  return sheetName + ": " + newRows.length + " baris ditulis";
+}
+
+function formatHeader(sheet, headers) {
+  sheet.appendRow(headers);
+  sheet.getRange(1,1,1,headers.length)
+    .setBackground("#1e3a5f").setFontColor("#ffffff")
+    .setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.setFrozenRows(1);
+}
+
+function formatDateValue(val) {
+  if (!val) return null;
+  if (val instanceof Date) {
+    return val.getFullYear()+"-"+String(val.getMonth()+1).padStart(2,"0")+"-"+String(val.getDate()).padStart(2,"0");
   }
-  
-  return sheetName + ": Added " + uniqueRows.length + " rows";
+  var s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) { var p=s.split('/'); return p[2]+'-'+p[1]+'-'+p[0]; }
+  return null;
 }`;
 
     const refreshData = async () => {
@@ -177,10 +183,14 @@ function processSheet(sheetName, newRows, headers) {
         setIsSyncing(true);
         try {
             await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
-            await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
-            showToast("Sync Selesai. Cek Sheet 'Mutasi' dan 'Reject'.", "success");
-        } catch (e: any) {
-            showToast("Gagal Sync. Pastikan script V5.0 sudah di-update.", "error");
+            const result = await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
+            // Tampilkan detail berapa baris yang tersync
+            const detail = result
+                ? `${result.txCount ?? 0} transaksi · ${result.rejectCount ?? 0} reject`
+                : 'Selesai';
+            showToast(`✓ Sync v6.0 Selesai — ${detail}`, "success");
+        } catch (e) {
+            showToast("Gagal Sync. Pastikan Script v6.0 sudah di-deploy ulang.", "error");
         } finally {
             setIsSyncing(false);
         }
@@ -373,7 +383,7 @@ function processSheet(sheetName, newRows, headers) {
 
                             <div className="bg-slate-900 rounded-2xl border border-slate-800 flex flex-col h-[500px] shadow-xl overflow-hidden">
                                 <div className="p-3 bg-slate-950 flex justify-between items-center border-b border-slate-800">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">Apps Script Code (V5.0)</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">Apps Script Code (V6.0 — Full Replace)</span>
                                     <button onClick={() => { navigator.clipboard.writeText(GS_CODE_BOILERPLATE); setCopied(true); setTimeout(()=>setCopied(false),2000); }} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-2 border border-slate-700 transition-colors">
                                         {copied ? <Check size={12} className="text-emerald-400"/> : <Copy size={12}/>} {copied ? 'COPIED' : 'COPY'}
                                     </button>
