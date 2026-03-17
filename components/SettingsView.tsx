@@ -184,13 +184,15 @@ function formatDateValue(val) {
         try {
             await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
             const result = await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
-            // Tampilkan detail berapa baris yang tersync
-            const detail = result
-                ? `${result.txCount ?? 0} transaksi · ${result.rejectCount ?? 0} reject`
-                : 'Selesai';
-            showToast(`✓ Sync v6.0 Selesai — ${detail}`, "success");
+            // Handle response dari server
+            if (result?.status === 'no_change') {
+                showToast("ℹ Tidak ada perubahan data — sync dibatalkan", "warning");
+            } else {
+                const details = Array.isArray(result?.details) ? result.details.join(' · ') : 'Selesai';
+                showToast(`✓ Sync v6.1 Selesai — ${details}`, "success");
+            }
         } catch (e) {
-            showToast("Gagal Sync. Pastikan Script v6.0 sudah di-deploy ulang.", "error");
+            showToast("Gagal Sync. Pastikan Script v6.1 sudah di-deploy ulang.", "error");
         } finally {
             setIsSyncing(false);
         }
