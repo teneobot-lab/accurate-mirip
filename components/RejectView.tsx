@@ -1008,13 +1008,23 @@ export const RejectView: React.FC = () => {
 
       {/* MODAL: MASTER ITEM */}
       {showItemModal && (
-        <div className="fixed inset-0 bg-slate-900/10 z-[1000] flex items-center justify-center p-4 backdrop-blur-[1px] animate-in fade-in">
-          <div className="bg-white rounded-lg w-full max-w-md shadow-2xl border border-mist-300 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-4 py-3 border-b border-mist-200 flex justify-between items-center bg-mist-50">
-              <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">
-                {editingItem ? 'Edit Barang' : 'Barang Baru'}
-              </h3>
-              <button onClick={() => setShowItemModal(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+        <div className="fixed inset-0 bg-slate-900/55 z-[1000] flex items-center justify-center backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-xl w-[520px] shadow-2xl border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+            <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${editingItem ? 'bg-amber-100' : 'bg-blue-100'}`}>
+                  <Database size={14} className={editingItem ? 'text-amber-600' : 'text-blue-600'} />
+                </div>
+                <div>
+                  <h3 className="text-[13px] font-bold text-slate-800">
+                    {editingItem ? 'Edit Barang' : 'Tambah Barang Baru'}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {editingItem ? `SKU: ${editingItem.code}` : 'Isi semua field yang diperlukan'}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowItemModal(false)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
                 <X size={16} />
               </button>
             </div>
@@ -1117,9 +1127,9 @@ export const RejectView: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="px-4 py-3 bg-mist-50 border-t border-mist-200 flex justify-end gap-2">
-              <button onClick={() => setShowItemModal(false)} className="px-4 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-mist-200 rounded transition-colors">Batal</button>
-              <button onClick={handleSaveMasterItem} className="px-6 py-1.5 bg-blue-600 text-white rounded text-[11px] font-bold shadow-sm hover:bg-blue-700 transition-all active:scale-95">SIMPAN</button>
+            <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+              <button onClick={() => setShowItemModal(false)} className="px-4 py-2 text-[12px] font-semibold text-slate-500 hover:bg-slate-200 rounded-lg transition-colors">Batal</button>
+              <button onClick={handleSaveMasterItem} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[12px] font-bold shadow-sm hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-1.5"><Save size={13}/> Simpan</button>
             </div>
           </div>
         </div>
