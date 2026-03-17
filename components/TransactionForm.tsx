@@ -22,7 +22,6 @@ interface Props {
   onSuccess: () => void;
 }
 
-// FIX #1: Extended line with stable lineId for keying
 interface TransactionLine extends TransactionItem {
   lineId: string;
 }
@@ -30,8 +29,6 @@ interface TransactionLine extends TransactionItem {
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-
-// FIX #8: Centralised, deterministic refNo generator (no Math.random collision)
 const generateRefNo = (txType: TransactionType): string => {
   const prefix = txType === 'IN' ? 'RI' : 'DO';
   const now = new Date();
@@ -51,7 +48,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // FIX #7: isEditMode derived — only true if initialData present AND we haven't reset
   const [hasReset, setHasReset] = useState(false);
   const isEditMode = !!initialData && !hasReset;
 
@@ -62,7 +58,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const [selectedWh, setSelectedWh] = useState(initialData?.sourceWarehouseId ?? '');
   const [notes, setNotes] = useState(initialData?.notes ?? '');
 
-  // FIX #1: Seed lines with stable lineIds
   const [lines, setLines] = useState<TransactionLine[]>(
     () => (initialData?.items ?? []).map((l, i) => ({
       ...l,
@@ -100,7 +95,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const { search } = useFuseSearch(activeMasterItems, { keys: ['code', 'name'], limit: 50 });
   const searchResults = search(searchQuery);
 
-  // FIX #5: stable useEffect — selectedWh in deps avoided by using functional setter
+  // FIX #7: O(1) master item lookup via Map — avoid O(n) find() per row per render
+  const masterItemMap = useMemo(
+    () => new Map(masterItems.map(i => [i.id, i])),
+    [masterItems]
+  );
+
   useEffect(() => {
     StorageService.fetchStocks().then(setStocks).catch(() => {});
     setPartners(
@@ -127,7 +127,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // FIX #9: O(1) stock lookup via Map — avoid N*find() per render
+  // O(1) stock lookup via Map
   const stockMap = useMemo(
     () => new Map(stocks.map(s => [`${s.itemId}__${s.warehouseId}`, Number(s.qty)])),
     [stocks]
@@ -137,23 +137,27 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     [stockMap, selectedWh]
   );
 
-  // FIX #4: Build all unit options for a line correctly (base + conversions, no filter bug)
+  // FIX #7: getUnitOptions menggunakan masterItemMap (O(1)) bukan find() O(n)
   const getUnitOptions = useCallback((itemId: string, currentUnit: string): string[] => {
-    const item = masterItems.find(it => it.id === itemId);
+    const item = masterItemMap.get(itemId);
     if (!item) return [currentUnit];
     const all = [item.baseUnit, ...(item.conversions?.map(c => c.name) ?? [])];
-    // Deduplicate while preserving order; keep currentUnit even if not in master
     const set = new Set(all);
     if (!set.has(currentUnit)) set.add(currentUnit);
     return Array.from(set);
-  }, [masterItems]);
+  }, [masterItemMap]);
+
+  // FIX #1: Helper hitung ratio dari item + unit yang dipilih
+  const resolveRatio = useCallback((item: Item, unit: string): number => {
+    if (unit === item.baseUnit) return 1;
+    return item.conversions?.find(c => c.name === unit)?.ratio ?? 1;
+  }, []);
 
   const handleSelectItem = (item: Item) => {
     setPendingItem(item);
     setPendingUnit(item.baseUnit);
     setIsSearching(false);
     setSearchQuery('');
-    // FIX #10: reset selectedIndex on every new selection
     setSelectedIndex(0);
     setTimeout(() => qtyInputRef.current?.focus(), 50);
   };
@@ -166,26 +170,32 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       return;
     }
 
-    // IMPROVEMENT: duplicate item warning — allow but notify
     const isDupe = lines.some(l => l.itemId === pendingItem.id);
     if (isDupe) {
       showToast(`⚠ ${pendingItem.name} sudah ada di daftar — baris baru ditambahkan`, 'warning');
     }
 
-    // IMPROVEMENT: OUT stock warning
     if (type === 'OUT') {
       const available = getStockQty(pendingItem.id);
-      if (qty > available) {
+      // FIX #4: bandingkan base qty (qty * ratio) bukan qty tampilan
+      const resolvedUnit = pendingUnit || pendingItem.baseUnit;
+      const ratio = resolveRatio(pendingItem, resolvedUnit);
+      const baseQty = qty * ratio;
+      if (baseQty > available) {
         showToast(`Stok ${pendingItem.name} tidak cukup (${available.toLocaleString()} tersedia)`, 'warning');
       }
     }
+
+    // FIX #1: Hitung ratio yang benar berdasarkan unit yang dipilih
+    const resolvedUnit = pendingUnit || pendingItem.baseUnit;
+    const resolvedRatio = resolveRatio(pendingItem, resolvedUnit);
 
     const newLine: TransactionLine = {
       lineId: `line_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       itemId: pendingItem.id,
       qty,
-      unit: pendingUnit || pendingItem.baseUnit,
-      ratio: 1,
+      unit: resolvedUnit,
+      ratio: resolvedRatio, // ✅ bukan lagi hardcode 1
       name: pendingItem.name,
       code: pendingItem.code,
       note: pendingNote,
@@ -195,9 +205,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setIsDirty(true);
     setPendingItem(null); setPendingQty(''); setPendingNote(''); setPendingUnit('');
     setTimeout(() => inlineSearchTriggerRef.current?.focus(), 50);
-  }, [pendingItem, pendingQty, pendingUnit, pendingNote, lines, type, getStockQty, showToast]);
+  }, [pendingItem, pendingQty, pendingUnit, pendingNote, lines, type, getStockQty, showToast, resolveRatio]);
 
-  // FIX #3: immutable updateLine
+  // FIX #3: immutable updateLine (field generik selain unit)
   const updateLine = useCallback((lineId: string, field: keyof TransactionLine, value: any) => {
     setLines(prev =>
       prev.map(l => l.lineId === lineId ? { ...l, [field]: value } : l)
@@ -205,7 +215,21 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setIsDirty(true);
   }, []);
 
-  // FIX #12: delete by lineId
+  // FIX #2: updateLineUnit — update unit DAN ratio sekaligus
+  const updateLineUnit = useCallback((lineId: string, newUnit: string) => {
+    setLines(prev =>
+      prev.map(l => {
+        if (l.lineId !== lineId) return l;
+        const item = masterItemMap.get(l.itemId);
+        const newRatio = item
+          ? (newUnit === item.baseUnit ? 1 : (item.conversions?.find(c => c.name === newUnit)?.ratio ?? 1))
+          : 1;
+        return { ...l, unit: newUnit, ratio: newRatio };
+      })
+    );
+    setIsDirty(true);
+  }, [masterItemMap]);
+
   const deleteLine = useCallback((lineId: string) => {
     setLines(prev => prev.filter(l => l.lineId !== lineId));
     setIsDirty(true);
@@ -237,7 +261,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     if (e.key === 'ArrowUp') {
       if (field === 'search' && isSearching) {
         e.preventDefault();
-        // FIX #11: no wrap-around — clamp at 0
         setSelectedIndex(prev => Math.max(0, prev - 1));
         return;
       }
@@ -250,7 +273,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     if (e.key === 'ArrowDown') {
       if (field === 'search' && isSearching) {
         e.preventDefault();
-        // FIX #11: no wrap-around — clamp at last
         setSelectedIndex(prev => Math.min(prev + 1, searchResults.length - 1));
         return;
       }
@@ -318,7 +340,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             newItemsToCreate.push(item);
           }
 
-          // FIX #14: validate unit against item conversions
           const validUnits = [item.baseUnit, ...(item.conversions?.map(c => c.name) ?? [])];
           const resolvedUnit = validUnits.includes(unit) ? unit : item.baseUnit;
           const ratio = resolvedUnit === item.baseUnit
@@ -362,7 +383,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
     setIsSubmitting(true);
     try {
-      // FIX #13: include partnerName in payload
       const partnerName = partners.find(p => p.id === selectedPartnerId)?.name ?? '';
       const txData = {
         date, referenceNo: refNo, type,
@@ -384,7 +404,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       showToast('Transaksi Berhasil Disimpan', 'success');
 
       if (keepOpen) {
-        // FIX #8: use centralised generateRefNo
         setLines([]);
         setNotes('');
         setSelectedPartnerId('');
@@ -398,16 +417,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         onSuccess();
       }
     } catch (e) {
-      // FIX #2: safe error typing
       showToast(e instanceof Error ? e.message : 'Gagal menyimpan transaksi', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Close with dirty-check
+  // FIX #3: Close dengan dirty-check — isDirty juga ter-set saat header berubah
   const handleClose = () => {
-    if (isDirty && lines.length > 0) {
+    if (isDirty) {
       setShowCloseConfirm(true);
     } else {
       onClose();
@@ -420,14 +438,25 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     [lines]
   );
 
-  // Stock warning for pending item in OUT mode
+  // FIX #6: Hitung overStockCount sekali via useMemo — tidak double filter di render
+  // FIX #4: Bandingkan base qty (qty * ratio) bukan qty tampilan
+  const overStockCount = useMemo(
+    () => type === 'OUT'
+      ? lines.filter(l => (l.qty * (l.ratio || 1)) > getStockQty(l.itemId)).length
+      : 0,
+    [lines, type, getStockQty]
+  );
+
+  // Stock warning untuk pending item di OUT mode
+  // FIX #4: Bandingkan base qty
   const pendingStockWarning = useMemo(() => {
     if (type !== 'OUT' || !pendingItem || !pendingQty) return null;
     const available = getStockQty(pendingItem.id);
     const qty = Number(pendingQty);
-    if (qty > available) return available;
+    const ratio = resolveRatio(pendingItem, pendingUnit || pendingItem.baseUnit);
+    if (qty * ratio > available) return available;
     return null;
-  }, [type, pendingItem, pendingQty, getStockQty]);
+  }, [type, pendingItem, pendingQty, pendingUnit, getStockQty, resolveRatio]);
 
   // ─────────────────────────────────────────────
   // RENDER
@@ -454,7 +483,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         </div>
         <div className="flex gap-2 items-center">
           <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} />
-          {/* Template download button — FIX #6 */}
           <button
             onClick={handleDownloadTemplate}
             className="px-3 py-1.5 bg-white hover:bg-mist-50 text-slate-500 border border-mist-300 rounded text-xs font-bold transition-all flex items-center gap-1.5"
@@ -492,27 +520,47 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
 
         {/* 2. FORM HEADER */}
+        {/* FIX #3: setIsDirty(true) pada setiap perubahan header */}
         <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-3 bg-mist-50 border-b border-mist-200 text-xs shrink-0">
           <div className="space-y-0.5">
             <label className="font-bold text-slate-500 uppercase text-[10px]">Tanggal</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand" />
+            <input
+              type="date"
+              value={date}
+              onChange={e => { setDate(e.target.value); setIsDirty(true); }}
+              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+            />
           </div>
           <div className="space-y-0.5">
             <label className="font-bold text-slate-500 uppercase text-[10px]">Gudang</label>
-            <select value={selectedWh} onChange={e => setSelectedWh(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand">
+            <select
+              value={selectedWh}
+              onChange={e => { setSelectedWh(e.target.value); setIsDirty(true); }}
+              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+            >
               {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
           </div>
           <div className="space-y-0.5">
             <label className="font-bold text-slate-500 uppercase text-[10px]">{type === 'IN' ? 'Supplier' : 'Customer'}</label>
-            <select value={selectedPartnerId} onChange={e => setSelectedPartnerId(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand">
+            <select
+              value={selectedPartnerId}
+              onChange={e => { setSelectedPartnerId(e.target.value); setIsDirty(true); }}
+              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+            >
               <option value="">-- Pilih --</option>
               {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div className="space-y-0.5">
             <label className="font-bold text-slate-500 uppercase text-[10px]">Catatan Global</label>
-            <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand" placeholder="Keterangan..." />
+            <input
+              type="text"
+              value={notes}
+              onChange={e => { setNotes(e.target.value); setIsDirty(true); }}
+              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+              placeholder="Keterangan..."
+            />
           </div>
         </div>
 
@@ -532,11 +580,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               </tr>
             </thead>
             <tbody className="divide-y divide-mist-50 text-[11px]">
-              {/* FIX #1: key by lineId */}
               {lines.map((l, i) => {
                 const stockQty = getStockQty(l.itemId);
-                const isOverStock = type === 'OUT' && l.qty > stockQty;
-                const unitOptions = getUnitOptions(l.itemId, l.unit); // FIX #4
+                // FIX #4: bandingkan base qty (qty * ratio) bukan qty tampilan
+                const isOverStock = type === 'OUT' && (l.qty * (l.ratio || 1)) > stockQty;
+                const unitOptions = getUnitOptions(l.itemId, l.unit);
 
                 return (
                   <tr key={l.lineId} className={`h-7 group ${isOverStock ? 'bg-rose-50/40' : 'hover:bg-mist-50'}`}>
@@ -545,26 +593,27 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       <span className="font-semibold text-slate-700">{l.name}</span>
                       <span className="ml-2 text-[10px] text-slate-400 font-mono">{l.code}</span>
                     </td>
-                    {/* IMPROVEMENT: red stock cell if over */}
                     <td className={`px-2 text-right font-mono ${isOverStock ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
                       {isOverStock && <AlertTriangle size={9} className="inline mr-1 mb-0.5 text-rose-400" />}
                       {stockQty.toLocaleString()}
                     </td>
                     <td className="p-0">
+                      {/* FIX #5: min="0" mencegah input qty negatif */}
                       <input
                         id={`input-${i}-qty`}
                         type="number"
+                        min="0"
                         value={l.qty}
                         onChange={e => updateLine(l.lineId, 'qty', Number(e.target.value))}
                         onKeyDown={e => handleGridKeyDown(e, i, 'qty')}
                         className={`w-full h-full bg-transparent text-right px-2 font-bold outline-none focus:bg-blue-50 ${isOverStock ? 'text-rose-600' : 'text-slate-800'}`}
                       />
                     </td>
-                    {/* FIX #4: all unit options rendered correctly */}
+                    {/* FIX #2: ganti unit juga update ratio */}
                     <td className="p-0">
                       <select
                         value={l.unit}
-                        onChange={e => updateLine(l.lineId, 'unit', e.target.value)}
+                        onChange={e => updateLineUnit(l.lineId, e.target.value)}
                         className="w-full h-full bg-transparent text-center px-1 outline-none appearance-none focus:bg-blue-50 cursor-pointer text-[10px]"
                       >
                         {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
@@ -585,7 +634,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       />
                     </td>
                     <td className="px-0 text-center">
-                      {/* FIX #12: delete by lineId */}
                       <button
                         onClick={() => deleteLine(l.lineId)}
                         className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -610,7 +658,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       onChange={e => {
                         if (pendingItem) setPendingItem(null);
                         setSearchQuery(e.target.value);
-                        // FIX #10: reset selectedIndex on query change
                         setSelectedIndex(0);
                         setIsSearching(true);
                       }}
@@ -639,9 +686,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   ) : '-'}
                 </td>
                 <td className="p-0 relative">
+                  {/* FIX #5: min="0" pada pending qty */}
                   <input
                     ref={qtyInputRef}
                     type="number"
+                    min="0"
                     placeholder="0"
                     disabled={!pendingItem}
                     value={pendingQty}
@@ -649,7 +698,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                     onKeyDown={e => handleNewEntryKeyDown(e, 'qty')}
                     className={`w-full h-full bg-white text-right px-2 font-bold outline-none focus:ring-1 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 disabled:text-slate-300 ${pendingStockWarning !== null ? 'text-rose-600' : 'text-brand'}`}
                   />
-                  {/* IMPROVEMENT: real-time stock warning tooltip */}
                   {pendingStockWarning !== null && (
                     <div className="absolute right-0 -top-5 text-[8px] font-bold text-rose-500 bg-white px-1.5 border border-rose-200 shadow-sm rounded z-10 whitespace-nowrap flex items-center gap-0.5">
                       <AlertTriangle size={8} /> Melebihi stok ({pendingStockWarning.toLocaleString()})
@@ -716,11 +764,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               Total Qty: <strong className="text-slate-800">{totalBaseQty.toLocaleString()}</strong>
               <span className="text-[10px] ml-1">BASE</span>
             </span>
-            {/* IMPROVEMENT: over-stock count badge */}
-            {type === 'OUT' && lines.filter(l => l.qty > getStockQty(l.itemId)).length > 0 && (
+            {/* FIX #6: pakai overStockCount dari useMemo — tidak double filter */}
+            {overStockCount > 0 && (
               <span className="flex items-center gap-1 text-rose-600 font-bold">
                 <AlertTriangle size={10} />
-                {lines.filter(l => l.qty > getStockQty(l.itemId)).length} item melebihi stok
+                {overStockCount} item melebihi stok
               </span>
             )}
           </div>
@@ -786,7 +834,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                             <td className="px-3 py-1.5 font-bold truncate">
                               {highlightMatch(item.name, searchQuery)}
                             </td>
-                            {/* IMPROVEMENT: zero-stock highlight in search modal */}
                             <td className={`px-3 py-1.5 text-right font-mono ${
                               idx === selectedIndex ? 'text-white' : isLowStock ? 'text-rose-400 font-bold' : 'text-slate-600'
                             }`}>
@@ -825,7 +872,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               <div>
                 <h3 className="text-sm font-bold text-slate-800">Tutup tanpa menyimpan?</h3>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Ada <strong>{lines.length} baris</strong> yang belum disimpan. Data akan hilang jika Anda keluar sekarang.
+                  Ada perubahan yang belum disimpan. Data akan hilang jika Anda keluar sekarang.
                 </p>
               </div>
             </div>
