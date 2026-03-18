@@ -304,26 +304,33 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
   const hasNegativeBalance = ledgerRows.some(r => r.balance < 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-mist-50 flex flex-col font-sans animate-in slide-in-from-bottom-2 duration-300">
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col font-sans animate-in slide-in-from-bottom-2 duration-300">
 
-      {/* 1. TOP HEADER BAR */}
-      <div className="h-12 border-b border-mist-300 flex justify-between items-center px-4 bg-white shrink-0 shadow-sm z-20">
-        <div className="flex items-center gap-3">
+      {/* ── HEADER BAR ── */}
+      <div className="h-14 border-b border-slate-200 flex items-center justify-between px-4 bg-white shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.06)] z-20 gap-4">
+
+        {/* LEFT: back + item identity */}
+        <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onBack}
-            className="p-1.5 hover:bg-mist-100 rounded-lg text-slate-500 transition-colors border border-transparent hover:border-mist-300"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors shrink-0 text-[12px] font-semibold"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={15} />
+            <span className="hidden sm:inline">Kembali</span>
           </button>
-          <div className="h-6 w-px bg-mist-300 mx-1" />
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] bg-slate-800 text-white px-1.5 py-0.5 rounded font-mono font-bold tracking-wider">
+
+          <div className="h-5 w-px bg-slate-200 shrink-0" />
+
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 text-[10px] bg-slate-800 text-white px-2 py-0.5 rounded-md font-mono font-bold tracking-wider">
               {item.code}
             </span>
-            <h1 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{item.name}</h1>
-            {/* IMPROVEMENT: Negative balance warning badge in header */}
+            <h1 className="text-[13px] font-bold text-slate-800 truncate">{item.name}</h1>
+            <span className="shrink-0 text-[10px] text-slate-400 font-medium bg-slate-100 px-1.5 py-0.5 rounded">
+              {item.baseUnit}
+            </span>
             {hasNegativeBalance && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
                 <AlertTriangle size={10} />
                 Saldo Negatif
               </span>
@@ -331,16 +338,16 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Warehouse Filter */}
-          <div className="flex items-center bg-mist-50 border border-mist-300 rounded-md p-0.5">
-            <div className="px-2 border-r border-mist-300">
-              <Filter size={12} className="text-slate-400" />
-            </div>
+        {/* RIGHT: filters + actions — grouped clearly */}
+        <div className="flex items-center gap-2 shrink-0">
+
+          {/* Filter Gudang */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+            <Filter size={11} className="text-slate-400 shrink-0" />
             <select
               value={whFilter}
               onChange={e => setWhFilter(e.target.value)}
-              className="bg-transparent text-[11px] font-bold text-slate-600 outline-none px-2 py-1 cursor-pointer w-32"
+              className="bg-transparent text-[11px] font-semibold text-slate-600 outline-none cursor-pointer max-w-[120px]"
             >
               <option value="ALL">Semua Gudang</option>
               {warehouses.map(w => (
@@ -349,83 +356,104 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
             </select>
           </div>
 
-          {/* Date Range Filter */}
-          <div className="flex items-center gap-1 bg-white border border-mist-300 rounded-md px-2 py-1 shadow-sm">
-            <Calendar size={12} className="text-slate-400 mr-1" />
+          {/* Filter Periode */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+            <Calendar size={11} className="text-slate-400 shrink-0" />
             <input
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
-              className="text-[11px] font-bold text-slate-700 outline-none w-24 bg-transparent"
+              className="text-[11px] font-semibold text-slate-700 outline-none w-24 bg-transparent"
             />
-            <span className="text-slate-300 text-[10px] mx-1">s/d</span>
+            <span className="text-slate-300 text-[10px]">—</span>
             <input
               type="date"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
-              className="text-[11px] font-bold text-slate-700 outline-none w-24 bg-transparent"
+              className="text-[11px] font-semibold text-slate-700 outline-none w-24 bg-transparent"
             />
           </div>
 
-          <div className="h-6 w-px bg-mist-300 mx-1" />
+          <div className="h-5 w-px bg-slate-200" />
 
+          {/* Action buttons — labeled for clarity */}
           <button
             onClick={loadData}
-            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-            title="Refresh Data"
             disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-slate-200 hover:border-blue-200 transition-colors text-[11px] font-semibold"
+            title="Refresh Data"
           >
-            <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+            <span className="hidden lg:inline">Refresh</span>
           </button>
           <button
             onClick={handleExportExcel}
-            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-slate-200 hover:border-emerald-200 transition-colors text-[11px] font-semibold"
             title="Export Excel"
           >
-            <FileSpreadsheet size={16} />
+            <FileSpreadsheet size={13} />
+            <span className="hidden lg:inline">Export</span>
           </button>
           <button
             onClick={() => window.print()}
-            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors no-print"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors text-[11px] font-semibold no-print"
             title="Print"
           >
-            <Printer size={16} />
+            <Printer size={13} />
+            <span className="hidden lg:inline">Print</span>
           </button>
         </div>
       </div>
 
-      {/* 2. SUMMARY DASHBOARD */}
-      <div className="bg-mist-50 border-b border-mist-300 py-3 px-6 flex items-center gap-8 shrink-0 shadow-[0_2px_4px_rgba(0,0,0,0.02)] z-10">
-        <StatWidget
-          label="Saldo Awal"
-          value={openingBalance}
-          colorClass="text-slate-500"
-        />
-        <div className="h-8 w-px bg-mist-300" />
-        <StatWidget
-          label="Total Masuk"
-          value={summary.totalIn}
-          colorClass="text-emerald-600"
-          icon={<TrendingUp size={10} className="text-emerald-400" />}
-        />
-        <div className="h-8 w-px bg-mist-300" />
-        <StatWidget
-          label="Total Keluar"
-          value={summary.totalOut}
-          colorClass="text-rose-600"
-          icon={<TrendingDown size={10} className="text-rose-400" />}
-        />
-        <div className="flex-1" />
-        <div className={`bg-white border px-4 py-2 rounded-lg shadow-sm flex flex-col items-end min-w-[150px] ${
-          summary.closing < 0 ? 'border-red-300 bg-red-50' : 'border-mist-300'
+      {/* ── SUMMARY BAR ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center gap-0 shrink-0 z-10">
+        {/* Stat items dengan divider */}
+        <div className="flex items-center gap-6 flex-1">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Saldo Awal</span>
+            <span className="text-[15px] font-mono font-bold text-slate-500">{openingBalance.toLocaleString()}</span>
+          </div>
+          <div className="h-8 w-px bg-slate-100" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <TrendingUp size={10} className="text-emerald-400" /> Total Masuk
+            </span>
+            <span className="text-[15px] font-mono font-bold text-emerald-600">+{summary.totalIn.toLocaleString()}</span>
+          </div>
+          <div className="h-8 w-px bg-slate-100" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <TrendingDown size={10} className="text-rose-400" /> Total Keluar
+            </span>
+            <span className="text-[15px] font-mono font-bold text-rose-600">-{summary.totalOut.toLocaleString()}</span>
+          </div>
+          <div className="h-8 w-px bg-slate-100" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{ledgerRows.length} transaksi</span>
+            <span className="text-[11px] font-semibold text-slate-400">{startDate} — {endDate}</span>
+          </div>
+        </div>
+
+        {/* Saldo Akhir — prominent di kanan */}
+        <div className={`flex items-center gap-3 px-5 py-2 rounded-xl border-2 ${
+          summary.closing < 0
+            ? 'border-red-200 bg-red-50'
+            : 'border-slate-200 bg-slate-50'
         }`}>
-          <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest">Saldo Akhir</span>
-          <span className={`text-xl font-mono font-black tracking-tight ${
-            summary.closing < 0 ? 'text-red-600' : 'text-slate-800'
-          }`}>
-            {summary.closing.toLocaleString()}{' '}
-            <span className="text-xs font-bold text-slate-400">{item.baseUnit}</span>
-          </span>
+          <div className="flex flex-col items-end">
+            <span className={`text-[10px] font-bold uppercase tracking-widest ${
+              summary.closing < 0 ? 'text-red-500' : 'text-slate-400'
+            }`}>Saldo Akhir</span>
+            <div className="flex items-baseline gap-1.5">
+              {summary.closing < 0 && <AlertTriangle size={12} className="text-red-500 mb-0.5" />}
+              <span className={`text-2xl font-mono font-black tracking-tight leading-none ${
+                summary.closing < 0 ? 'text-red-600' : 'text-slate-800'
+              }`}>
+                {summary.closing.toLocaleString()}
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">{item.baseUnit}</span>
+            </div>
+          </div>
         </div>
       </div>
 
