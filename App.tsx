@@ -17,6 +17,7 @@ import { SearchProvider } from './search/SearchProvider';
 import {
   LayoutDashboard, Package, FileBarChart, Settings,
   AlertOctagon, Menu, LogOut, X, ArrowLeft, Plus, Music, Loader2,
+  Sun, Moon,
 } from 'lucide-react';
 import { TransactionType, Transaction, Item } from './types';
 
@@ -31,6 +32,67 @@ export interface AppUser {
 
 type TabId = 'DASHBOARD' | 'INVENTORY' | 'REPORTS' | 'SETTINGS' | 'REJECT';
 type AppState = 'loading' | 'ready' | 'logging-out';
+type Theme = 'dark' | 'light';
+
+// ─────────────────────────────────────────────
+// Theme tokens — satu tempat untuk semua warna
+// ─────────────────────────────────────────────
+const THEME = {
+  dark: {
+    // Layout
+    pageBg:         'bg-slate-950',
+    sidebarBg:      'linear-gradient(180deg, #1e293b 0%, #1a2332 100%)',
+    sidebarBrand:   'rgba(15,23,42,0.5)',
+    sidebarBorder:  'border-slate-700/80',
+    // Topbar
+    topbarBg:       'bg-slate-800',
+    topbarBorder:   'border-slate-700',
+    topbarSep:      'border-slate-700',
+    // Text
+    textPrimary:    'text-slate-200',
+    textSecondary:  'text-slate-400',
+    textMuted:      'text-slate-500',
+    // Interactive
+    btnHover:       'hover:bg-slate-700 hover:text-slate-200',
+    btnIcon:        'text-slate-400',
+    // Avatar
+    avatarBg:       'bg-sky-500/20 border-sky-500/30 text-sky-300',
+    // Content
+    contentBg:      'bg-slate-900',
+    // Scrollbar
+    scrollThumb:    '#475569',
+    scrollThumbHover: '#64748b',
+    // Backdrop
+    backdropMobile: 'bg-slate-900/20',
+  },
+  light: {
+    // Layout
+    pageBg:         'bg-slate-50',
+    sidebarBg:      'linear-gradient(180deg, #1e293b 0%, #1a2332 100%)',
+    sidebarBrand:   'rgba(15,23,42,0.5)',
+    sidebarBorder:  'border-slate-700/80',
+    // Topbar
+    topbarBg:       'bg-white',
+    topbarBorder:   'border-slate-200',
+    topbarSep:      'border-slate-200',
+    // Text
+    textPrimary:    'text-slate-700',
+    textSecondary:  'text-slate-500',
+    textMuted:      'text-slate-400',
+    // Interactive
+    btnHover:       'hover:bg-slate-100 hover:text-slate-700',
+    btnIcon:        'text-slate-400',
+    // Avatar
+    avatarBg:       'bg-sky-50 border-sky-200 text-sky-600',
+    // Content
+    contentBg:      'bg-slate-50',
+    // Scrollbar
+    scrollThumb:    '#cbd5e1',
+    scrollThumbHover: '#94a3b8',
+    // Backdrop
+    backdropMobile: 'bg-slate-900/20',
+  },
+} as const;
 
 // ─────────────────────────────────────────────
 // Sub-components
@@ -54,8 +116,6 @@ interface NavItemProps {
   onClick: (id: TabId) => void;
 }
 
-// Warna sidebar diperhalus: dari slate-900 pekat ke slate-800/slate-850
-// Active state pakai warna lebih lembut, tidak terlalu kontras
 const NavItem: React.FC<NavItemProps> = ({ id, label, icon: Icon, activeTab, hasOverlay, onClick }) => {
   const isActive = activeTab === id && !hasOverlay;
   return (
@@ -81,6 +141,25 @@ function App() {
   const [appState, setAppState] = useState<AppState>('loading');
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('DASHBOARD');
+
+  // ── Theme state — persist ke localStorage ──
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      return (localStorage.getItem('gp_theme') as Theme) ?? 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  const t = THEME[theme];
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('gp_theme', next); } catch {}
+      return next;
+    });
+  }, []);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(
     () => typeof window !== 'undefined' && window.innerWidth >= 1024
@@ -160,7 +239,6 @@ function App() {
   const hasOverlay = !!(viewingItem || activeTransaction);
   const avatarInitials = currentUser?.name?.substring(0, 2).toUpperCase() ?? '??';
 
-  // ── Tab label mapping ──
   const TAB_LABELS: Record<TabId, string> = {
     DASHBOARD: 'Dashboard',
     INVENTORY: 'Stok Barang',
@@ -178,44 +256,38 @@ function App() {
         <style>{`
           .custom-scrollbar::-webkit-scrollbar { width: 3px; }
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: ${t.scrollThumb}; border-radius: 10px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: ${t.scrollThumbHover}; }
           @keyframes appFadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
           .app-animate-in { animation: appFadeIn 0.2s ease-out forwards; }
+          @keyframes themePop { 0% { transform: scale(1); } 50% { transform: scale(1.2) rotate(12deg); } 100% { transform: scale(1) rotate(0deg); } }
+          .theme-btn-anim { animation: themePop 0.3s ease-out; }
         `}</style>
 
-        {/* 
-          Warna background utama: slate-50 (off-white lembut) 
-          bukan mist-50 yang terlalu dingin — lebih nyaman di mata
-        */}
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans">
+        <div className={`min-h-screen ${t.pageBg} relative overflow-hidden font-sans transition-colors duration-300`}>
 
           {/* Mobile sidebar backdrop */}
           {isSidebarOpen && (
             <div
-              className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden backdrop-blur-[2px]"
+              className={`fixed inset-0 ${t.backdropMobile} z-40 lg:hidden backdrop-blur-[2px]`}
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
 
           <div className="flex h-screen overflow-hidden">
 
-            {/* ── SIDEBAR ──
-                Warna: slate-850 (antara slate-800 dan slate-900)
-                Lebih terang dari sebelumnya — tidak terlalu gelap, mengurangi fatigue
-            */}
+            {/* ── SIDEBAR ── */}
             <aside className={`
               fixed inset-y-0 left-0 z-50 w-56 flex flex-col text-slate-300
-              border-r border-slate-700/80 transition-transform duration-300
+              border-r ${t.sidebarBorder} transition-transform duration-300
               lg:relative lg:translate-x-0
               ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}
-              style={{ background: 'linear-gradient(180deg, #1e293b 0%, #1a2332 100%)' }}
+              style={{ background: t.sidebarBg }}
             >
-
               {/* Brand header */}
               <div className="h-14 flex items-center justify-between px-4 border-b border-slate-700/60 shrink-0"
-                style={{ background: 'rgba(15,23,42,0.5)' }}>
+                style={{ background: t.sidebarBrand }}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 flex items-center justify-center bg-sky-500 rounded-lg shadow-md shadow-sky-500/30">
                     <AppLogo className="w-4 h-4" strokeColor="white" />
@@ -237,10 +309,9 @@ function App() {
               {/* Nav content */}
               <div className="p-2 flex-1 overflow-y-auto custom-scrollbar flex flex-col">
                 <div className="flex-1">
-                  <p className="text-[9px] font-bold text-slate-500 uppercase mb-2 px-3 tracking-widest mt-3 letter-spacing-widest">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase mb-2 px-3 tracking-widest mt-3">
                     Menu Utama
                   </p>
-
                   <NavItem id="DASHBOARD"  label="Dashboard"     icon={LayoutDashboard} activeTab={activeTab} hasOverlay={hasOverlay} onClick={handleNavClick} />
                   <NavItem id="INVENTORY"  label="Stok Barang"   icon={Package}         activeTab={activeTab} hasOverlay={hasOverlay} onClick={handleNavClick} />
                   <NavItem id="REPORTS"    label="Mutasi Stok"   icon={FileBarChart}    activeTab={activeTab} hasOverlay={hasOverlay} onClick={handleNavClick} />
@@ -257,7 +328,6 @@ function App() {
 
                   <p className="mt-5 text-[9px] font-bold text-slate-500 uppercase mb-2 px-3 tracking-widest">Transaksi</p>
                   <div className="space-y-0.5 px-0.5">
-                    {/* Tombol transaksi — warna lebih soft, tidak terlalu saturated */}
                     <button
                       onClick={() => openTransaction('IN')}
                       className="w-full text-left px-3 py-2 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/10 rounded-lg flex items-center gap-2.5 transition-all border border-transparent hover:border-emerald-500/20"
@@ -290,7 +360,7 @@ function App() {
                     <span>Keluar</span>
                   </button>
 
-                  {/* User card — lebih compact dan soft */}
+                  {/* User card */}
                   <div className="mt-2 px-3 py-2.5 rounded-lg bg-slate-800/40 border border-slate-700/40 flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-sky-500/20 border border-sky-500/30 text-sky-300 flex items-center justify-center font-bold text-[10px] shrink-0">
                       {avatarInitials}
@@ -305,41 +375,43 @@ function App() {
             </aside>
 
             {/* ── MAIN CONTENT ── */}
-            <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+            <main className="flex-1 flex flex-col overflow-hidden">
 
-              {/* Topbar — putih bersih dengan shadow subtle */}
-              <header className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              {/* ── TOPBAR ── */}
+              <header className={`
+                h-12 ${t.topbarBg} border-b ${t.topbarBorder}
+                flex items-center justify-between px-4
+                z-30 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.08)]
+                transition-colors duration-300
+              `}>
                 <div className="flex items-center gap-3">
+                  {/* Hamburger */}
                   {!isSidebarOpen && (
                     <button
                       onClick={() => setIsSidebarOpen(true)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                      className={`p-1.5 rounded-lg ${t.btnIcon} ${t.btnHover} transition-colors`}
                       aria-label="Buka sidebar"
                     >
                       <Menu size={16} />
                     </button>
                   )}
 
-                  <div className="flex items-center gap-2">
-                    {hasOverlay ? (
-                      <button
-                        onClick={handleBack}
-                        className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors group"
-                      >
-                        <div className="p-1 rounded-md group-hover:bg-slate-100 transition-colors">
-                          <ArrowLeft size={14} />
-                        </div>
-                        <span className="uppercase tracking-tight text-[10px] font-bold text-slate-500">Kembali</span>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {/* Breadcrumb sederhana */}
-                        <span className="text-[11px] font-semibold text-slate-700">
-                          {TAB_LABELS[activeTab]}
-                        </span>
+                  {/* Breadcrumb / back */}
+                  {hasOverlay ? (
+                    <button
+                      onClick={handleBack}
+                      className={`flex items-center gap-1.5 ${t.textSecondary} transition-colors group`}
+                    >
+                      <div className={`p-1 rounded-md group-hover:${theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'} transition-colors`}>
+                        <ArrowLeft size={14} />
                       </div>
-                    )}
-                  </div>
+                      <span className={`uppercase tracking-tight text-[10px] font-bold ${t.textSecondary}`}>Kembali</span>
+                    </button>
+                  ) : (
+                    <span className={`text-[11px] font-semibold ${t.textPrimary}`}>
+                      {TAB_LABELS[activeTab]}
+                    </span>
+                  )}
                 </div>
 
                 {/* Global search */}
@@ -354,14 +426,26 @@ function App() {
                   <LowStockAlert />
                   <MusicPlayer />
 
-                  {/* User pill — topbar */}
-                  <div className="hidden md:flex items-center gap-2 pl-3 border-l border-slate-200 ml-1">
+                  {/* ── Theme toggle ── */}
+                  <button
+                    onClick={toggleTheme}
+                    className={`p-1.5 rounded-lg ${t.btnIcon} ${t.btnHover} transition-colors`}
+                    title={theme === 'dark' ? 'Ganti ke Light Mode' : 'Ganti ke Dark Mode'}
+                    aria-label="Toggle tema"
+                  >
+                    {theme === 'dark'
+                      ? <Sun size={15} className="text-amber-400" />
+                      : <Moon size={15} className="text-slate-500" />
+                    }
+                  </button>
+
+                  {/* User pill */}
+                  <div className={`hidden md:flex items-center gap-2 pl-3 border-l ${t.topbarSep} ml-1`}>
                     <div className="text-right">
-                      <p className="text-[11px] font-semibold text-slate-700 leading-none">{currentUser.name}</p>
-                      <p className="text-[9px] text-slate-400 font-medium uppercase mt-0.5 tracking-tight">{currentUser.role}</p>
+                      <p className={`text-[11px] font-semibold ${t.textPrimary} leading-none`}>{currentUser.name}</p>
+                      <p className={`text-[9px] ${t.textMuted} font-medium uppercase mt-0.5 tracking-tight`}>{currentUser.role}</p>
                     </div>
-                    {/* Avatar — warna sky lebih segar dari slate */}
-                    <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center font-bold text-[10px] shadow-sm">
+                    <div className={`w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-[10px] shadow-sm ${t.avatarBg}`}>
                       {avatarInitials}
                     </div>
                   </div>
@@ -369,7 +453,7 @@ function App() {
               </header>
 
               {/* Page content */}
-              <div className="flex-1 overflow-auto bg-slate-50">
+              <div className={`flex-1 overflow-auto ${t.contentBg} transition-colors duration-300`}>
                 {activeTransaction ? (
                   <TransactionForm
                     key={activeTransaction.data?.id ?? 'new'}
@@ -381,7 +465,7 @@ function App() {
                 ) : viewingItem ? (
                   <StockCardView item={viewingItem} onBack={() => setViewingItem(null)} />
                 ) : (
-                  <div className="bg-slate-50 min-h-full app-animate-in">
+                  <div className={`${t.contentBg} min-h-full app-animate-in`}>
                     {activeTab === 'DASHBOARD' && (
                       <DashboardView
                         onEditTransaction={(tx) => setActiveTransaction({ type: tx.type, data: tx })}
