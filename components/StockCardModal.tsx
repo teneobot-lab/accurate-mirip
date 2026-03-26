@@ -457,111 +457,102 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
         </div>
       </div>
 
-      {/* 3. LEDGER TABLE */}
-      {/* IMPROVEMENT: Loading overlay on table refresh */}
+      {/* 3. LEDGER TABLE — Dense, ~40+ baris visible */}
       <div className="flex-1 overflow-auto bg-white relative">
         {isLoading && (
           <div className="absolute inset-0 bg-white/70 z-30 flex items-center justify-center backdrop-blur-[1px]">
-            <div className="flex items-center gap-2 text-slate-500 text-xs font-medium bg-white border border-mist-200 shadow-sm px-4 py-2 rounded-full">
-              <RefreshCw size={13} className="animate-spin text-blue-500" />
+            <div className="flex items-center gap-2 text-slate-500 text-[11px] font-medium bg-white border border-slate-200 shadow-sm px-4 py-1.5 rounded-full">
+              <RefreshCw size={12} className="animate-spin text-blue-500" />
               Memuat data...
             </div>
           </div>
         )}
-        <table className="w-full text-left border-collapse table-fixed min-w-[1000px]">
-          <thead className="bg-mist-300 sticky top-0 z-10 shadow-sm border-b border-mist-300">
-            <tr className="h-9">
-              <th className="px-3 w-28 text-[10px] font-extrabold text-slate-700 uppercase border-r border-mist-400/30">Tanggal</th>
-              <th className="px-3 w-36 text-[10px] font-extrabold text-slate-700 uppercase border-r border-mist-400/30">No. Referensi</th>
-              <th className="px-3 w-40 text-[10px] font-extrabold text-slate-700 uppercase border-r border-mist-400/30">Gudang</th>
-              <th className="px-3 w-24 text-[10px] font-extrabold text-slate-700 uppercase text-center border-r border-mist-400/30">Tipe</th>
-              <th className="px-3 text-[10px] font-extrabold text-slate-700 uppercase border-r border-mist-400/30">Keterangan / Partner</th>
-              <th className="px-3 w-28 text-[10px] font-extrabold uppercase text-right border-r border-mist-400/30 bg-emerald-100/20 text-emerald-800">Masuk</th>
-              <th className="px-3 w-28 text-[10px] font-extrabold uppercase text-right border-r border-mist-400/30 bg-rose-100/20 text-rose-800">Keluar</th>
-              <th className="px-3 w-28 text-[10px] font-extrabold text-slate-700 uppercase text-right">Saldo</th>
+        <table className="w-full text-left border-collapse table-fixed" style={{ fontSize: '11px' }}>
+          <thead className="sticky top-0 z-10" style={{ backgroundColor: '#1e293b' }}>
+            <tr style={{ height: '24px' }}>
+              <th className="px-2 w-24 text-[9px] font-bold text-white uppercase border-r border-slate-600 tracking-tight">Tanggal</th>
+              <th className="px-2 w-32 text-[9px] font-bold text-white uppercase border-r border-slate-600 tracking-tight">No. Ref</th>
+              <th className="px-2 w-28 text-[9px] font-bold text-white uppercase border-r border-slate-600 tracking-tight">Gudang</th>
+              <th className="px-2 w-14 text-[9px] font-bold text-white uppercase text-center border-r border-slate-600 tracking-tight">Tipe</th>
+              <th className="px-2 text-[9px] font-bold text-white uppercase border-r border-slate-600 tracking-tight">Partner / Keterangan</th>
+              <th className="px-2 w-24 text-[9px] font-bold uppercase text-right border-r border-slate-600 tracking-tight" style={{ color: '#6ee7b7' }}>Masuk</th>
+              <th className="px-2 w-24 text-[9px] font-bold uppercase text-right border-r border-slate-600 tracking-tight" style={{ color: '#fca5a5' }}>Keluar</th>
+              <th className="px-2 w-24 text-[9px] font-bold text-white uppercase text-right tracking-tight">Saldo</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-mist-100">
+          <tbody>
             {/* Opening Balance Row */}
-            <tr className="bg-mist-50/50 h-8 hover:bg-mist-100">
-              <td className="px-3 font-mono text-[10px] text-slate-400 font-bold">{startDate}</td>
-              <td className="px-3 text-[10px] text-slate-400 italic">OPENING_BAL</td>
-              <td className="px-3" />
-              <td className="px-3" />
-              <td className="px-3 text-[11px] font-bold text-slate-500 italic uppercase">Saldo Awal Periode</td>
-              <td className="px-3 bg-emerald-50/10 border-l border-mist-100" />
-              <td className="px-3 bg-rose-50/10 border-l border-mist-100" />
-              <td className="px-3 text-right font-mono font-bold text-[11px] text-slate-600 bg-mist-50 border-l border-mist-200">
+            <tr style={{ height: '20px', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+              <td className="px-2 font-mono text-[9px] text-slate-500 font-semibold">{startDate}</td>
+              <td className="px-2 text-[9px] text-slate-400 italic font-mono">SALDO AWAL</td>
+              <td className="px-2" />
+              <td className="px-2" />
+              <td className="px-2 text-[9px] font-semibold text-slate-600 italic uppercase">Saldo Awal Periode</td>
+              <td className="px-2" />
+              <td className="px-2" />
+              <td className="px-2 text-right font-mono font-bold text-[10px] text-slate-700">
                 {openingBalance.toLocaleString()}
               </td>
             </tr>
 
-            {/* Transaction Rows */}
-            {ledgerRows.map((row) => (
+            {/* Transaction Rows — ultra dense untuk 40+ baris */}
+            {ledgerRows.map((row, idx) => (
               <tr
                 key={row.id}
-                className={`h-8 group transition-colors cursor-default border-b border-mist-100 ${
-                  row.balance < 0
-                    ? 'bg-red-50/40 hover:bg-red-50/80'  // IMPROVEMENT: negative balance row highlight
-                    : 'hover:bg-blue-50/30'
-                }`}
+                style={{
+                  height: '20px',
+                  backgroundColor: row.balance < 0
+                    ? '#fff1f2'
+                    : idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                  borderBottom: '1px solid #f1f5f9'
+                }}
+                className="group hover:bg-blue-50 transition-colors cursor-default"
               >
-                <td className="px-3 text-[11px] text-slate-600 font-medium whitespace-nowrap">{row.date}</td>
-                <td className="px-3">
+                <td className="px-2 text-[9px] text-slate-600 font-mono whitespace-nowrap">{row.date}</td>
+                <td className="px-2">
                   <button
                     onClick={() => setEditingTx(row.originalTx)}
-                    className="text-[10px] font-mono text-blue-600 hover:underline hover:text-blue-800 truncate block w-full text-left font-medium"
+                    className="text-[9px] font-mono text-blue-600 hover:underline truncate block w-full text-left"
+                    title={row.ref}
                   >
                     {row.ref}
                   </button>
                 </td>
-                <td className="px-3 text-[10px] text-slate-500 uppercase truncate" title={row.whName}>
+                <td className="px-2 text-[9px] text-slate-500 uppercase truncate" title={row.whName}>
                   {row.whName}
                 </td>
-                <td className="px-3 text-center">
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                <td className="px-2 text-center">
+                  <span className={`text-[8px] font-bold px-1 rounded leading-none py-0.5 ${
                     row.type === 'IN' || row.type === 'ADJUSTMENT'
-                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : row.type === 'TRANSFER'
-                      ? 'bg-sky-50 text-sky-600 border-sky-100'  // IMPROVEMENT: distinct TRANSFER badge
-                      : 'bg-rose-50 text-rose-600 border-rose-100'
+                      ? 'bg-sky-100 text-sky-700'
+                      : 'bg-rose-100 text-rose-700'
                   }`}>
                     {row.type}
                   </span>
                 </td>
-                {/* IMPROVEMENT: note tooltip uses title attr, no position hack */}
-                <td className="px-3 text-[11px] text-slate-700" title={`${row.partner} - ${row.note}`}>
-                  <div className="truncate w-full max-w-sm">
-                    <span className="font-bold text-slate-800">{row.partner !== '-' ? row.partner : ''}</span>
-                    <span className="text-slate-500 ml-1">{row.note}</span>
-                  </div>
+                <td className="px-2 text-[9px] text-slate-700 truncate" title={`${row.partner} — ${row.note}`}>
+                  {row.partner !== '-' && <span className="font-semibold text-slate-800">{row.partner}</span>}
+                  {row.partner !== '-' && row.note && <span className="text-slate-300 mx-1">·</span>}
+                  <span className="text-slate-500">{row.note}</span>
                 </td>
-
-                {/* IN Column */}
-                <td className="px-3 text-right bg-emerald-50/10 border-l border-mist-100 font-mono text-[11px]">
+                <td className="px-2 text-right font-mono text-[9px]">
                   {row.inQty > 0
-                    ? <span className="font-bold text-emerald-600">+{row.inQty.toLocaleString()}</span>
-                    : <span className="text-slate-200">-</span>
+                    ? <span className="font-bold text-emerald-700">{row.inQty.toLocaleString()}</span>
+                    : <span className="text-slate-200">·</span>
                   }
                 </td>
-
-                {/* OUT Column */}
-                <td className="px-3 text-right bg-rose-50/10 border-l border-mist-100 font-mono text-[11px]">
+                <td className="px-2 text-right font-mono text-[9px]">
                   {row.outQty > 0
-                    ? <span className="font-bold text-rose-600">-{row.outQty.toLocaleString()}</span>
-                    : <span className="text-slate-200">-</span>
+                    ? <span className="font-bold text-rose-700">{row.outQty.toLocaleString()}</span>
+                    : <span className="text-slate-200">·</span>
                   }
                 </td>
-
-                {/* Balance Column — IMPROVEMENT: negative balance styling */}
-                <td className={`px-3 text-right font-mono text-[11px] font-bold border-l border-mist-200 ${
-                  row.balance < 0
-                    ? 'text-red-600 bg-red-50/40'
-                    : 'text-slate-800 bg-mist-50/30'
+                <td className={`px-2 text-right font-mono text-[9px] font-bold ${
+                  row.balance < 0 ? 'text-red-600' : 'text-slate-800'
                 }`}>
-                  {row.balance < 0 && (
-                    <AlertTriangle size={9} className="inline mr-1 text-red-400 mb-0.5" />
-                  )}
+                  {row.balance < 0 && <AlertTriangle size={8} className="inline mr-0.5 text-red-400 mb-0.5" />}
                   {row.balance.toLocaleString()}
                 </td>
               </tr>
@@ -569,27 +560,27 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
 
             {ledgerRows.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-24 text-center text-slate-400 italic text-xs">
+                <td colSpan={8} className="py-16 text-center text-slate-400 italic text-[11px]">
                   <div className="flex flex-col items-center justify-center gap-2">
-                    <Info size={24} className="opacity-20" />
+                    <Info size={20} className="opacity-20" />
                     <span>Tidak ada transaksi pada periode ini</span>
                   </div>
                 </td>
               </tr>
             )}
           </tbody>
-          <tfoot className="bg-mist-200 sticky bottom-0 z-10 shadow-[0_-1px_0_rgba(0,0,0,0.05)] border-t border-mist-300">
-            <tr className="h-9">
-              <td colSpan={5} className="px-3 text-right text-[11px] font-extrabold text-slate-700 uppercase border-r border-mist-400/30">
-                Total Periode
+          <tfoot className="sticky bottom-0 z-10" style={{ backgroundColor: '#e2e8f0', borderTop: '2px solid #94a3b8' }}>
+            <tr style={{ height: '22px' }}>
+              <td colSpan={5} className="px-2 text-right text-[9px] font-extrabold text-slate-700 uppercase tracking-tight border-r border-slate-300">
+                TOTAL PERIODE
               </td>
-              <td className="px-3 text-right font-mono text-[11px] font-bold text-emerald-700 bg-emerald-100/30 border-r border-mist-400/30">
+              <td className="px-2 text-right font-mono text-[10px] font-bold text-emerald-700 border-r border-slate-300">
                 {summary.totalIn.toLocaleString()}
               </td>
-              <td className="px-3 text-right font-mono text-[11px] font-bold text-rose-700 bg-rose-100/30 border-r border-mist-400/30">
+              <td className="px-2 text-right font-mono text-[10px] font-bold text-rose-700 border-r border-slate-300">
                 {summary.totalOut.toLocaleString()}
               </td>
-              <td className={`px-3 text-right font-mono text-[12px] font-black ${
+              <td className={`px-2 text-right font-mono text-[11px] font-black ${
                 summary.closing < 0 ? 'text-red-600' : 'text-slate-800'
               }`}>
                 {summary.closing.toLocaleString()}
@@ -599,18 +590,66 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
         </table>
       </div>
 
-      {/* PRINT CSS */}
+      {/* PRINT CSS — A4 Landscape, dense 40+ baris per halaman */}
       <style>{`
         @media print {
-          @page { size: landscape; margin: 10mm; }
-          body { background: white; -webkit-print-color-adjust: exact; }
-          .fixed { position: relative !important; inset: auto !important; height: auto !important; }
+          @page { size: A4 landscape; margin: 8mm 10mm; }
+
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+          body { background: white !important; font-family: Arial, sans-serif !important; }
+
+          /* Sembunyikan tombol dan elemen UI */
+          .no-print, button { display: none !important; }
+
+          /* Lepas fixed positioning */
+          .fixed {
+            position: static !important;
+            inset: auto !important;
+            height: auto !important;
+            overflow: visible !important;
+            z-index: auto !important;
+          }
           .overflow-auto { overflow: visible !important; }
-          table { width: 100% !important; min-width: 0 !important; }
-          th, td { font-size: 8pt !important; padding: 2px !important; }
-          button, .no-print { display: none !important; }
+
+          /* Header & summary bar tetap tampil tapi compact */
+          .shrink-0 { break-inside: avoid; }
+
+          /* TABEL — ultra dense */
+          table {
+            width: 100% !important;
+            min-width: 0 !important;
+            border-collapse: collapse !important;
+            font-size: 7pt !important;
+            font-family: Arial, sans-serif !important;
+          }
+          thead tr { height: 14pt !important; }
+          tbody tr { height: 12pt !important; }
+          tfoot tr { height: 14pt !important; }
+
+          th, td {
+            padding: 1pt 3pt !important;
+            font-size: 7pt !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+          }
+
+          /* Header warna gelap */
+          thead { background-color: #1e293b !important; }
+          thead th { color: #ffffff !important; }
+
+          /* Zebra stripe di print */
+          tbody tr:nth-child(even) { background-color: #f8fafc !important; }
+          tbody tr:nth-child(odd)  { background-color: #ffffff !important; }
+
+          /* Footer */
+          tfoot { background-color: #e2e8f0 !important; border-top: 1.5pt solid #64748b !important; }
+
+          /* Jangan potong baris di tengah halaman */
+          tbody tr { page-break-inside: avoid; }
+          tfoot    { page-break-inside: avoid; }
         }
-      `}</style>
+      \`}</style>
     </div>
   );
 };
