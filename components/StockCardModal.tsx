@@ -649,7 +649,7 @@ export const StockCardView: React.FC<Props> = ({ item, onBack }) => {
           tbody tr { page-break-inside: avoid; }
           tfoot    { page-break-inside: avoid; }
         }
-      '}</style>
+      `}</style>
     </div>
   );
 };
