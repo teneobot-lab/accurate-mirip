@@ -27,7 +27,7 @@ interface Props {
   onOpenRow?: (row: Row) => void;
 }
 
-export const StockCardAccurate: React.FC<Props> = ({
+export const StockCardView: React.FC<Props> = ({
   item,
   startDate,
   endDate,
