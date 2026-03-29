@@ -8,6 +8,79 @@ import { ConfirmDialog } from './ConfirmDialog';
 
 type SettingsTab = 'WAREHOUSE' | 'SUPPLIER' | 'CUSTOMER' | 'USERS' | 'EXTERNAL_SYNC';
 
+/* ─── Accurate-5 inline styles ─────────────────────────────────────────────── */
+const acc: Record<string, React.CSSProperties> = {
+    shell:          { display:'flex', flexDirection:'column', height:'100%', fontFamily:"'Tahoma','Segoe UI',sans-serif", fontSize:12, background:'#dce4ed' },
+    /* toolbar strip */
+    toolbar:        { display:'flex', alignItems:'center', gap:2, padding:'3px 6px', background:'linear-gradient(180deg,#f5f5f5 0%,#e2e2e2 100%)', borderBottom:'1px solid #b0b0b0', flexShrink:0, height:34 },
+    tbBtn:          { display:'flex', alignItems:'center', gap:4, padding:'3px 10px', fontSize:11, fontFamily:"'Tahoma',sans-serif", cursor:'pointer', border:'1px solid transparent', borderRadius:2, background:'transparent', color:'#1a1a1a' },
+    tbBtnPrimary:   { background:'linear-gradient(180deg,#4a8de8 0%,#2a68cc 100%)', borderColor:'#1a56aa', color:'white' },
+    tbSep:          { width:1, height:20, background:'#c0c0c0', margin:'0 4px', flexShrink:0 },
+    searchWrap:     { display:'flex', alignItems:'center', gap:5, background:'white', border:'1px solid #9aa0a6', borderRadius:2, padding:'2px 7px', marginLeft:'auto' },
+    searchInput:    { border:'none', outline:'none', fontSize:11, fontFamily:"'Tahoma',sans-serif", width:180, color:'#333' },
+    /* tab bar */
+    tabBar:         { display:'flex', alignItems:'flex-end', background:'#dce4ed', borderBottom:'2px solid #1e3a6e', padding:'0 8px', gap:2, flexShrink:0 },
+    tab:            { padding:'5px 14px 4px', fontSize:11, fontFamily:"'Tahoma',sans-serif", cursor:'pointer', border:'1px solid transparent', borderBottom:'none', borderRadius:'3px 3px 0 0', background:'#bfcfe0', color:'#3a4a5a', marginBottom:-2, display:'flex', alignItems:'center', gap:5 },
+    tabActive:      { background:'white', color:'#1e3a6e', borderColor:'#1e3a6e', fontWeight:700, zIndex:1, position:'relative' as const },
+    tabBadge:       { background:'#1e3a6e', color:'white', borderRadius:8, padding:'0 5px', fontSize:9, fontWeight:'bold', lineHeight:'14px' },
+    tabBadgeActive: { background:'#dce8ff', color:'#1e3a6e' },
+    /* sidebar */
+    sidebar:        { width:192, background:'#eaf0f7', borderRight:'1px solid #b8c8d8', display:'flex', flexDirection:'column', padding:'8px 6px', flexShrink:0 },
+    sideSection:    { fontSize:9, fontWeight:700, color:'#7a90a8', letterSpacing:'0.08em', textTransform:'uppercase' as const, padding:'6px 8px 4px' },
+    sideBtn:        { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', fontSize:11, fontFamily:"'Tahoma',sans-serif", cursor:'pointer', border:'1px solid transparent', borderRadius:2, background:'transparent', color:'#3a5070', width:'100%', textAlign:'left' as const, marginBottom:1 },
+    sideBtnActive:  { background:'white', borderColor:'#a8c0d8', color:'#1e3a6e', fontWeight:700 },
+    sideBadge:      { fontSize:9, fontWeight:'bold', padding:'1px 5px', borderRadius:8, background:'#d0dcea', color:'#5a7090' },
+    sideBadgeActive:{ background:'#1e3a6e', color:'white' },
+    /* main content */
+    mainWrap:       { flex:1, display:'flex', overflow:'hidden', background:'white', border:'1px solid #b0b0b0', margin:'0 4px 4px 0', borderTop:'none' },
+    contentArea:    { flex:1, display:'flex', flexDirection:'column', overflow:'hidden' },
+    /* table */
+    tableWrap:      { flex:1, overflow:'auto' },
+    table:          { width:'100%', borderCollapse:'collapse' as const },
+    th:             { background:'linear-gradient(180deg,#dce8f8 0%,#c6d8ed 100%)', border:'1px solid #a8b8cc', padding:'4px 8px', fontSize:11, fontWeight:700, color:'#1a3060', position:'sticky' as const, top:0, zIndex:2, whiteSpace:'nowrap' as const, textAlign:'left' as const },
+    thCenter:       { textAlign:'center' as const },
+    tdBase:         { border:'1px solid #d0d8e2', padding:'3px 8px', fontSize:11, color:'#1a1a1a', whiteSpace:'nowrap' as const },
+    tdCenter:       { textAlign:'center' as const },
+    tdMono:         { fontFamily:"'Courier New',monospace", fontSize:10 },
+    trOdd:          { background:'white' },
+    trEven:         { background:'#f0f5fb' },
+    trHover:        { background:'#cce0ff' },
+    trInactive:     { opacity:0.65 },
+    badgeAktif:     { display:'inline-block', padding:'1px 8px', borderRadius:2, fontSize:10, fontWeight:700, background:'#e0f5e0', color:'#1a6a1a', border:'1px solid #88cc88' },
+    badgeNonaktif:  { display:'inline-block', padding:'1px 8px', borderRadius:2, fontSize:10, fontWeight:700, background:'#f8f2e0', color:'#887020', border:'1px solid #ccaa44' },
+    actionBtn:      { padding:'1px 7px', fontSize:10, cursor:'pointer', border:'1px solid #a0b4c4', borderRadius:2, background:'linear-gradient(180deg,#f8fbff 0%,#e6f0f8 100%)', color:'#1a4080', fontFamily:"'Tahoma',sans-serif", marginRight:2, display:'inline-flex', alignItems:'center', gap:3 },
+    actionBtnDel:   { color:'#cc2200', borderColor:'#c09090', background:'linear-gradient(180deg,#fff8f8 0%,#f0e8e8 100%)' },
+    /* status bar */
+    statusBar:      { display:'flex', alignItems:'center', gap:10, padding:'2px 10px', background:'linear-gradient(180deg,#e5e5e5 0%,#d5d5d5 100%)', borderTop:'1px solid #b0b0b0', height:20, flexShrink:0, fontSize:10, color:'#444' },
+    statusPanel:    { border:'1px solid #b8b8b8', padding:'0 8px', background:'white', borderRadius:1, lineHeight:'16px' },
+    /* modal */
+    overlay:        { position:'fixed' as const, inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100 },
+    modalWin:       { background:'#f0f0f0', border:'2px solid #1e3a6e', borderRadius:4, width:380, boxShadow:'4px 4px 20px rgba(0,0,0,0.4)' },
+    modalTitle:     { background:'linear-gradient(180deg,#2a52a0 0%,#1e3a6e 100%)', color:'white', padding:'6px 12px', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'space-between', borderRadius:'2px 2px 0 0' },
+    modalClose:     { width:18, height:18, borderRadius:2, background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.4)', color:'white', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' },
+    modalBody:      { padding:'14px 16px', display:'flex', flexDirection:'column', gap:10 },
+    fieldGroup:     { display:'flex', flexDirection:'column', gap:3 },
+    fieldLabel:     { fontSize:11, fontWeight:700, color:'#1a1a1a' },
+    fieldInput:     { border:'1px solid #8090a0', borderRadius:2, padding:'4px 6px', fontSize:12, fontFamily:"'Tahoma',sans-serif", color:'#1a1a1a', background:'white', outline:'none' },
+    modalFooter:    { padding:'8px 16px', borderTop:'1px solid #c0c0c0', display:'flex', justifyContent:'flex-end', gap:6, background:'#e8e8e8', borderRadius:'0 0 2px 2px' },
+    modalBtnOk:     { padding:'4px 18px', fontSize:11, fontWeight:700, borderRadius:3, cursor:'pointer', fontFamily:"'Tahoma',sans-serif", border:'1px solid #1a56aa', background:'linear-gradient(180deg,#4a8de8 0%,#2a68cc 100%)', color:'white' },
+    modalBtnCancel: { padding:'4px 14px', fontSize:11, fontWeight:700, borderRadius:3, cursor:'pointer', fontFamily:"'Tahoma',sans-serif", border:'1px solid #a0a0a0', background:'linear-gradient(180deg,#f8f8f8 0%,#e0e0e0 100%)', color:'#333' },
+    toggleRow:      { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'4px 0' },
+    /* sync page */
+    syncPage:       { flex:1, overflow:'auto', padding:16, display:'flex', flexDirection:'column', gap:12 },
+    sectionBox:     { border:'1px solid #a8b8cc', borderRadius:3, background:'white' },
+    sectionHeader:  { background:'linear-gradient(180deg,#dce8f8 0%,#c6d8ed 100%)', borderBottom:'1px solid #a8b8cc', padding:'5px 10px', fontSize:11, fontWeight:700, color:'#1a3060', borderRadius:'2px 2px 0 0' },
+    sectionBody:    { padding:12, display:'flex', flexDirection:'column', gap:10 },
+    formRow:        { display:'flex', gap:8, alignItems:'flex-end' },
+    syncBtn:        { padding:'5px 18px', fontSize:11, fontWeight:700, borderRadius:3, cursor:'pointer', border:'1px solid #1a56aa', fontFamily:"'Tahoma',sans-serif", background:'linear-gradient(180deg,#4a8de8 0%,#2a68cc 100%)', color:'white', display:'flex', alignItems:'center', gap:5, alignSelf:'flex-end' as const, flexShrink:0 },
+    codeBox:        { background:'#1a1a2e', borderTop:'1px solid #a8b8cc' },
+    codeHeader:     { background:'#252540', borderBottom:'1px solid #3a3a5a', padding:'5px 10px', display:'flex', alignItems:'center', justifyContent:'space-between' },
+    copyBtn:        { padding:'2px 10px', fontSize:10, fontWeight:700, border:'1px solid #4a4a6a', borderRadius:2, background:'#3a3a5a', color:'#aaa', cursor:'pointer', fontFamily:"'Tahoma',sans-serif", display:'flex', alignItems:'center', gap:4 },
+    codePre:        { padding:'10px 12px', fontFamily:"'Courier New',monospace", fontSize:10, color:'#00cc88', lineHeight:1.6, maxHeight:320, overflow:'auto', margin:0 },
+    emptyState:     { padding:40, textAlign:'center' as const, color:'#999', fontSize:11 },
+    loadState:      { flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:'#888', gap:6 },
+};
+
 export const SettingsView: React.FC = () => {
     const { showToast } = useToast();
     const [activeTab, setActiveTab] = useState<SettingsTab>('WAREHOUSE');
@@ -184,7 +257,6 @@ function formatDateValue(val) {
         try {
             await StorageService.saveSystemConfig('gsheet_url', scriptUrl.trim());
             const result = await StorageService.syncToGoogleSheets(scriptUrl, syncStart, syncEnd);
-            // Handle response dari server
             if (result?.status === 'no_change') {
                 showToast("ℹ Tidak ada perubahan data — sync dibatalkan", "warning");
             } else {
@@ -207,251 +279,339 @@ function formatDateValue(val) {
         return [];
     };
 
-    // --- TAB COMPONENT ---
-    const TabBtn = ({ active, onClick, icon, label, count }: any) => (
-        <button 
-            onClick={onClick} 
-            className={`w-full text-left px-3 py-2 mb-0.5 rounded-lg text-[12px] font-medium flex items-center justify-between transition-all ${
-                active 
-                ? 'bg-mist-300/30 text-slate-800 shadow-sm border border-mist-300' 
-                : 'text-slate-500 hover:text-slate-800 hover:bg-mist-200/50 border border-transparent'
-            }`}
-        >
-            <div className="flex items-center gap-3">
-                {icon} <span className="tracking-tight">{label}</span>
-            </div>
-            {count !== undefined && <span className={`px-1.5 py-0.5 rounded text-[10px] ${active ? 'bg-white/60 text-slate-600 border border-mist-300/50' : 'bg-white border border-slate-200 text-slate-400'}`}>{count}</span>}
-        </button>
-    );
+    // ── TAB BAR ITEM ──────────────────────────────────────────────────────────
+    const TabBtn = ({ tabKey, icon, label, count }: { tabKey: SettingsTab; icon: React.ReactNode; label: string; count?: number }) => {
+        const isActive = activeTab === tabKey;
+        return (
+            <button
+                onClick={() => setActiveTab(tabKey)}
+                style={{ ...acc.tab, ...(isActive ? acc.tabActive : {}) }}
+            >
+                {icon}
+                {label}
+                {count !== undefined && (
+                    <span style={{ ...acc.tabBadge, ...(isActive ? acc.tabBadgeActive : {}) }}>{count}</span>
+                )}
+            </button>
+        );
+    };
+
+    // ── SIDEBAR NAV ITEM ──────────────────────────────────────────────────────
+    const SideBtn = ({ tabKey, icon, label, count }: { tabKey: SettingsTab; icon: React.ReactNode; label: string; count?: number }) => {
+        const isActive = activeTab === tabKey;
+        return (
+            <button
+                onClick={() => setActiveTab(tabKey)}
+                style={{ ...acc.sideBtn, ...(isActive ? acc.sideBtnActive : {}) }}
+            >
+                <span style={{ display:'flex', alignItems:'center', gap:6 }}>{icon}{label}</span>
+                {count !== undefined && (
+                    <span style={{ ...acc.sideBadge, ...(isActive ? acc.sideBadgeActive : {}) }}>{count}</span>
+                )}
+            </button>
+        );
+    };
 
     return (
-        <div className="flex h-full bg-transparent font-sans">
-            {/* 1. SIDEBAR */}
-            <div className="w-60 bg-mist-50/50 border-r border-mist-300 flex flex-col p-4 z-10">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-3 mt-2">Data Master</div>
-                <div className="space-y-0.5">
-                    <TabBtn active={activeTab === 'WAREHOUSE'} onClick={() => setActiveTab('WAREHOUSE')} icon={<Building2 size={16}/>} label="Gudang" count={warehouses.length} />
-                    <TabBtn active={activeTab === 'SUPPLIER'} onClick={() => setActiveTab('SUPPLIER')} icon={<Users size={16}/>} label="Supplier" count={partners.filter(p=>p.type==='SUPPLIER').length} />
-                    <TabBtn active={activeTab === 'CUSTOMER'} onClick={() => setActiveTab('CUSTOMER')} icon={<Users size={16}/>} label="Customer" count={partners.filter(p=>p.type==='CUSTOMER').length} />
-                </div>
-                
-                <div className="mt-6 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-3">Keamanan</div>
-                <div className="space-y-0.5">
-                    <TabBtn active={activeTab === 'USERS'} onClick={() => setActiveTab('USERS')} icon={<UserCircle size={16}/>} label="Pengguna" count={users.length} />
-                </div>
+        <div style={acc.shell}>
 
-                <div className="mt-6 text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2 px-3">Integrasi</div>
-                <div className="space-y-0.5">
-                    <TabBtn active={activeTab === 'EXTERNAL_SYNC'} onClick={() => setActiveTab('EXTERNAL_SYNC')} icon={<Share2 size={16}/>} label="Google Sync" />
-                </div>
+            {/* ── TAB BAR ───────────────────────────────────────────────────── */}
+            <div style={acc.tabBar}>
+                <TabBtn tabKey="WAREHOUSE"     icon={<Building2 size={12}/>}   label="Gudang"      count={warehouses.length} />
+                <TabBtn tabKey="SUPPLIER"      icon={<Users size={12}/>}       label="Supplier"    count={partners.filter(p=>p.type==='SUPPLIER').length} />
+                <TabBtn tabKey="CUSTOMER"      icon={<Users size={12}/>}       label="Customer"    count={partners.filter(p=>p.type==='CUSTOMER').length} />
+                <TabBtn tabKey="USERS"         icon={<UserCircle size={12}/>}  label="Pengguna"    count={users.length} />
+                <TabBtn tabKey="EXTERNAL_SYNC" icon={<Share2 size={12}/>}      label="Google Sync" />
             </div>
 
-            {/* 2. MAIN CONTENT */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-transparent">
-                {activeTab !== 'EXTERNAL_SYNC' ? (
-                    <div className="p-6 h-full flex flex-col">
-                        {/* HEADER TOOLBAR */}
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                <input 
-                                    type="text" 
-                                    placeholder="Cari data..." 
-                                    value={searchTerm} 
-                                    onChange={e => setSearchTerm(e.target.value)} 
-                                    className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium w-64 outline-none focus:border-brand focus:ring-2 focus:ring-brand/5 transition-all shadow-sm" 
-                                />
-                            </div>
-                            <button onClick={() => { setEditData({ isActive: true }); setShowModal(true); }} className="px-4 py-2 bg-brand text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-sm hover:bg-brand/90 transition-all active:scale-95">
-                                <Plus size={16}/> Tambah Baru
-                            </button>
-                        </div>
+            {/* ── TOOLBAR (only for data tabs) ───────────────────────────────── */}
+            {activeTab !== 'EXTERNAL_SYNC' && (
+                <div style={acc.toolbar}>
+                    <button
+                        style={{ ...acc.tbBtn, ...acc.tbBtnPrimary }}
+                        onClick={() => { setEditData({ isActive: true }); setShowModal(true); }}
+                    >
+                        <Plus size={13}/> Tambah Baru
+                    </button>
+                    <div style={acc.tbSep}/>
+                    <div style={acc.searchWrap}>
+                        <Search size={12} color="#999"/>
+                        <input
+                            style={acc.searchInput}
+                            type="text"
+                            placeholder="Cari data..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+            )}
 
-                        {/* DATA TABLE */}
-                        <div className="flex-1 overflow-auto bg-white border border-slate-200 rounded-xl shadow-sm">
+            {/* ── BODY: sidebar + main ────────────────────────────────────────── */}
+            <div style={{ flex:1, display:'flex', overflow:'hidden', margin:'0 4px 4px 4px', background:'white', border:'1px solid #b0b0b0' }}>
+
+                {/* SIDEBAR */}
+                <div style={acc.sidebar}>
+                    <div style={acc.sideSection}>Data Master</div>
+                    <SideBtn tabKey="WAREHOUSE" icon={<Building2 size={14}/>} label="Gudang"   count={warehouses.length} />
+                    <SideBtn tabKey="SUPPLIER"  icon={<Users size={14}/>}     label="Supplier" count={partners.filter(p=>p.type==='SUPPLIER').length} />
+                    <SideBtn tabKey="CUSTOMER"  icon={<Users size={14}/>}     label="Customer" count={partners.filter(p=>p.type==='CUSTOMER').length} />
+
+                    <div style={{ ...acc.sideSection, marginTop:10 }}>Keamanan</div>
+                    <SideBtn tabKey="USERS" icon={<UserCircle size={14}/>} label="Pengguna" count={users.length} />
+
+                    <div style={{ ...acc.sideSection, marginTop:10 }}>Integrasi</div>
+                    <SideBtn tabKey="EXTERNAL_SYNC" icon={<Share2 size={14}/>} label="Google Sync" />
+                </div>
+
+                {/* MAIN CONTENT */}
+                <div style={acc.contentArea}>
+                    {activeTab !== 'EXTERNAL_SYNC' ? (
+                        /* ── DATA TABLE ─────────────────────────────────────── */
+                        <div style={acc.tableWrap}>
                             {isLoading ? (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                                    <Loader2 className="animate-spin mb-2 text-brand" size={24}/>
-                                    <span className="text-xs font-medium">Memuat data...</span>
+                                <div style={acc.loadState}>
+                                    <Loader2 size={22} style={{ color:'#2a68cc', animation:'spin 1s linear infinite' }}/>
+                                    <span style={{ fontSize:11 }}>Memuat data...</span>
                                 </div>
                             ) : (
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-slate-50 text-xs font-semibold text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                                <table style={acc.table}>
+                                    <thead>
                                         <tr>
-                                            <th className="px-4 py-3 w-12 text-center">No</th>
-                                            <th className="px-4 py-3">Informasi Utama</th>
-                                            <th className="px-4 py-3">Kontak / Detail</th>
-                                            <th className="px-4 py-3 text-center w-24">Status</th>
-                                            <th className="px-4 py-3 text-center w-20">Aksi</th>
+                                            <th style={{ ...acc.th, ...acc.thCenter, width:40 }}>No</th>
+                                            <th style={acc.th}>Informasi Utama</th>
+                                            <th style={acc.th}>Kontak / Detail</th>
+                                            <th style={{ ...acc.th, ...acc.thCenter, width:90 }}>Status</th>
+                                            <th style={{ ...acc.th, ...acc.thCenter, width:90 }}>Aksi</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 text-sm">
+                                    <tbody>
                                         {filteredData().map((item: any, idx) => (
-                                            <tr key={item.id} className={`hover:bg-slate-50 transition-colors group ${!item.isActive ? 'bg-slate-50/50' : ''}`}>
-                                                <td className="px-4 py-2 text-center text-slate-400 font-mono text-xs">{idx + 1}</td>
-                                                <td className="px-4 py-2">
-                                                    <div className={`font-semibold ${!item.isActive ? 'text-slate-400' : 'text-slate-700'}`}>{item.name}</div>
-                                                    {/* Location / Role Subtext */}
+                                            <tr
+                                                key={item.id}
+                                                style={idx % 2 === 0 ? acc.trOdd : acc.trEven}
+                                                onMouseEnter={e => (e.currentTarget.style.background = '#cce0ff')}
+                                                onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb')}
+                                            >
+                                                <td style={{ ...acc.tdBase, ...acc.tdCenter, color:'#999', fontFamily:"'Courier New',monospace", fontSize:10 }}>{idx + 1}</td>
+                                                <td style={acc.tdBase}>
+                                                    <div style={{ fontWeight:600, color: item.isActive ? '#1a1a1a' : '#999' }}>{item.name}</div>
                                                     {(item.location || item.role || item.address) && (
-                                                        <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
-                                                            {activeTab === 'WAREHOUSE' && <MapPin size={10}/>}
-                                                            {activeTab === 'USERS' && <Key size={10}/>}
+                                                        <div style={{ display:'flex', alignItems:'center', gap:3, fontSize:10, color:'#888', marginTop:1 }}>
+                                                            {activeTab === 'WAREHOUSE' && <MapPin size={9}/>}
+                                                            {activeTab === 'USERS' && <Key size={9}/>}
                                                             {item.location || item.role || item.address}
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-2">
-                                                    <div className="flex flex-col gap-0.5">
-                                                        {item.phone && (
-                                                            <div className="flex items-center gap-1.5 text-slate-500 text-xs">
-                                                                <Phone size={10} className="text-slate-400"/> {item.phone}
-                                                            </div>
-                                                        )}
-                                                        {item.username && (
-                                                            <div className="flex items-center gap-1.5 text-slate-500 text-xs font-mono">
-                                                                <span className="text-slate-300">@</span>{item.username}
-                                                            </div>
-                                                        )}
-                                                        {item.email && (
-                                                            <div className="flex items-center gap-1.5 text-slate-500 text-xs">
-                                                                <Mail size={10} className="text-slate-400"/> {item.email}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                <td style={acc.tdBase}>
+                                                    {item.phone && (
+                                                        <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#555' }}>
+                                                            <Phone size={10} color="#999"/> {item.phone}
+                                                        </div>
+                                                    )}
+                                                    {item.username && (
+                                                        <div style={{ display:'flex', alignItems:'center', gap:4, fontSize:10, color:'#555', fontFamily:"'Courier New',monospace" }}>
+                                                            <span style={{ color:'#bbb' }}>@</span>{item.username}
+                                                        </div>
+                                                    )}
+                                                    {item.email && (
+                                                        <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#555' }}>
+                                                            <Mail size={10} color="#999"/> {item.email}
+                                                        </div>
+                                                    )}
+                                                    {!item.phone && !item.username && !item.email && (
+                                                        <span style={{ color:'#ccc', fontSize:10 }}>—</span>
+                                                    )}
                                                 </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                                                        item.isActive 
-                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                                                        : 'bg-slate-100 text-slate-400 border-slate-200'
-                                                    }`}>
+                                                <td style={{ ...acc.tdBase, ...acc.tdCenter }}>
+                                                    <span style={item.isActive ? acc.badgeAktif : acc.badgeNonaktif}>
                                                         {item.isActive ? 'Aktif' : 'Nonaktif'}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => { setEditData(item); setShowModal(true); }} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"><Edit3 size={14}/></button>
-                                                        <button onClick={() => setItemToDelete(item.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"><Trash2 size={14}/></button>
-                                                    </div>
+                                                <td style={{ ...acc.tdBase, ...acc.tdCenter }}>
+                                                    <button
+                                                        style={acc.actionBtn}
+                                                        onClick={() => { setEditData(item); setShowModal(true); }}
+                                                    >
+                                                        <Edit3 size={11}/> Edit
+                                                    </button>
+                                                    <button
+                                                        style={{ ...acc.actionBtn, ...acc.actionBtnDel }}
+                                                        onClick={() => setItemToDelete(item.id)}
+                                                    >
+                                                        <Trash2 size={11}/> Hapus
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
+                                        {filteredData().length === 0 && !isLoading && (
+                                            <tr>
+                                                <td colSpan={5} style={acc.emptyState}>
+                                                    Tidak ada data. Klik <b>Tambah Baru</b> untuk menambahkan.
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             )}
                         </div>
-                    </div>
-                ) : (
-                    /* GOOGLE SYNC TAB */
-                    <div className="flex-1 overflow-auto p-8">
-                         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
-                                <div className="flex items-center gap-4 mb-2">
-                                    <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100"><FileSpreadsheet size={24}/></div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-slate-800">Google Sync V5</h3>
-                                        <p className="text-xs text-slate-500 font-medium">Enterprise Multi-Sheet Synchronization</p>
-                                    </div>
+                    ) : (
+                        /* ── GOOGLE SYNC TAB ─────────────────────────────────── */
+                        <div style={acc.syncPage}>
+                            {/* Config panel */}
+                            <div style={acc.sectionBox}>
+                                <div style={acc.sectionHeader}>
+                                    <FileSpreadsheet size={13} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }}/>
+                                    Google Sync V6.0 — Enterprise Multi-Sheet Synchronization
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-600">Web App Script URL</label>
-                                        <div className="flex gap-2">
-                                            <input type="text" className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 text-slate-700 placeholder:text-slate-400" value={scriptUrl} onChange={e => setScriptUrl(e.target.value)} placeholder="https://script.google.com/..." />
-                                            <button onClick={handleSaveScriptUrl} className="px-3 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-600 transition-colors" title="Simpan URL"><Save size={16}/></button>
+                                <div style={acc.sectionBody}>
+                                    {/* Script URL */}
+                                    <div style={acc.fieldGroup}>
+                                        <label style={acc.fieldLabel}>Web App Script URL</label>
+                                        <div style={{ display:'flex', gap:6 }}>
+                                            <input
+                                                type="text"
+                                                style={{ ...acc.fieldInput, flex:1, fontFamily:"'Courier New',monospace", fontSize:11 }}
+                                                value={scriptUrl}
+                                                onChange={e => setScriptUrl(e.target.value)}
+                                                placeholder="https://script.google.com/macros/s/..."
+                                            />
+                                            <button onClick={handleSaveScriptUrl} style={{ ...acc.syncBtn, padding:'4px 12px' }}>
+                                                <Save size={12}/> Simpan
+                                            </button>
                                         </div>
                                     </div>
-                                    
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-600">Filter Periode</label>
-                                        <div className="flex gap-3">
-                                            <div className="flex-1 relative">
-                                                <input type="date" value={syncStart} onChange={e => setSyncStart(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none" />
-                                                <span className="absolute -top-2 left-2 bg-white px-1 text-[9px] text-slate-400 font-bold">START</span>
-                                            </div>
-                                            <div className="flex-1 relative">
-                                                <input type="date" value={syncEnd} onChange={e => setSyncEnd(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none" />
-                                                <span className="absolute -top-2 left-2 bg-white px-1 text-[9px] text-slate-400 font-bold">END</span>
-                                            </div>
+                                    {/* Date range + sync button */}
+                                    <div style={acc.formRow}>
+                                        <div style={acc.fieldGroup}>
+                                            <label style={acc.fieldLabel}>Periode Awal</label>
+                                            <input type="date" style={acc.fieldInput} value={syncStart} onChange={e => setSyncStart(e.target.value)} />
                                         </div>
+                                        <div style={acc.fieldGroup}>
+                                            <label style={acc.fieldLabel}>Periode Akhir</label>
+                                            <input type="date" style={acc.fieldInput} value={syncEnd} onChange={e => setSyncEnd(e.target.value)} />
+                                        </div>
+                                        <button onClick={handleStartSync} disabled={isSyncing} style={{ ...acc.syncBtn, opacity: isSyncing ? 0.7 : 1 }}>
+                                            {isSyncing
+                                                ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Mengirim...</>
+                                                : <><Share2 size={13}/> Mulai Sinkronisasi</>
+                                            }
+                                        </button>
                                     </div>
-
-                                    <button onClick={handleStartSync} disabled={isSyncing} className="w-full py-3 bg-brand hover:bg-brand/90 text-white rounded-xl font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:active:scale-100 mt-2">
-                                        {isSyncing ? <Loader2 size={16} className="animate-spin"/> : <Share2 size={16} />} 
-                                        {isSyncing ? 'MENGIRIM DATA...' : 'MULAI SINKRONISASI'}
-                                    </button>
                                 </div>
                             </div>
 
-                            <div className="bg-slate-900 rounded-2xl border border-slate-800 flex flex-col h-[500px] shadow-xl overflow-hidden">
-                                <div className="p-3 bg-slate-950 flex justify-between items-center border-b border-slate-800">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">Apps Script Code (V6.0 — Full Replace)</span>
-                                    <button onClick={() => { navigator.clipboard.writeText(GS_CODE_BOILERPLATE); setCopied(true); setTimeout(()=>setCopied(false),2000); }} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-2 border border-slate-700 transition-colors">
-                                        {copied ? <Check size={12} className="text-emerald-400"/> : <Copy size={12}/>} {copied ? 'COPIED' : 'COPY'}
-                                    </button>
+                            {/* Code viewer */}
+                            <div style={acc.sectionBox}>
+                                <div style={acc.sectionHeader}>
+                                    <Code size={13} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }}/>
+                                    Apps Script Code (V6.0 — Full Replace per Periode)
                                 </div>
-                                <pre className="flex-1 overflow-auto p-4 font-mono text-[10px] text-emerald-400/90 leading-relaxed scrollbar-hide bg-slate-900 selection:bg-emerald-900 selection:text-white">{GS_CODE_BOILERPLATE}</pre>
+                                <div style={acc.codeBox}>
+                                    <div style={acc.codeHeader}>
+                                        <span style={{ fontSize:10, color:'#888', fontWeight:700, letterSpacing:'0.08em' }}>PASTE KE GOOGLE APPS SCRIPT</span>
+                                        <button
+                                            style={acc.copyBtn}
+                                            onClick={() => { navigator.clipboard.writeText(GS_CODE_BOILERPLATE); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                                        >
+                                            {copied ? <><Check size={11} style={{ color:'#00cc88' }}/> Copied!</> : <><Copy size={11}/> Copy Code</>}
+                                        </button>
+                                    </div>
+                                    <pre style={acc.codePre}>{GS_CODE_BOILERPLATE}</pre>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
-            {/* 3. MODAL */}
+            {/* ── STATUS BAR ────────────────────────────────────────────────── */}
+            <div style={acc.statusBar}>
+                <span style={acc.statusPanel}>
+                    {activeTab !== 'EXTERNAL_SYNC' ? `${filteredData().length} record` : 'Google Sync'} | {activeTab}
+                </span>
+                <span style={{ marginLeft:'auto', color:'#888' }}>GudangPro | MySQL Database</span>
+            </div>
+
+            {/* ── MODAL ─────────────────────────────────────────────────────── */}
             {showModal && (
-                <div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden animate-in zoom-in-95">
-                        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-sm text-slate-800">
-                                {editData.id ? 'Edit' : 'Tambah'} {activeTab === 'USERS' ? 'Pengguna' : activeTab === 'WAREHOUSE' ? 'Gudang' : 'Partner'}
-                            </h3>
-                            <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-rose-500 rounded-full p-1 hover:bg-rose-50"><X size={18}/></button>
+                <div style={acc.overlay} onClick={e => e.target === e.currentTarget && setShowModal(false)}>
+                    <div style={acc.modalWin}>
+                        <div style={acc.modalTitle}>
+                            <span>
+                                {editData.id ? 'Edit' : 'Tambah'}{' '}
+                                {activeTab === 'USERS' ? 'Pengguna' : activeTab === 'WAREHOUSE' ? 'Gudang' : 'Partner'}
+                            </span>
+                            <button style={acc.modalClose} onClick={() => setShowModal(false)}>✕</button>
                         </div>
-                        <form onSubmit={(e) => { e.preventDefault(); handleSave(editData); }} className="p-6 space-y-4">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-600">Nama Lengkap / Instansi</label>
-                                <input required className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-800 outline-none focus:border-brand focus:ring-1 focus:ring-brand/20 transition-all" value={editData.name || ''} onChange={e => setEditData({...editData, name: e.target.value})} />
+
+                        <form
+                            onSubmit={(e) => { e.preventDefault(); handleSave(editData); }}
+                            style={acc.modalBody}
+                        >
+                            <div style={acc.fieldGroup}>
+                                <label style={acc.fieldLabel}>Nama Lengkap / Instansi</label>
+                                <input
+                                    required
+                                    style={acc.fieldInput}
+                                    value={editData.name || ''}
+                                    onChange={e => setEditData({ ...editData, name: e.target.value })}
+                                />
                             </div>
-                            
+
                             {activeTab === 'USERS' && (
                                 <>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-600">Username Login</label>
-                                        <input required className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-mono text-slate-800 outline-none focus:border-brand" value={editData.username || ''} onChange={e => setEditData({...editData, username: e.target.value})} />
+                                    <div style={acc.fieldGroup}>
+                                        <label style={acc.fieldLabel}>Username Login</label>
+                                        <input
+                                            required
+                                            style={{ ...acc.fieldInput, fontFamily:"'Courier New',monospace" }}
+                                            value={editData.username || ''}
+                                            onChange={e => setEditData({ ...editData, username: e.target.value })}
+                                        />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-slate-600">Password</label>
-                                        <div className="relative">
-                                            <input 
-                                                type="password" 
+                                    <div style={acc.fieldGroup}>
+                                        <label style={acc.fieldLabel}>Password</label>
+                                        <div style={{ position:'relative' }}>
+                                            <input
+                                                type="password"
                                                 placeholder={editData.id ? "Kosongkan jika tetap" : "Password baru"}
-                                                className="w-full p-2.5 pl-9 border border-slate-300 rounded-lg text-sm font-medium outline-none focus:border-brand" 
-                                                value={editData.password || ''} 
-                                                onChange={e => setEditData({...editData, password: e.target.value})} 
+                                                style={{ ...acc.fieldInput, width:'100%', paddingLeft:28 }}
+                                                value={editData.password || ''}
+                                                onChange={e => setEditData({ ...editData, password: e.target.value })}
                                             />
-                                            <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                                            <Lock size={13} style={{ position:'absolute', left:8, top:'50%', transform:'translateY(-50%)', color:'#999' }}/>
                                         </div>
                                     </div>
                                 </>
                             )}
-                            
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-600">{activeTab === 'WAREHOUSE' ? 'Lokasi' : 'No. Telepon'}</label>
-                                <input className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-medium outline-none focus:border-brand" value={activeTab === 'WAREHOUSE' ? (editData.location || '') : (editData.phone || '')} onChange={e => setEditData({...editData, [activeTab === 'WAREHOUSE' ? 'location' : 'phone']: e.target.value})} />
+
+                            <div style={acc.fieldGroup}>
+                                <label style={acc.fieldLabel}>{activeTab === 'WAREHOUSE' ? 'Lokasi' : 'No. Telepon'}</label>
+                                <input
+                                    style={acc.fieldInput}
+                                    value={activeTab === 'WAREHOUSE' ? (editData.location || '') : (editData.phone || '')}
+                                    onChange={e => setEditData({ ...editData, [activeTab === 'WAREHOUSE' ? 'location' : 'phone']: e.target.value })}
+                                />
                             </div>
 
-                            <div className="pt-2">
-                                <label className="flex items-center justify-between p-3 border border-slate-200 rounded-lg bg-slate-50 cursor-pointer hover:bg-white transition-colors">
-                                    <span className="text-xs font-bold text-slate-600">Status Aktif</span>
-                                    <div onClick={() => setEditData({...editData, isActive: !(editData.isActive !== false)})} className={`transition-colors ${editData.isActive !== false ? 'text-emerald-500' : 'text-slate-300'}`}>
-                                        {editData.isActive !== false ? <ToggleRight size={28}/> : <ToggleLeft size={28}/>}
-                                    </div>
-                                </label>
+                            <div style={acc.toggleRow}>
+                                <span style={acc.fieldLabel}>Status Aktif</span>
+                                <div
+                                    onClick={() => setEditData({ ...editData, isActive: !(editData.isActive !== false) })}
+                                    style={{ cursor:'pointer', color: editData.isActive !== false ? '#1a8a1a' : '#bbb' }}
+                                >
+                                    {editData.isActive !== false
+                                        ? <ToggleRight size={28}/>
+                                        : <ToggleLeft size={28}/>
+                                    }
+                                </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Batal</button>
-                                <button type="submit" className="px-6 py-2 bg-brand text-white rounded-lg text-xs font-bold shadow-sm hover:bg-brand/90 transition-all">Simpan</button>
+                            <div style={{ display:'flex', justifyContent:'flex-end', gap:6, paddingTop:8, borderTop:'1px solid #d8d8d8', marginTop:4 }}>
+                                <button type="button" style={acc.modalBtnCancel} onClick={() => setShowModal(false)}>Batal</button>
+                                <button type="submit" style={acc.modalBtnOk}>Simpan</button>
                             </div>
                         </form>
                     </div>
