@@ -14,7 +14,6 @@ import { Decimal } from 'decimal.js';
 import { highlightMatch } from '../search/highlightMatch';
 
 // FIX: ModalPortal — render modal langsung ke document.body
-// Mengatasi modal yang terjebak di dalam overflow/transform parent
 const ModalPortal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return createPortal(children, document.body);
 };
@@ -43,11 +42,93 @@ interface OutletManagerProps {
   onConfirmDelete: () => void;
 }
 
+/* ─── Accurate-5 style map ──────────────────────────────────────────────────── */
+const a: Record<string, React.CSSProperties> = {
+  /* layout */
+  shell:          { display:'flex', flexDirection:'column', height:'100%', fontFamily:"'Tahoma','Segoe UI',sans-serif", fontSize:12, background:'white', overflow:'hidden' },
+  /* toolbar */
+  toolbar:        { height:34, borderBottom:'1px solid #b0b0b0', background:'linear-gradient(180deg,#f5f5f5 0%,#e2e2e2 100%)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 },
+  tabList:        { display:'flex', alignItems:'flex-end', height:'100%', paddingLeft:6 },
+  tab:            { display:'flex', alignItems:'center', gap:5, padding:'0 14px', height:'100%', fontSize:11, fontFamily:"'Tahoma',sans-serif", cursor:'pointer', border:'none', borderRight:'1px solid #c8c8c8', background:'#d5dde8', color:'#3a4a5a', fontWeight:600 },
+  tabActive:      { background:'white', color:'#1e3a6e', fontWeight:700, borderBottom:'2px solid white', marginBottom:-1 },
+  toolbarRight:   { display:'flex', alignItems:'center', gap:6, paddingRight:8, height:'100%' },
+  tbSelect:       { display:'flex', alignItems:'center', gap:5, padding:'2px 8px', background:'#eaf0f8', border:'1px solid #a8b8cc', borderRadius:2, fontSize:10 },
+  tbSelectEl:     { border:'none', background:'transparent', fontSize:11, fontFamily:"'Tahoma',sans-serif", fontWeight:700, color:'#1e3a6e', outline:'none', cursor:'pointer' },
+  tbInput:        { border:'1px solid #a8b8cc', borderRadius:2, padding:'2px 6px', fontSize:11, fontFamily:"'Tahoma',sans-serif", fontWeight:700, color:'#333', background:'white', outline:'none' },
+  tbBtn:          { display:'flex', alignItems:'center', gap:5, padding:'3px 10px', fontSize:11, fontFamily:"'Tahoma',sans-serif", cursor:'pointer', border:'1px solid transparent', borderRadius:2, background:'transparent', color:'#1a1a1a', fontWeight:600 },
+  tbBtnPrimary:   { background:'linear-gradient(180deg,#4a8de8 0%,#2a68cc 100%)', borderColor:'#1a56aa', color:'white' },
+  tbBtnDanger:    { background:'linear-gradient(180deg,#f8f8f8 0%,#e8e8e8 100%)', borderColor:'#c09090', color:'#cc2200' },
+  tbBtnGreen:     { background:'linear-gradient(180deg,#4ab870 0%,#2a9850 100%)', borderColor:'#1a7840', color:'white' },
+  /* sub-toolbar */
+  subToolbar:     { height:32, padding:'0 8px', borderBottom:'1px solid #c8d0d8', background:'linear-gradient(180deg,#eef3f8 0%,#e2eaf2 100%)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 },
+  searchWrap:     { display:'flex', alignItems:'center', gap:4, background:'white', border:'1px solid #9aa8b4', borderRadius:2, padding:'2px 6px' },
+  searchInput:    { border:'none', outline:'none', fontSize:11, fontFamily:"'Tahoma',sans-serif", width:160, color:'#333' },
+  /* content */
+  content:        { flex:1, overflow:'hidden', position:'relative' as const },
+  /* table */
+  tableWrap:      { flex:1, overflow:'auto' },
+  table:          { width:'100%', borderCollapse:'collapse' as const, tableLayout:'fixed' as const },
+  th:             { background:'linear-gradient(180deg,#dce8f8 0%,#c6d8ed 100%)', border:'1px solid #a8b8cc', padding:'4px 8px', fontSize:10, fontWeight:700, color:'#1a3060', position:'sticky' as const, top:0, zIndex:2, whiteSpace:'nowrap' as const, textAlign:'left' as const },
+  thCenter:       { textAlign:'center' as const },
+  thRight:        { textAlign:'right' as const },
+  tdBase:         { border:'1px solid #d8e0e8', padding:'3px 8px', fontSize:11, color:'#1a1a1a', whiteSpace:'nowrap' as const, overflow:'hidden' as const, textOverflow:'ellipsis' as const },
+  tdCenter:       { textAlign:'center' as const },
+  tdRight:        { textAlign:'right' as const },
+  tdMono:         { fontFamily:"'Courier New',monospace", fontSize:10 },
+  trOdd:          { background:'white' },
+  trEven:         { background:'#f0f5fb' },
+  /* entry row */
+  entryRow:       { background:'#f0fff4', borderTop:'2px solid #88cc88' },
+  entryInput:     { width:'100%', height:'100%', background:'transparent', border:'none', outline:'none', padding:'0 8px', fontSize:11, fontFamily:"'Tahoma',sans-serif", fontWeight:600, color:'#1a5a1a' },
+  /* badges */
+  badgeAktif:     { display:'inline-block', padding:'1px 6px', borderRadius:2, fontSize:9, fontWeight:700, background:'#e0f5e0', color:'#1a6a1a', border:'1px solid #88cc88' },
+  badgeNonaktif:  { display:'inline-block', padding:'1px 6px', borderRadius:2, fontSize:9, fontWeight:700, background:'#f5f5f5', color:'#888', border:'1px solid #ccc' },
+  badgeOutlet:    { display:'inline-block', padding:'1px 6px', borderRadius:2, fontSize:10, fontWeight:700, background:'#e8f0f8', color:'#1a3a6a', border:'1px solid #b8c8d8' },
+  actionBtn:      { padding:'1px 6px', fontSize:10, cursor:'pointer', border:'1px solid #a0b4c4', borderRadius:2, background:'linear-gradient(180deg,#f8fbff 0%,#e6f0f8 100%)', color:'#1a4080', fontFamily:"'Tahoma',sans-serif", display:'inline-flex', alignItems:'center', gap:3, marginRight:2 },
+  actionBtnAmber: { color:'#a05000', borderColor:'#c8a060', background:'linear-gradient(180deg,#fffbf0 0%,#f8ecd8 100%)' },
+  actionBtnRed:   { color:'#cc2200', borderColor:'#c09090', background:'linear-gradient(180deg,#fff8f8 0%,#f0e8e8 100%)' },
+  actionBtnGreen: { color:'#1a6a1a', borderColor:'#88cc88', background:'linear-gradient(180deg,#f0fff0 0%,#e0f0e0 100%)' },
+  /* loading */
+  loading:        { height:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, color:'#888', fontSize:11 },
+  /* empty */
+  empty:          { padding:'48px 0', textAlign:'center' as const, color:'#bbb', display:'flex', flexDirection:'column', alignItems:'center', gap:8 },
+  /* dropdown */
+  dropdown:       { position:'fixed' as const, background:'white', border:'1px solid #b8c8d8', boxShadow:'0 4px 16px rgba(0,0,0,0.15)', borderRadius:3, zIndex:999, overflow:'hidden' },
+  dropItem:       { padding:'5px 10px', cursor:'pointer', fontSize:11, display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f0f0f0' },
+  dropItemActive: { background:'#2a68cc', color:'white' },
+  /* status bar */
+  statusBar:      { display:'flex', alignItems:'center', gap:10, padding:'2px 10px', background:'linear-gradient(180deg,#e5e5e5 0%,#d5d5d5 100%)', borderTop:'1px solid #b0b0b0', height:20, flexShrink:0, fontSize:10, color:'#555' },
+  statusPanel:    { border:'1px solid #b8b8b8', padding:'0 8px', background:'white', borderRadius:1, lineHeight:'16px' },
+  /* outlet manager */
+  outletWrap:     { padding:16, maxWidth:480, margin:'0 auto', height:'100%', overflow:'auto' },
+  outletCard:     { background:'white', border:'1px solid #b8c8d8', borderRadius:3, overflow:'hidden' },
+  outletCardHdr:  { padding:'6px 12px', background:'linear-gradient(180deg,#dce8f8 0%,#c6d8ed 100%)', borderBottom:'1px solid #a8b8cc', display:'flex', alignItems:'center', gap:8, fontSize:11, fontWeight:700, color:'#1a3060' },
+  outletCardBody: { padding:12, display:'flex', flexDirection:'column', gap:8 },
+  outletAddRow:   { display:'flex', gap:6 },
+  outletInput:    { flex:1, border:'1px solid #a8b8cc', borderRadius:2, padding:'4px 8px', fontSize:11, fontFamily:"'Tahoma',sans-serif", outline:'none' },
+  outletRow:      { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 0', borderBottom:'1px solid #e8eef4', fontSize:11, fontWeight:600, color:'#333' },
+  /* modal */
+  overlay:        { position:'fixed' as const, inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 },
+  modalWin:       { background:'#f0f0f0', border:'2px solid #1e3a6e', borderRadius:4, width:540, boxShadow:'4px 4px 20px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 80px)' },
+  modalWinSm:     { background:'white', border:'2px solid #1e3a6e', borderRadius:4, width:640, boxShadow:'4px 4px 20px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', maxHeight:'80vh' },
+  modalTitle:     { background:'linear-gradient(180deg,#2a52a0 0%,#1e3a6e 100%)', color:'white', padding:'6px 12px', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'space-between', borderRadius:'2px 2px 0 0', flexShrink:0 },
+  modalClose:     { width:18, height:18, borderRadius:2, background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.4)', color:'white', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' },
+  modalBody:      { padding:'12px 14px', display:'flex', flexDirection:'column', gap:10, overflowY:'auto' as const, flex:1 },
+  modalFooter:    { padding:'8px 14px', borderTop:'1px solid #c0c0c0', display:'flex', justifyContent:'flex-end', gap:6, background:'#e8e8e8', flexShrink:0 },
+  modalBtnOk:     { padding:'4px 18px', fontSize:11, fontWeight:700, borderRadius:3, cursor:'pointer', fontFamily:"'Tahoma',sans-serif", border:'1px solid #1a56aa', background:'linear-gradient(180deg,#4a8de8 0%,#2a68cc 100%)', color:'white', display:'flex', alignItems:'center', gap:5 },
+  modalBtnCancel: { padding:'4px 14px', fontSize:11, fontWeight:700, borderRadius:3, cursor:'pointer', fontFamily:"'Tahoma',sans-serif", border:'1px solid #a0a0a0', background:'linear-gradient(180deg,#f8f8f8 0%,#e0e0e0 100%)', color:'#333' },
+  fieldGroup:     { display:'flex', flexDirection:'column', gap:3 },
+  fieldLabel:     { fontSize:10, fontWeight:700, color:'#5a6a7a', textTransform:'uppercase' as const, letterSpacing:'0.06em' },
+  fieldInput:     { border:'1px solid #8090a0', borderRadius:2, padding:'4px 6px', fontSize:11, fontFamily:"'Tahoma',sans-serif", color:'#1a1a1a', background:'white', outline:'none', width:'100%' },
+  gridCols3:      { display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 },
+  convRow:        { display:'flex', gap:6, alignItems:'center', background:'#f0f5fb', padding:'6px 8px', border:'1px solid #d0dcea', borderRadius:2 },
+};
+
+/* ─── OutletManager ─────────────────────────────────────────────────────────── */
 const OutletManager: React.FC<OutletManagerProps> = ({
   outlets, onAdd, onDelete, outletToDelete, setOutletToDelete, onConfirmDelete,
 }) => {
   const [newOutletName, setNewOutletName] = useState('');
-
   const handleAdd = () => {
     const trimmed = newOutletName.trim();
     if (!trimmed) return;
@@ -56,41 +137,38 @@ const OutletManager: React.FC<OutletManagerProps> = ({
   };
 
   return (
-    <div className="p-6 max-w-md mx-auto h-full overflow-auto">
-      <div className="bg-white border border-mist-300 rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-3 bg-mist-50 border-b border-mist-300 flex items-center gap-3">
-          <MapPin size={16} className="text-slate-400" />
-          <h3 className="text-[11px] font-bold text-slate-700 uppercase tracking-widest">Master Outlet</h3>
+    <div style={a.outletWrap}>
+      <div style={a.outletCard}>
+        <div style={a.outletCardHdr}>
+          <MapPin size={14} color="#5a7090" />
+          MASTER OUTLET
         </div>
-        <div className="p-4 space-y-4">
-          <div className="flex gap-2">
+        <div style={a.outletCardBody}>
+          <div style={a.outletAddRow}>
             <input
               type="text"
               placeholder="Nama outlet baru..."
               value={newOutletName}
               onChange={e => setNewOutletName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-              className="flex-1 px-3 py-1.5 border border-mist-300 rounded text-[11px] font-semibold outline-none focus:border-blue-400"
+              style={a.outletInput}
             />
-            <button
-              onClick={handleAdd}
-              className="px-4 py-1.5 bg-blue-600 text-white rounded text-[11px] font-bold shadow-sm hover:bg-blue-700 transition-colors"
-            >
+            <button onClick={handleAdd} style={{ ...a.tbBtn, ...a.tbBtnPrimary }}>
               TAMBAH
             </button>
           </div>
-          <div className="space-y-1 divide-y divide-mist-100 border-t border-mist-100">
+          <div style={{ borderTop:'1px solid #e0e8f0', paddingTop:4 }}>
             {outlets.length === 0 && (
-              <p className="py-4 text-center text-[10px] text-slate-400 italic">Belum ada outlet</p>
+              <p style={{ textAlign:'center', color:'#bbb', fontSize:10, padding:'12px 0', fontStyle:'italic' }}>Belum ada outlet</p>
             )}
             {outlets.map(o => (
-              <div key={o} className="py-2 flex justify-between items-center group">
-                <span className="text-[11px] font-semibold text-slate-700 uppercase">{o}</span>
+              <div key={o} style={a.outletRow}>
+                <span style={{ textTransform:'uppercase', fontSize:11 }}>{o}</span>
                 <button
-                  onClick={() => setOutletToDelete(o)}
-                  className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 rounded p-1 transition-all"
+                  onClick={() => onDelete(o)}
+                  style={{ ...a.actionBtn, ...a.actionBtnRed }}
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={11} /> Hapus
                 </button>
               </div>
             ))}
@@ -108,6 +186,7 @@ const OutletManager: React.FC<OutletManagerProps> = ({
   );
 };
 
+/* ─── RejectView ────────────────────────────────────────────────────────────── */
 export const RejectView: React.FC = () => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY' | 'MASTER_ITEMS' | 'MASTER'>('NEW');
@@ -462,8 +541,8 @@ export const RejectView: React.FC = () => {
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fileName; a.click();
+      const link = document.createElement('a');
+      link.href = url; link.download = fileName; link.click();
       window.URL.revokeObjectURL(url);
       showToast('Laporan Berhasil Diekspor', 'success');
     } catch (e) {
@@ -472,60 +551,77 @@ export const RejectView: React.FC = () => {
     }
   };
 
+  /* ── TABS CONFIG ── */
+  const tabs = [
+    { id: 'NEW',          label: 'Input Reject', icon: Plus },
+    { id: 'HISTORY',      label: 'Riwayat',      icon: History },
+    { id: 'MASTER_ITEMS', label: 'Katalog Barang',icon: Database },
+    { id: 'MASTER',       label: 'Master Outlet', icon: MapPin },
+  ] as const;
+
   return (
-    <div className="flex flex-col h-full bg-white font-sans overflow-hidden">
-      {/* TOOLBAR */}
-      <div className="h-10 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-2 shrink-0 shadow-md">
-        <div className="flex items-center h-full">
-          {[
-            { id: 'NEW',          label: 'Input',   icon: Plus },
-            { id: 'HISTORY',      label: 'Riwayat', icon: History },
-            { id: 'MASTER_ITEMS', label: 'Katalog', icon: Database },
-            { id: 'MASTER',       label: 'Outlet',  icon: MapPin },
-          ].map(tab => (
+    <div style={a.shell}>
+
+      {/* ── TOOLBAR + TABS ───────────────────────────────────────────────── */}
+      <div style={a.toolbar}>
+        <div style={a.tabList}>
+          {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-1.5 px-4 h-full border-r border-slate-700/50 transition-all ${
-                activeTab === tab.id
-                  ? 'bg-blue-600 text-white shadow-[inset_0_-3px_0_rgba(255,255,255,0.25)] font-bold'
-                  : 'text-slate-400 hover:bg-slate-700 hover:text-white'
-              }`}
+              style={{ ...a.tab, ...(activeTab === tab.id ? a.tabActive : {}) }}
             >
               <tab.icon size={13} />
-              <span className="text-[11px] font-semibold uppercase tracking-tight">{tab.label}</span>
+              {tab.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 pr-2 h-full">
+
+        <div style={a.toolbarRight}>
+          {/* Filter outlet — HISTORY */}
           {activeTab === 'HISTORY' && (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 rounded border border-slate-700 shadow-inner">
-              <Filter size={10} className="text-slate-400" />
-              <select value={filterOutlet} onChange={e => setFilterOutlet(e.target.value)} className="bg-transparent text-[10px] font-bold text-slate-200 outline-none cursor-pointer">
+            <div style={a.tbSelect}>
+              <Filter size={10} color="#5a7090" />
+              <select
+                value={filterOutlet}
+                onChange={e => setFilterOutlet(e.target.value)}
+                style={a.tbSelectEl}
+              >
                 <option value="ALL">SEMUA OUTLET</option>
                 {outlets.map(o => <option key={o} value={o}>{o.toUpperCase()}</option>)}
               </select>
             </div>
           )}
+
+          {/* Outlet + Date + Save — NEW */}
           {activeTab === 'NEW' && (
             <>
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 rounded border border-slate-700 shadow-inner">
-                <MapPin size={10} className="text-slate-400" />
-                <select value={inputOutlet} onChange={e => setInputOutlet(e.target.value)} className="bg-transparent text-[10px] font-bold text-slate-200 outline-none cursor-pointer">
+              <div style={a.tbSelect}>
+                <MapPin size={10} color="#5a7090" />
+                <select
+                  value={inputOutlet}
+                  onChange={e => setInputOutlet(e.target.value)}
+                  style={a.tbSelectEl}
+                >
                   <option value="">— Pilih Outlet —</option>
                   {outlets.map(o => <option key={o} value={o}>{o.toUpperCase()}</option>)}
                 </select>
               </div>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-[11px] font-semibold text-slate-200 outline-none focus:border-blue-500 shadow-inner [color-scheme:dark]" />
+              <input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                style={a.tbInput}
+              />
               {editingBatchId && (
-                <button onClick={() => { setEditingBatchId(null); setRejectLines([]); }}
-                  className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
+                <button
+                  onClick={() => { setEditingBatchId(null); setRejectLines([]); }}
+                  style={{ ...a.tbBtn, ...a.tbBtnDanger }}
+                >
                   <X size={13} /> Batal Edit
                 </button>
               )}
-              <button onClick={handleSaveBatch}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[11px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
+              <button onClick={handleSaveBatch} style={{ ...a.tbBtn, ...a.tbBtnPrimary }}>
                 <Save size={13} /> {editingBatchId ? 'Update' : 'Simpan'}
               </button>
             </>
@@ -533,55 +629,69 @@ export const RejectView: React.FC = () => {
         </div>
       </div>
 
-      {/* CONTENT AREA */}
-      <div className="flex-1 overflow-hidden relative">
+      {/* ── CONTENT AREA ─────────────────────────────────────────────────── */}
+      <div style={a.content}>
         {isLoading ? (
-          <div className="h-full flex items-center justify-center text-slate-400 gap-2 text-xs font-medium">
-            <Loader2 className="animate-spin" size={16} /> Memuat data...
+          <div style={a.loading}>
+            <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }} /> Memuat data...
           </div>
+
         ) : activeTab === 'NEW' ? (
-          <div className="h-full flex flex-col">
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-left border-collapse table-fixed">
-                <thead className="bg-mist-300 sticky top-0 z-10 border-b border-mist-300 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-                  <tr className="h-8">
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-10 text-center">#</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Barang & SKU</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-28 text-right">Qty Input</th>
-                    <th className="px-3 text-[10px] font-bold text-rose-700 uppercase w-24 text-right bg-rose-50">Qty Base</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Satuan</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Catatan / Alasan</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-10"></th>
+          /* ── INPUT TAB ──────────────────────────────────────────────────── */
+          <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+            <div style={a.tableWrap}>
+              <table style={a.table}>
+                <thead>
+                  <tr style={{ height:28 }}>
+                    <th style={{ ...a.th, ...a.thCenter, width:40 }}>#</th>
+                    <th style={a.th}>Barang &amp; SKU</th>
+                    <th style={{ ...a.th, ...a.thRight, width:110 }}>Qty Input</th>
+                    <th style={{ ...a.th, ...a.thRight, width:90, background:'linear-gradient(180deg,#f8dce0 0%,#f0c8cc 100%)', color:'#8a1a20' }}>Qty Base</th>
+                    <th style={{ ...a.th, ...a.thCenter, width:80 }}>Satuan</th>
+                    <th style={a.th}>Catatan / Alasan</th>
+                    <th style={{ ...a.th, width:36 }}></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-mist-100">
+                <tbody>
                   {rejectLines.map((line, idx) => (
-                    <tr key={line.lineId} className="h-7 hover:bg-mist-50 group transition-colors">
-                      <td className="px-3 text-center text-slate-400 font-mono text-[10px]">{idx + 1}</td>
-                      <td className="px-3 truncate">
-                        <span className="font-semibold text-slate-700 text-[11px]">{line.name}</span>
-                        <span className="ml-2 text-[10px] text-slate-400 font-mono italic">{line.sku}</span>
+                    <tr
+                      key={line.lineId}
+                      style={idx % 2 === 0 ? a.trOdd : a.trEven}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#cce0ff')}
+                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb')}
+                    >
+                      <td style={{ ...a.tdBase, ...a.tdCenter, color:'#999', fontFamily:"'Courier New',monospace", fontSize:10 }}>{idx + 1}</td>
+                      <td style={a.tdBase}>
+                        <span style={{ fontWeight:600, color:'#1a1a1a', fontSize:11 }}>{line.name}</span>
+                        <span style={{ marginLeft:8, fontSize:10, color:'#999', fontFamily:"'Courier New',monospace", fontStyle:'italic' }}>{line.sku}</span>
                       </td>
-                      <td className="px-3 text-right font-mono text-[11px] text-slate-500">
-                        {line.inputQty} <span className="text-[9px] uppercase">{line.inputUnit}</span>
+                      <td style={{ ...a.tdBase, ...a.tdRight, fontFamily:"'Courier New',monospace", fontSize:11, color:'#555' }}>
+                        {line.inputQty} <span style={{ fontSize:9, textTransform:'uppercase' }}>{line.inputUnit}</span>
                       </td>
-                      <td className="px-3 text-right font-mono font-bold text-rose-600 text-[11px]">{line.qty.toLocaleString()}</td>
-                      <td className="px-3 text-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{line.unit}</span>
+                      <td style={{ ...a.tdBase, ...a.tdRight, fontFamily:"'Courier New',monospace", fontWeight:700, color:'#cc2200', fontSize:11 }}>
+                        {line.qty.toLocaleString()}
                       </td>
-                      <td className="px-3 text-slate-500 italic text-[11px] truncate">{line.reason}</td>
-                      <td className="px-3 text-center">
-                        <button onClick={() => setRejectLines(prev => prev.filter(l => l.lineId !== line.lineId))}
-                          className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#888', textTransform:'uppercase' }}>{line.unit}</span>
+                      </td>
+                      <td style={{ ...a.tdBase, color:'#666', fontStyle:'italic', fontSize:11 }}>{line.reason}</td>
+                      <td style={{ ...a.tdBase, ...a.tdCenter, padding:0 }}>
+                        <button
+                          onClick={() => setRejectLines(prev => prev.filter(l => l.lineId !== line.lineId))}
+                          style={{ width:'100%', height:'100%', background:'transparent', border:'none', cursor:'pointer', color:'#cc2200', display:'flex', alignItems:'center', justifyContent:'center', padding:4 }}
+                        >
                           <Trash2 size={12} />
                         </button>
                       </td>
                     </tr>
                   ))}
-                  {/* INLINE ENTRY ROW */}
-                  <tr className="h-9 bg-emerald-50 border-t-2 border-emerald-300">
-                    <td className="px-3 py-1 text-center"><Plus size={13} className="text-emerald-600 mx-auto" /></td>
-                    <td className="p-0 relative">
+
+                  {/* ENTRY ROW */}
+                  <tr style={{ ...a.entryRow, height:32 }}>
+                    <td style={{ ...a.tdBase, ...a.tdCenter, padding:0 }}>
+                      <Plus size={13} color="#2a9850" style={{ margin:'0 auto', display:'block' }} />
+                    </td>
+                    <td style={{ ...a.tdBase, padding:0, position:'relative' }}>
                       <input
                         ref={itemInputRef}
                         type="text"
@@ -595,61 +705,96 @@ export const RejectView: React.FC = () => {
                           if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
                           if (e.key === 'Escape') setIsDropdownOpen(false);
                         }}
-                        className="w-full h-full bg-transparent px-3 text-[11px] font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+                        style={a.entryInput}
                         autoComplete="off"
                       />
                       {isDropdownOpen && query && filteredItems.length > 0 && dropdownPos && (
-                        <div ref={dropdownRef} className="fixed bg-white border border-mist-300 shadow-2xl rounded-lg z-[999] overflow-hidden"
-                          style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}>
+                        <div
+                          ref={dropdownRef}
+                          style={{ ...a.dropdown, top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+                        >
                           {filteredItems.map((it, idx) => (
-                            <div key={it.id} onMouseDown={() => selectItem(it)} onMouseEnter={() => setSelectedIndex(idx)}
-                              className={`px-3 py-2 cursor-pointer text-[11px] flex justify-between items-center border-b border-mist-50 last:border-0 ${idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-mist-50 text-slate-700'}`}>
-                              <div className="min-w-0">
-                                <div className={`font-semibold truncate ${idx === selectedIndex ? 'text-white' : 'text-slate-700'}`}>{highlightMatch(it.name, query)}</div>
-                                <div className={`text-[10px] font-mono mt-0.5 ${idx === selectedIndex ? 'text-blue-100' : 'text-slate-400'}`}>{highlightMatch(it.code, query)}</div>
+                            <div
+                              key={it.id}
+                              onMouseDown={() => selectItem(it)}
+                              onMouseEnter={() => setSelectedIndex(idx)}
+                              style={{ ...a.dropItem, ...(idx === selectedIndex ? a.dropItemActive : {}) }}
+                            >
+                              <div style={{ minWidth:0 }}>
+                                <div style={{ fontWeight:600, fontSize:11, color: idx === selectedIndex ? 'white' : '#1a1a1a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                  {highlightMatch(it.name, query)}
+                                </div>
+                                <div style={{ fontSize:10, fontFamily:"'Courier New',monospace", marginTop:1, color: idx === selectedIndex ? '#c0d8ff' : '#999' }}>
+                                  {highlightMatch(it.code, query)}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2 shrink-0 ml-3">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${idx === selectedIndex ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'}`}>{it.baseUnit}</span>
-                                {idx === selectedIndex && <ChevronRight size={12} className="text-blue-200" />}
+                              <div style={{ display:'flex', alignItems:'center', gap:6, flexShrink:0, marginLeft:8 }}>
+                                <span style={{ padding:'1px 6px', borderRadius:2, fontSize:9, fontWeight:700, background: idx === selectedIndex ? 'rgba(255,255,255,0.25)' : '#e8f0f8', color: idx === selectedIndex ? 'white' : '#1a3a6a', border:'1px solid rgba(255,255,255,0.2)' }}>
+                                  {it.baseUnit}
+                                </span>
+                                {idx === selectedIndex && <ChevronRight size={12} color="rgba(255,255,255,0.6)" />}
                               </div>
                             </div>
                           ))}
                         </div>
                       )}
                     </td>
-                    <td className="p-0">
-                      <input ref={qtyInputRef} type="number" placeholder="0" value={pendingQty}
+                    <td style={{ ...a.tdBase, padding:0 }}>
+                      <input
+                        ref={qtyInputRef}
+                        type="number"
+                        placeholder="0"
+                        value={pendingQty}
                         onChange={e => setPendingQty(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && reasonInputRef.current?.focus()}
                         disabled={!pendingItem}
-                        className="w-full h-full bg-transparent px-3 text-right text-[11px] font-semibold text-emerald-700 outline-none focus:bg-white/50 disabled:bg-transparent disabled:text-slate-300" />
+                        style={{ ...a.entryInput, textAlign:'right', color:'#1a6a1a' }}
+                      />
                     </td>
-                    <td className="px-3 text-right font-mono text-[11px] relative">
+                    <td style={{ ...a.tdBase, ...a.tdRight, fontFamily:"'Courier New',monospace", fontSize:11 }}>
                       {conversionResult && !('error' in conversionResult) ? (
-                        <span className="font-bold text-rose-600">{conversionResult.baseQty.toLocaleString(undefined, { maximumFractionDigits: 3 })}</span>
+                        <span style={{ fontWeight:700, color:'#cc2200' }}>
+                          {conversionResult.baseQty.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                        </span>
                       ) : conversionResult && 'error' in conversionResult ? (
-                        <span className="text-rose-400 flex items-center justify-end gap-0.5 text-[10px]"><AlertCircle size={9} /> {conversionResult.error}</span>
-                      ) : <span className="text-slate-300">-</span>}
+                        <span style={{ color:'#cc2200', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:3, fontSize:10 }}>
+                          <AlertCircle size={9} /> {conversionResult.error}
+                        </span>
+                      ) : <span style={{ color:'#ccc' }}>-</span>}
                     </td>
-                    <td className="p-0">
-                      <select value={pendingUnit} onChange={e => setPendingUnit(e.target.value)} disabled={!pendingItem}
-                        className="w-full h-full bg-transparent px-1 text-center text-[10px] font-semibold text-slate-600 outline-none appearance-none cursor-pointer disabled:opacity-30">
+                    <td style={{ ...a.tdBase, padding:0 }}>
+                      <select
+                        value={pendingUnit}
+                        onChange={e => setPendingUnit(e.target.value)}
+                        disabled={!pendingItem}
+                        style={{ width:'100%', height:'100%', background:'transparent', border:'none', outline:'none', textAlign:'center', fontSize:10, fontFamily:"'Tahoma',sans-serif", fontWeight:700, cursor:'pointer', opacity: pendingItem ? 1 : 0.3 }}
+                      >
                         {pendingItem ? (
-                          <><option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>
-                          {pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}</>
+                          <>
+                            <option value={pendingItem.baseUnit}>{pendingItem.baseUnit}</option>
+                            {pendingItem.conversions?.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                          </>
                         ) : <option>-</option>}
                       </select>
                     </td>
-                    <td className="p-0">
-                      <input ref={reasonInputRef} type="text" placeholder="Tulis alasan..." value={pendingReason}
+                    <td style={{ ...a.tdBase, padding:0 }}>
+                      <input
+                        ref={reasonInputRef}
+                        type="text"
+                        placeholder="Tulis alasan..."
+                        value={pendingReason}
                         onChange={e => setPendingReason(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleAddLine()}
                         disabled={!pendingItem}
-                        className="w-full h-full bg-transparent px-3 text-[11px] outline-none italic text-slate-500 focus:bg-white/50 disabled:bg-transparent" />
+                        style={{ ...a.entryInput, fontStyle:'italic', color:'#555' }}
+                      />
                     </td>
-                    <td className="p-0 text-center">
-                      <button onClick={handleAddLine} disabled={!pendingItem}
-                        className="w-full h-full flex items-center justify-center text-emerald-600 hover:bg-emerald-100 disabled:opacity-30 transition-colors">
+                    <td style={{ ...a.tdBase, padding:0 }}>
+                      <button
+                        onClick={handleAddLine}
+                        disabled={!pendingItem}
+                        style={{ width:'100%', height:'100%', background:'transparent', border:'none', cursor: pendingItem ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center', color:'#2a9850', opacity: pendingItem ? 1 : 0.3 }}
+                      >
                         <CornerDownLeft size={14} />
                       </button>
                     </td>
@@ -657,78 +802,96 @@ export const RejectView: React.FC = () => {
                 </tbody>
               </table>
               {rejectLines.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-300 gap-2">
-                  <PackageX size={32} />
-                  <span className="text-xs font-medium">Cari dan tambahkan barang reject di baris bawah</span>
+                <div style={a.empty}>
+                  <PackageX size={32} color="#ccc" />
+                  <span style={{ fontSize:11, color:'#aaa' }}>Cari dan tambahkan barang reject di baris bawah</span>
                 </div>
               )}
             </div>
           </div>
 
         ) : activeTab === 'HISTORY' ? (
-          <div className="h-full flex flex-col">
-            <div className="h-9 px-3 border-b border-mist-300 bg-mist-50 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Periode:</span>
-                <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="bg-transparent text-[11px] font-semibold text-slate-600 outline-none w-28" />
-                <span className="text-slate-300">-</span>
-                <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="bg-transparent text-[11px] font-semibold text-slate-600 outline-none w-28" />
-                <div className="relative ml-2">
-                  <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input type="text" placeholder="Cari batch/outlet/barang..." value={historySearch} onChange={e => setHistorySearch(e.target.value)}
-                    className="pl-7 pr-7 py-1 bg-white border border-mist-300 rounded text-[10px] font-semibold w-48 outline-none focus:border-blue-400" />
+          /* ── HISTORY TAB ────────────────────────────────────────────────── */
+          <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+            <div style={a.subToolbar}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:10, fontWeight:700, color:'#5a6a7a', textTransform:'uppercase' }}>Periode:</span>
+                <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} style={{ ...a.tbInput, width:120 }} />
+                <span style={{ color:'#aaa' }}>—</span>
+                <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} style={{ ...a.tbInput, width:120 }} />
+                <div style={a.searchWrap}>
+                  <Search size={11} color="#999" />
+                  <input
+                    type="text"
+                    placeholder="Cari batch/outlet/barang..."
+                    value={historySearch}
+                    onChange={e => setHistorySearch(e.target.value)}
+                    style={a.searchInput}
+                  />
                   {historySearch && (
-                    <button onClick={() => setHistorySearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={9} /></button>
+                    <button onClick={() => setHistorySearch('')} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#999', padding:0, display:'flex' }}>
+                      <X size={10} />
+                    </button>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400">{filteredBatches.length} batch</span>
-                <button onClick={handleExportMatrix} className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition-colors">
-                  <FileSpreadsheet size={12} /> EXPORT MATRIX
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:10, color:'#888' }}>{filteredBatches.length} batch</span>
+                <button onClick={handleExportMatrix} style={{ ...a.tbBtn, ...a.tbBtnGreen }}>
+                  <FileSpreadsheet size={12} /> Export Matrix
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto">
-              <table className="w-full border-collapse table-fixed text-left">
-                <thead className="bg-mist-300 sticky top-0 z-10 border-b border-mist-300 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-                  <tr className="h-8">
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-32">ID Batch</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-24">Tanggal</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Outlet</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Items</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-24 text-center">Aksi</th>
+
+            <div style={a.tableWrap}>
+              <table style={a.table}>
+                <thead>
+                  <tr style={{ height:28 }}>
+                    <th style={{ ...a.th, width:130 }}>ID Batch</th>
+                    <th style={{ ...a.th, width:100 }}>Tanggal</th>
+                    <th style={a.th}>Outlet</th>
+                    <th style={{ ...a.th, ...a.thCenter, width:80 }}>Items</th>
+                    <th style={{ ...a.th, ...a.thCenter, width:110 }}>Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-mist-100">
-                  {filteredBatches.map(b => (
-                    <tr key={b.id} className="h-7 hover:bg-blue-50 group transition-colors cursor-pointer">
-                      <td className="px-3 text-[11px] font-mono text-blue-600 font-semibold">{b.id}</td>
-                      <td className="px-3 text-[11px] text-slate-600 font-medium">{b.date}</td>
-                      <td className="px-3 text-[11px] font-bold text-slate-700 uppercase">
-                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px]">{b.outlet}</span>
+                <tbody>
+                  {filteredBatches.map((b, idx) => (
+                    <tr
+                      key={b.id}
+                      style={idx % 2 === 0 ? a.trOdd : a.trEven}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#dce8ff')}
+                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb')}
+                    >
+                      <td style={{ ...a.tdBase, fontFamily:"'Courier New',monospace", fontSize:10, color:'#1a50aa', fontWeight:700 }}>{b.id}</td>
+                      <td style={{ ...a.tdBase, fontSize:11 }}>{b.date}</td>
+                      <td style={a.tdBase}>
+                        <span style={a.badgeOutlet}>{b.outlet}</span>
                       </td>
-                      <td className="px-3 text-center text-[11px] font-semibold text-slate-500">{b.items.length}</td>
-                      <td className="px-3 text-center">
-                        <div className="flex justify-center gap-1">
-                          <button onClick={() => setViewingBatch(b)} className="p-1 text-blue-500 hover:bg-blue-100 rounded" title="Lihat Detail"><Eye size={12} /></button>
-                          <button onClick={() => handleEditBatch(b)} className="p-1 text-amber-500 hover:bg-amber-100 rounded" title="Edit"><Edit3 size={12} /></button>
-                          <button onClick={() => handleCopyToClipboard(b)} className="p-1 text-slate-500 hover:bg-slate-100 rounded" title="Copy Teks"><Copy size={12} /></button>
-                          <button onClick={() => setBatchToDelete(b.id)} className="p-1 text-rose-500 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12} /></button>
-                        </div>
+                      <td style={{ ...a.tdBase, ...a.tdCenter, fontSize:11, fontWeight:600 }}>{b.items.length}</td>
+                      <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                        <button onClick={() => setViewingBatch(b)} style={{ ...a.actionBtn }} title="Lihat Detail"><Eye size={11} /> Detail</button>
+                        <button onClick={() => handleEditBatch(b)} style={{ ...a.actionBtn, ...a.actionBtnAmber }} title="Edit"><Edit3 size={11} /></button>
+                        <button onClick={() => handleCopyToClipboard(b)} style={{ ...a.actionBtn }} title="Copy Teks"><Copy size={11} /></button>
+                        <button onClick={() => setBatchToDelete(b.id)} style={{ ...a.actionBtn, ...a.actionBtnRed }} title="Hapus"><Trash2 size={11} /></button>
                       </td>
                     </tr>
                   ))}
                   {filteredBatches.length === 0 && (
-                    <tr><td colSpan={5} className="py-16">
-                      <div className="flex flex-col items-center justify-center gap-2 text-slate-300">
-                        <History size={28} />
-                        <span className="text-xs font-medium text-slate-400">
-                          {historySearch ? 'Tidak ada batch yang cocok' : 'Tidak ada riwayat pada periode ini'}
-                        </span>
-                        {historySearch && <button onClick={() => setHistorySearch('')} className="text-[10px] text-blue-500 hover:underline">Reset pencarian</button>}
-                      </div>
-                    </td></tr>
+                    <tr>
+                      <td colSpan={5} style={{ padding:'48px 0' }}>
+                        <div style={a.empty}>
+                          <History size={28} color="#ccc" />
+                          <span style={{ fontSize:11, color:'#aaa' }}>
+                            {historySearch ? 'Tidak ada batch yang cocok' : 'Tidak ada riwayat pada periode ini'}
+                          </span>
+                          {historySearch && (
+                            <button onClick={() => setHistorySearch('')} style={{ fontSize:10, color:'#2a68cc', background:'none', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                              Reset pencarian
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -736,61 +899,88 @@ export const RejectView: React.FC = () => {
           </div>
 
         ) : activeTab === 'MASTER_ITEMS' ? (
-          <div className="h-full flex flex-col">
-            <div className="h-9 px-3 border-b border-mist-300 bg-mist-50 flex items-center justify-between shrink-0">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
-                <input type="text" placeholder="Cari master barang..." value={masterSearch} onChange={e => setMasterSearch(e.target.value)}
-                  className="pl-7 pr-3 py-1 bg-white border border-mist-300 rounded text-[10px] font-semibold w-48 outline-none focus:border-blue-400" />
+          /* ── MASTER ITEMS TAB ───────────────────────────────────────────── */
+          <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+            <div style={a.subToolbar}>
+              <div style={a.searchWrap}>
+                <Search size={11} color="#999" />
+                <input
+                  type="text"
+                  placeholder="Cari master barang..."
+                  value={masterSearch}
+                  onChange={e => setMasterSearch(e.target.value)}
+                  style={a.searchInput}
+                />
               </div>
               <button
                 onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }}
-                className="px-3 py-1 bg-blue-600 text-white rounded text-[10px] font-bold hover:bg-blue-700 shadow-sm transition-colors">
-                + BARANG BARU
+                style={{ ...a.tbBtn, ...a.tbBtnPrimary }}
+              >
+                <Plus size={13} /> Barang Baru
               </button>
             </div>
-            <div className="flex-1 overflow-auto">
-              <table className="w-full border-collapse table-fixed text-left">
-                <thead className="bg-mist-300 sticky top-0 z-10 border-b border-mist-300 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-                  <tr className="h-8">
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-32">Kode SKU</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase">Nama Produk</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Unit</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-32">Multi-Unit</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Status</th>
-                    <th className="px-3 text-[10px] font-bold text-slate-700 uppercase w-20 text-center">Aksi</th>
+
+            <div style={a.tableWrap}>
+              <table style={a.table}>
+                <thead>
+                  <tr style={{ height:28 }}>
+                    <th style={{ ...a.th, width:130 }}>Kode SKU</th>
+                    <th style={a.th}>Nama Produk</th>
+                    <th style={{ ...a.th, ...a.thCenter, width:80 }}>Unit</th>
+                    <th style={{ ...a.th, width:140 }}>Multi-Unit</th>
+                    <th style={{ ...a.th, ...a.thCenter, width:80 }}>Status</th>
+                    <th style={{ ...a.th, ...a.thCenter, width:80 }}>Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-mist-100">
-                  {filteredMasterItems.map(item => (
-                    <tr key={item.id} className={`h-7 hover:bg-mist-50 group transition-colors ${item.isActive === false ? 'bg-slate-50' : ''}`}>
-                      <td className="px-3 text-[11px] font-mono text-slate-500">{item.code}</td>
-                      <td className="px-3 text-[11px] font-semibold truncate">
-                        <span className={item.isActive === false ? 'text-slate-400 line-through' : 'text-slate-700'}>{item.name}</span>
+                <tbody>
+                  {filteredMasterItems.map((item, idx) => (
+                    <tr
+                      key={item.id}
+                      style={{ ...(idx % 2 === 0 ? a.trOdd : a.trEven), opacity: item.isActive === false ? 0.6 : 1 }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#dce8ff')}
+                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb')}
+                    >
+                      <td style={{ ...a.tdBase, ...a.tdMono, color:'#555' }}>{item.code}</td>
+                      <td style={a.tdBase}>
+                        <span style={{ fontWeight:600, fontSize:11, color: item.isActive === false ? '#aaa' : '#1a1a1a', textDecoration: item.isActive === false ? 'line-through' : 'none' }}>
+                          {item.name}
+                        </span>
                       </td>
-                      <td className="px-3 text-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.baseUnit}</span>
+                      <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                        <span style={{ fontSize:10, fontWeight:700, color:'#5a7090', textTransform:'uppercase' }}>{item.baseUnit}</span>
                       </td>
-                      <td className="px-3 text-[10px] text-slate-400 truncate italic">
-                        {item.conversions?.length ? item.conversions.map(c => c.name).join(', ') : '-'}
+                      <td style={{ ...a.tdBase, fontSize:10, color:'#888', fontStyle:'italic' }}>
+                        {item.conversions?.length ? item.conversions.map(c => c.name).join(', ') : '—'}
                       </td>
-                      <td className="px-3 text-center">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.isActive === false ? 'bg-slate-50 text-slate-400 border-slate-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                      <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                        <span style={item.isActive === false ? a.badgeNonaktif : a.badgeAktif}>
                           {item.isActive === false ? 'NONAKTIF' : 'AKTIF'}
                         </span>
                       </td>
-                      <td className="px-3 text-center">
-                        <div className="flex justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingItem(item); setItemForm({ ...item, conversions: item.conversions ? [...item.conversions] : [] }); setShowItemModal(true); }}
-                            className="p-1 text-amber-500 hover:bg-amber-100 rounded" title="Edit"><Edit3 size={12} /></button>
-                          <button onClick={() => setMasterItemToDelete(item.id)}
-                            className="p-1 text-rose-400 hover:bg-rose-100 rounded" title="Hapus"><Trash2 size={12} /></button>
-                        </div>
+                      <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                        <button
+                          onClick={() => { setEditingItem(item); setItemForm({ ...item, conversions: item.conversions ? [...item.conversions] : [] }); setShowItemModal(true); }}
+                          style={{ ...a.actionBtn, ...a.actionBtnAmber }} title="Edit"
+                        >
+                          <Edit3 size={11} />
+                        </button>
+                        <button
+                          onClick={() => setMasterItemToDelete(item.id)}
+                          style={{ ...a.actionBtn, ...a.actionBtnRed }} title="Hapus"
+                        >
+                          <Trash2 size={11} />
+                        </button>
                       </td>
                     </tr>
                   ))}
                   {filteredMasterItems.length === 0 && (
-                    <tr><td colSpan={6} className="py-12 text-center text-[10px] text-slate-400 italic">Tidak ada barang ditemukan</td></tr>
+                    <tr>
+                      <td colSpan={6} style={{ padding:'48px 0' }}>
+                        <div style={a.empty}>
+                          <span style={{ fontSize:11, color:'#aaa' }}>Tidak ada barang ditemukan</span>
+                        </div>
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -798,6 +988,7 @@ export const RejectView: React.FC = () => {
           </div>
 
         ) : (
+          /* ── OUTLET MASTER TAB ──────────────────────────────────────────── */
           <OutletManager
             outlets={outlets}
             onAdd={async (name) => {
@@ -812,97 +1003,119 @@ export const RejectView: React.FC = () => {
         )}
       </div>
 
-      {/* ─── MODAL: MASTER ITEM ───
-          FIX: ModalPortal → render ke document.body, bebas dari parent overflow/transform
-          FIX: backdrop-blur dihapus → tidak ada lag GPU
-      */}
+      {/* ── STATUS BAR ──────────────────────────────────────────────────────── */}
+      <div style={a.statusBar}>
+        <span style={a.statusPanel}>
+          {activeTab === 'NEW' && `${rejectLines.length} item`}
+          {activeTab === 'HISTORY' && `${filteredBatches.length} batch`}
+          {activeTab === 'MASTER_ITEMS' && `${filteredMasterItems.length} barang`}
+          {activeTab === 'MASTER' && `${outlets.length} outlet`}
+        </span>
+        <span style={{ marginLeft:'auto', color:'#888' }}>GudangPro — Modul Reject</span>
+      </div>
+
+      {/* ── MODAL: MASTER ITEM ──────────────────────────────────────────────── */}
       {showItemModal && (
         <ModalPortal>
-          <div className="fixed inset-0 bg-slate-900/60 z-[9999] flex items-center justify-center">
-            <div className="bg-white rounded-xl w-[520px] shadow-2xl border border-slate-200 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 80px)' }}>
-              <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${editingItem ? 'bg-amber-100' : 'bg-blue-100'}`}>
-                    <Database size={14} className={editingItem ? 'text-amber-600' : 'text-blue-600'} />
-                  </div>
-                  <div>
-                    <h3 className="text-[13px] font-bold text-slate-800">{editingItem ? 'Edit Barang' : 'Tambah Barang Baru'}</h3>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{editingItem ? `SKU: ${editingItem.code}` : 'Isi semua field yang diperlukan'}</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowItemModal(false)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
-                  <X size={16} />
-                </button>
+          <div style={a.overlay} onClick={e => e.target === e.currentTarget && setShowItemModal(false)}>
+            <div style={a.modalWin}>
+              <div style={a.modalTitle}>
+                <span>{editingItem ? `Edit Barang — SKU: ${editingItem.code}` : 'Tambah Barang Baru'}</span>
+                <button style={a.modalClose} onClick={() => setShowItemModal(false)}>✕</button>
               </div>
-              <div className="p-5 space-y-4 overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Kode SKU</label>
-                    <input type="text"
-                      className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-mono font-semibold uppercase outline-none focus:border-blue-400"
+
+              <div style={a.modalBody}>
+                <div style={a.gridCols3}>
+                  <div style={a.fieldGroup}>
+                    <label style={a.fieldLabel}>Kode SKU</label>
+                    <input
+                      type="text"
+                      style={{ ...a.fieldInput, fontFamily:"'Courier New',monospace", textTransform:'uppercase' }}
                       value={itemForm.code}
-                      onChange={e => setItemForm({ ...itemForm, code: e.target.value.toUpperCase() })} />
+                      onChange={e => setItemForm({ ...itemForm, code: e.target.value.toUpperCase() })}
+                    />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Unit Dasar</label>
-                    <input type="text"
-                      className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-semibold uppercase text-center outline-none focus:border-blue-400"
+                  <div style={a.fieldGroup}>
+                    <label style={a.fieldLabel}>Unit Dasar</label>
+                    <input
+                      type="text"
+                      style={{ ...a.fieldInput, textTransform:'uppercase', textAlign:'center' }}
                       value={itemForm.baseUnit}
-                      onChange={e => setItemForm({ ...itemForm, baseUnit: e.target.value.toUpperCase() })} />
+                      onChange={e => setItemForm({ ...itemForm, baseUnit: e.target.value.toUpperCase() })}
+                    />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+                  <div style={a.fieldGroup}>
+                    <label style={a.fieldLabel}>Status</label>
                     <select
-                      className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-semibold outline-none focus:border-blue-400 bg-white"
+                      style={{ ...a.fieldInput, background:'white' }}
                       value={itemForm.isActive === false ? 'false' : 'true'}
-                      onChange={e => setItemForm({ ...itemForm, isActive: e.target.value === 'true' })}>
+                      onChange={e => setItemForm({ ...itemForm, isActive: e.target.value === 'true' })}
+                    >
                       <option value="true">Aktif</option>
                       <option value="false">Nonaktif</option>
                     </select>
                   </div>
-                  <div className="col-span-3 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase">Nama Lengkap Barang</label>
-                    <input type="text"
-                      className="w-full px-2 py-1.5 border border-mist-200 rounded text-[11px] font-medium text-slate-700 outline-none focus:border-blue-400"
+                  <div style={{ ...a.fieldGroup, gridColumn:'1 / -1' }}>
+                    <label style={a.fieldLabel}>Nama Lengkap Barang</label>
+                    <input
+                      type="text"
+                      style={a.fieldInput}
                       value={itemForm.name}
-                      onChange={e => setItemForm({ ...itemForm, name: e.target.value })} />
+                      onChange={e => setItemForm({ ...itemForm, name: e.target.value })}
+                    />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-mist-100">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Konversi Multi-Unit</h4>
-                    <button onClick={() => setItemForm({ ...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }] })}
-                      className="text-[10px] font-bold text-blue-600 hover:underline">+ Tambah Unit</button>
+
+                <div style={{ borderTop:'1px solid #d0d8e0', paddingTop:10 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:'#5a6a7a', textTransform:'uppercase', letterSpacing:'0.06em' }}>Konversi Multi-Unit</span>
+                    <button
+                      onClick={() => setItemForm({ ...itemForm, conversions: [...(itemForm.conversions || []), { name: '', ratio: 1, operator: '*' }] })}
+                      style={{ fontSize:11, fontWeight:700, color:'#2a68cc', background:'none', border:'none', cursor:'pointer' }}
+                    >
+                      + Tambah Unit
+                    </button>
                   </div>
-                  <div className="space-y-2">
+                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                     {(itemForm.conversions || []).map((c, i) => (
-                      <div key={i} className="flex gap-2 items-center bg-mist-50 p-2 rounded border border-mist-100">
-                        <input type="text" placeholder="BOX"
-                          className="w-16 px-1.5 py-1 border border-mist-200 rounded text-[10px] uppercase font-semibold outline-none focus:bg-white"
+                      <div key={i} style={a.convRow}>
+                        <input
+                          type="text" placeholder="BOX"
+                          style={{ ...a.fieldInput, width:60, textTransform:'uppercase', fontWeight:700, textAlign:'center' }}
                           value={c.name}
-                          onChange={e => { const next = [...(itemForm.conversions || [])]; next[i] = { ...next[i], name: e.target.value.toUpperCase() }; setItemForm({ ...itemForm, conversions: next }); }} />
-                        <select className="px-1.5 py-1 border border-mist-200 rounded text-[10px] font-semibold outline-none bg-white"
+                          onChange={e => { const next = [...(itemForm.conversions || [])]; next[i] = { ...next[i], name: e.target.value.toUpperCase() }; setItemForm({ ...itemForm, conversions: next }); }}
+                        />
+                        <select
+                          style={{ ...a.fieldInput, width:50, textAlign:'center', fontWeight:700 }}
                           value={c.operator}
-                          onChange={e => { const next = [...(itemForm.conversions || [])]; next[i] = { ...next[i], operator: e.target.value as any }; setItemForm({ ...itemForm, conversions: next }); }}>
-                          <option value="*">x</option>
+                          onChange={e => { const next = [...(itemForm.conversions || [])]; next[i] = { ...next[i], operator: e.target.value as any }; setItemForm({ ...itemForm, conversions: next }); }}
+                        >
+                          <option value="*">×</option>
                           <option value="/">/</option>
                         </select>
-                        <input type="number" placeholder="Rasio"
-                          className="w-16 px-1.5 py-1 border border-mist-200 rounded text-[10px] font-mono font-semibold outline-none text-right focus:bg-white"
+                        <input
+                          type="number" placeholder="Rasio"
+                          style={{ ...a.fieldInput, width:70, textAlign:'right', fontFamily:"'Courier New',monospace" }}
                           value={c.ratio}
-                          onChange={e => { const next = [...(itemForm.conversions || [])]; next[i] = { ...next[i], ratio: Number(e.target.value) }; setItemForm({ ...itemForm, conversions: next }); }} />
-                        <span className="text-[10px] font-semibold text-slate-400 uppercase">{itemForm.baseUnit}</span>
-                        <button onClick={() => setItemForm({ ...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i) })}
-                          className="ml-auto text-slate-300 hover:text-rose-500 transition-colors"><Trash2 size={14} /></button>
+                          onChange={e => { const next = [...(itemForm.conversions || [])]; next[i] = { ...next[i], ratio: Number(e.target.value) }; setItemForm({ ...itemForm, conversions: next }); }}
+                        />
+                        <span style={{ fontSize:10, fontWeight:700, color:'#5a7090', textTransform:'uppercase' }}>{itemForm.baseUnit}</span>
+                        <button
+                          onClick={() => setItemForm({ ...itemForm, conversions: itemForm.conversions?.filter((_, idx) => idx !== i) })}
+                          style={{ marginLeft:'auto', background:'none', border:'none', cursor:'pointer', color:'#cc2200', display:'flex' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0">
-                <button onClick={() => setShowItemModal(false)} className="px-4 py-2 text-[12px] font-semibold text-slate-500 hover:bg-slate-200 rounded-lg transition-colors">Batal</button>
-                <button onClick={handleSaveMasterItem} className="px-6 py-2 bg-blue-600 text-white rounded-lg text-[12px] font-bold shadow-sm hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-1.5">
-                  <Save size={13}/> Simpan
+
+              <div style={a.modalFooter}>
+                <button style={a.modalBtnCancel} onClick={() => setShowItemModal(false)}>Batal</button>
+                <button style={a.modalBtnOk} onClick={handleSaveMasterItem}>
+                  <Save size={13} /> Simpan
                 </button>
               </div>
             </div>
@@ -910,55 +1123,68 @@ export const RejectView: React.FC = () => {
         </ModalPortal>
       )}
 
-      {/* ─── MODAL: DETAIL RIWAYAT ───
-          FIX: ModalPortal → render ke document.body
-          FIX: backdrop-blur dihapus → tidak ada lag GPU
-      */}
+      {/* ── MODAL: DETAIL RIWAYAT ───────────────────────────────────────────── */}
       {viewingBatch && (
         <ModalPortal>
-          <div className="fixed inset-0 bg-slate-900/50 z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg w-full max-w-xl border border-mist-200 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-              <div className="px-4 py-3 bg-mist-50 border-b border-mist-200 flex justify-between items-center">
+          <div style={a.overlay} onClick={e => e.target === e.currentTarget && setViewingBatch(null)}>
+            <div style={{ ...a.modalWinSm }}>
+              <div style={a.modalTitle}>
                 <div>
-                  <h3 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Detail Batch Reject</h3>
-                  <p className="text-[11px] font-mono text-slate-400 mt-0.5">{viewingBatch.id} · {viewingBatch.outlet} · {viewingBatch.date}</p>
+                  <div>Detail Batch Reject</div>
+                  <div style={{ fontSize:10, fontFamily:"'Courier New',monospace", color:'rgba(255,255,255,0.7)', marginTop:2 }}>
+                    {viewingBatch.id} · {viewingBatch.outlet} · {viewingBatch.date}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleCopyToClipboard(viewingBatch)}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 border border-blue-500 rounded text-[10px] font-bold text-white hover:bg-blue-700 transition-colors">
-                    <Copy size={12} /> COPY TEKS
+                <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                  <button
+                    onClick={() => handleCopyToClipboard(viewingBatch)}
+                    style={{ ...a.tbBtn, ...a.tbBtnPrimary, fontSize:10 }}
+                  >
+                    <Copy size={12} /> Copy Teks
                   </button>
-                  <button onClick={() => setViewingBatch(null)} className="text-slate-400 hover:text-rose-500"><X size={18} /></button>
+                  <button style={a.modalClose} onClick={() => setViewingBatch(null)}>✕</button>
                 </div>
               </div>
-              <div className="overflow-auto custom-scrollbar">
-                <table className="w-full text-[11px] text-left border-collapse">
-                  <thead className="bg-mist-50 border-b border-mist-200 sticky top-0 uppercase tracking-tighter">
-                    <tr className="h-7">
-                      <th className="px-3 text-[10px] font-bold text-slate-400 w-10 text-center">#</th>
-                      <th className="px-3 text-[10px] font-bold text-slate-400">Nama Barang</th>
-                      <th className="px-3 text-[10px] font-bold text-slate-400 w-24 text-right">Input</th>
-                      <th className="px-3 text-[10px] font-bold text-slate-400 w-20 text-right">Qty Base</th>
-                      <th className="px-3 text-[10px] font-bold text-slate-400 w-16 text-center">Unit</th>
-                      <th className="px-3 text-[10px] font-bold text-slate-400">Alasan</th>
+
+              <div style={{ overflow:'auto', flex:1 }}>
+                <table style={{ ...a.table, tableLayout:'auto' }}>
+                  <thead>
+                    <tr style={{ height:26 }}>
+                      <th style={{ ...a.th, ...a.thCenter, width:36 }}>#</th>
+                      <th style={a.th}>Nama Barang</th>
+                      <th style={{ ...a.th, ...a.thRight, width:100 }}>Input</th>
+                      <th style={{ ...a.th, ...a.thRight, width:90 }}>Qty Base</th>
+                      <th style={{ ...a.th, ...a.thCenter, width:70 }}>Unit</th>
+                      <th style={a.th}>Alasan</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-mist-100">
+                  <tbody>
                     {viewingBatch.items.map((it, i) => {
                       const ext = it as RejectItemExtended;
                       return (
-                        <tr key={i} className="hover:bg-mist-50 h-7 transition-colors">
-                          <td className="px-3 text-center text-slate-400 font-mono text-[10px]">{i + 1}</td>
-                          <td className="px-3">
-                            <div className="font-semibold text-slate-700 truncate max-w-[200px]">{it.name}</div>
-                            <div className="text-[9px] text-slate-400 font-mono uppercase">{it.sku}</div>
+                        <tr
+                          key={i}
+                          style={i % 2 === 0 ? a.trOdd : a.trEven}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#dce8ff')}
+                          onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#ffffff' : '#f0f5fb')}
+                        >
+                          <td style={{ ...a.tdBase, ...a.tdCenter, color:'#999', fontFamily:"'Courier New',monospace", fontSize:10 }}>{i + 1}</td>
+                          <td style={a.tdBase}>
+                            <div style={{ fontWeight:600, color:'#1a1a1a', fontSize:11 }}>{it.name}</div>
+                            <div style={{ fontSize:9, color:'#999', fontFamily:"'Courier New',monospace", textTransform:'uppercase' }}>{it.sku}</div>
                           </td>
-                          <td className="text-right px-3 text-[10px] text-slate-500 font-mono">
-                            {ext.inputQty != null ? `${ext.inputQty} ${ext.inputUnit}` : '-'}
+                          <td style={{ ...a.tdBase, ...a.tdRight, fontFamily:"'Courier New',monospace", fontSize:10, color:'#555' }}>
+                            {ext.inputQty != null ? `${ext.inputQty} ${ext.inputUnit}` : '—'}
                           </td>
-                          <td className="text-right px-3 font-mono font-semibold text-rose-600">{it.qty.toLocaleString()}</td>
-                          <td className="text-center px-3 font-semibold text-[10px] uppercase text-slate-400">{it.unit}</td>
-                          <td className="px-3 text-slate-500 italic text-[10px] truncate">{it.reason || '-'}</td>
+                          <td style={{ ...a.tdBase, ...a.tdRight, fontFamily:"'Courier New',monospace", fontWeight:700, color:'#cc2200', fontSize:11 }}>
+                            {it.qty.toLocaleString()}
+                          </td>
+                          <td style={{ ...a.tdBase, ...a.tdCenter, fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#5a7090' }}>
+                            {it.unit}
+                          </td>
+                          <td style={{ ...a.tdBase, fontStyle:'italic', fontSize:10, color:'#666' }}>
+                            {it.reason || '—'}
+                          </td>
                         </tr>
                       );
                     })}
@@ -984,12 +1210,6 @@ export const RejectView: React.FC = () => {
         onConfirm={handleDeleteMasterItem}
         onCancel={() => setMasterItemToDelete(null)}
       />
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cdcfdb; border-radius: 10px; }
-      `}</style>
     </div>
   );
 };
