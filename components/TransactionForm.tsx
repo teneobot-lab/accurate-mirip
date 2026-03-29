@@ -95,7 +95,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   const { search } = useFuseSearch(activeMasterItems, { keys: ['code', 'name'], limit: 50 });
   const searchResults = search(searchQuery);
 
-  // FIX #7: O(1) master item lookup via Map — avoid O(n) find() per row per render
   const masterItemMap = useMemo(
     () => new Map(masterItems.map(i => [i.id, i])),
     [masterItems]
@@ -137,7 +136,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     [stockMap, selectedWh]
   );
 
-  // FIX #7: getUnitOptions menggunakan masterItemMap (O(1)) bukan find() O(n)
   const getUnitOptions = useCallback((itemId: string, currentUnit: string): string[] => {
     const item = masterItemMap.get(itemId);
     if (!item) return [currentUnit];
@@ -147,7 +145,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     return Array.from(set);
   }, [masterItemMap]);
 
-  // FIX #1: Helper hitung ratio dari item + unit yang dipilih
   const resolveRatio = useCallback((item: Item, unit: string): number => {
     if (unit === item.baseUnit) return 1;
     return item.conversions?.find(c => c.name === unit)?.ratio ?? 1;
@@ -177,7 +174,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
     if (type === 'OUT') {
       const available = getStockQty(pendingItem.id);
-      // FIX #4: bandingkan base qty (qty * ratio) bukan qty tampilan
       const resolvedUnit = pendingUnit || pendingItem.baseUnit;
       const ratio = resolveRatio(pendingItem, resolvedUnit);
       const baseQty = qty * ratio;
@@ -186,7 +182,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       }
     }
 
-    // FIX #1: Hitung ratio yang benar berdasarkan unit yang dipilih
     const resolvedUnit = pendingUnit || pendingItem.baseUnit;
     const resolvedRatio = resolveRatio(pendingItem, resolvedUnit);
 
@@ -195,7 +190,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       itemId: pendingItem.id,
       qty,
       unit: resolvedUnit,
-      ratio: resolvedRatio, // ✅ bukan lagi hardcode 1
+      ratio: resolvedRatio,
       name: pendingItem.name,
       code: pendingItem.code,
       note: pendingNote,
@@ -207,7 +202,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setTimeout(() => inlineSearchTriggerRef.current?.focus(), 50);
   }, [pendingItem, pendingQty, pendingUnit, pendingNote, lines, type, getStockQty, showToast, resolveRatio]);
 
-  // FIX #3: immutable updateLine (field generik selain unit)
   const updateLine = useCallback((lineId: string, field: keyof TransactionLine, value: any) => {
     setLines(prev =>
       prev.map(l => l.lineId === lineId ? { ...l, [field]: value } : l)
@@ -215,7 +209,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setIsDirty(true);
   }, []);
 
-  // FIX #2: updateLineUnit — update unit DAN ratio sekaligus
   const updateLineUnit = useCallback((lineId: string, newUnit: string) => {
     setLines(prev =>
       prev.map(l => {
@@ -235,7 +228,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     setIsDirty(true);
   }, []);
 
-  // ── Navigation ──
   const handleGridKeyDown = (e: React.KeyboardEvent, rowIndex: number, field: string) => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -292,7 +284,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     if (e.key === 'Escape') setIsSearching(false);
   };
 
-  // ── Excel Template Download ──
   const handleDownloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
       { sku: 'KODE001', nama_barang: 'Contoh Barang 1', qty: 10, satuan: 'Pcs', catatan: '' },
@@ -303,7 +294,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     XLSX.writeFile(wb, `Template_Import_${type}.xlsx`);
   };
 
-  // ── Excel Import ──
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -375,7 +365,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     reader.readAsBinaryString(file);
   };
 
-  // ── Save ──
   const handleSave = async (keepOpen = false) => {
     if (lines.length === 0) return showToast('Tambahkan minimal 1 barang', 'warning');
     if (!selectedPartnerId)  return showToast('Pilih partner transaksi', 'warning');
@@ -423,7 +412,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     }
   };
 
-  // FIX #3: Close dengan dirty-check — isDirty juga ter-set saat header berubah
   const handleClose = () => {
     if (isDirty) {
       setShowCloseConfirm(true);
@@ -432,14 +420,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     }
   };
 
-  // ── Derived ──
   const totalBaseQty = useMemo(
     () => lines.reduce((acc, l) => acc + l.qty * (l.ratio || 1), 0),
     [lines]
   );
 
-  // FIX #6: Hitung overStockCount sekali via useMemo — tidak double filter di render
-  // FIX #4: Bandingkan base qty (qty * ratio) bukan qty tampilan
   const overStockCount = useMemo(
     () => type === 'OUT'
       ? lines.filter(l => (l.qty * (l.ratio || 1)) > getStockQty(l.itemId)).length
@@ -447,8 +432,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     [lines, type, getStockQty]
   );
 
-  // Stock warning untuk pending item di OUT mode
-  // FIX #4: Bandingkan base qty
   const pendingStockWarning = useMemo(() => {
     if (type !== 'OUT' || !pendingItem || !pendingQty) return null;
     const available = getStockQty(pendingItem.id);
@@ -459,436 +442,693 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   }, [type, pendingItem, pendingQty, pendingUnit, getStockQty, resolveRatio]);
 
   // ─────────────────────────────────────────────
-  // RENDER
+  // ACCURATE 5 STYLE CONSTANTS
+  // ─────────────────────────────────────────────
+  const isIN = type === 'IN';
+  const accentColor = isIN ? '#1a6b3a' : '#8b1a1a';
+  const accentBg    = isIN ? '#e6f4ec' : '#fdeaea';
+  const titleBg     = '#1e3a6e'; // Accurate 5 navy header
+
+  // ─────────────────────────────────────────────
+  // RENDER — Accurate 5 Layout
   // ─────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] animate-in fade-in duration-300 font-sans relative">
+    <div
+      className="flex flex-col h-full font-sans relative overflow-hidden"
+      style={{ background: '#f0f0f0', fontFamily: "'Segoe UI', Tahoma, sans-serif", fontSize: 12 }}
+    >
 
-      {/* 1. HEADER ACTION BAR */}
-      <div className="bg-white px-4 py-2 border-b border-mist-300 flex justify-between items-center shadow-sm shrink-0">
-        <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-            <Package size={18} />
+      {/* ══════════════════════════════════════════
+          1. TITLE BAR  (Accurate 5 dark-navy band)
+         ══════════════════════════════════════════ */}
+      <div
+        className="flex items-center justify-between px-3 shrink-0"
+        style={{
+          background: `linear-gradient(to bottom, #2a4a80, ${titleBg})`,
+          height: 36,
+          borderBottom: '2px solid #0f2244',
+        }}
+      >
+        {/* Left: icon + title */}
+        <div className="flex items-center gap-2">
+          <div
+            className="flex items-center justify-center rounded"
+            style={{
+              width: 22, height: 22,
+              background: isIN ? '#2ecc71' : '#e74c3c',
+              boxShadow: '0 1px 3px rgba(0,0,0,.4)',
+            }}
+          >
+            <Package size={13} color="#fff" />
           </div>
-          <div>
-            <h1 className="text-sm font-bold text-slate-800 uppercase tracking-tight">
-              {type === 'IN' ? 'Penerimaan Barang' : 'Pengiriman Barang'}
-            </h1>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-medium text-slate-500 bg-mist-100 px-1.5 rounded">{refNo}</span>
-              {isEditMode && <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 rounded uppercase">Edit Mode</span>}
-              {isDirty && !isEditMode && <span className="text-[9px] font-bold bg-blue-50 text-blue-500 px-1.5 rounded">● Belum disimpan</span>}
-            </div>
-          </div>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>
+            {isIN ? 'Penerimaan Barang (Goods Receipt)' : 'Pengiriman Barang (Delivery Order)'}
+          </span>
+          <span
+            style={{
+              background: isIN ? '#2ecc71' : '#e74c3c',
+              color: '#fff', fontSize: 9, fontWeight: 700,
+              padding: '1px 6px', borderRadius: 3, marginLeft: 4,
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}
+          >
+            {isIN ? 'IN' : 'OUT'}
+          </span>
+          {isEditMode && (
+            <span style={{ background: '#f39c12', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, letterSpacing: '0.05em' }}>
+              EDIT MODE
+            </span>
+          )}
+          {isDirty && !isEditMode && (
+            <span style={{ color: '#ffd700', fontSize: 9, fontWeight: 600 }}>● Belum disimpan</span>
+          )}
         </div>
-        <div className="flex gap-2 items-center">
-          <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} />
-          <button
-            onClick={handleDownloadTemplate}
-            className="px-3 py-1.5 bg-white hover:bg-mist-50 text-slate-500 border border-mist-300 rounded text-xs font-bold transition-all flex items-center gap-1.5"
-            title="Unduh template Excel"
-          >
-            <Download size={14} /> Template
-          </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-white hover:bg-mist-50 text-slate-600 border border-mist-300 rounded text-xs font-bold transition-all flex items-center gap-1.5"
-          >
-            <FileSpreadsheet size={14} /> Import
-          </button>
-          <div className="w-px h-6 bg-mist-300 mx-1" />
-          <button
-            onClick={() => handleSave(true)}
-            disabled={isSubmitting}
-            className="px-3 py-1.5 bg-white hover:bg-mist-50 text-slate-700 border border-mist-300 rounded text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <Plus size={14} /> Simpan & Baru
-          </button>
-          <button
-            onClick={() => handleSave(false)}
-            disabled={isSubmitting}
-            className="px-4 py-1.5 bg-brand hover:bg-brand/90 text-white rounded text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Simpan
-          </button>
-          <button onClick={handleClose} className="p-1.5 hover:bg-mist-100 rounded text-slate-400">
-            <X size={18} />
-          </button>
+        {/* Right: close */}
+        <button
+          onClick={handleClose}
+          style={{
+            background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: 3, color: '#fff', cursor: 'pointer', width: 22, height: 22,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onMouseOver={e => (e.currentTarget.style.background = '#c0392b')}
+          onMouseOut={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+        >
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          2. TOOLBAR  (Accurate 5 button strip)
+         ══════════════════════════════════════════ */}
+      <div
+        className="flex items-center gap-1 px-2 shrink-0"
+        style={{
+          height: 34,
+          background: 'linear-gradient(to bottom, #f5f5f5, #e8e8e8)',
+          borderBottom: '1px solid #b8b8b8',
+        }}
+      >
+        <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} />
+
+        {/* Primary save button */}
+        <ToolbarButton
+          icon={isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+          label="Simpan"
+          onClick={() => handleSave(false)}
+          disabled={isSubmitting}
+          primary
+        />
+        <ToolbarButton
+          icon={<Plus size={13} />}
+          label="Simpan & Baru"
+          onClick={() => handleSave(true)}
+          disabled={isSubmitting}
+        />
+
+        <ToolbarDivider />
+
+        <ToolbarButton
+          icon={<FileSpreadsheet size={13} />}
+          label="Import Excel"
+          onClick={() => fileInputRef.current?.click()}
+        />
+        <ToolbarButton
+          icon={<Download size={13} />}
+          label="Download Template"
+          onClick={handleDownloadTemplate}
+        />
+
+        <ToolbarDivider />
+
+        {/* Ref No display */}
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: '#fff', border: '1px solid #c8c8c8', borderRadius: 2,
+            padding: '1px 8px', fontSize: 10, fontFamily: 'Consolas, monospace',
+            color: '#333', height: 22,
+          }}
+        >
+          <span style={{ color: '#888', marginRight: 2 }}>No:</span>
+          <strong>{refNo}</strong>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-
-        {/* 2. FORM HEADER */}
-        {/* FIX #3: setIsDirty(true) pada setiap perubahan header */}
-        <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-4 gap-3 bg-mist-50 border-b border-mist-200 text-xs shrink-0">
-          <div className="space-y-0.5">
-            <label className="font-bold text-slate-500 uppercase text-[10px]">Tanggal</label>
+      {/* ══════════════════════════════════════════
+          3. FORM HEADER  (Accurate 5 field panel)
+         ══════════════════════════════════════════ */}
+      <div
+        className="shrink-0 px-3 py-2"
+        style={{
+          background: '#fafafa',
+          borderBottom: '1px solid #c0c0c0',
+        }}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 1fr 1fr', gap: '0 12px' }}>
+          <AccField label="Tanggal">
             <input
               type="date"
               value={date}
               onChange={e => { setDate(e.target.value); setIsDirty(true); }}
-              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+              style={accInput}
             />
-          </div>
-          <div className="space-y-0.5">
-            <label className="font-bold text-slate-500 uppercase text-[10px]">Gudang</label>
+          </AccField>
+          <AccField label="Gudang">
             <select
               value={selectedWh}
               onChange={e => { setSelectedWh(e.target.value); setIsDirty(true); }}
-              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+              style={accInput}
             >
               {globalWh.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
-          </div>
-          <div className="space-y-0.5">
-            <label className="font-bold text-slate-500 uppercase text-[10px]">{type === 'IN' ? 'Supplier' : 'Customer'}</label>
+          </AccField>
+          <AccField label={isIN ? 'Supplier' : 'Customer'}>
             <select
               value={selectedPartnerId}
               onChange={e => { setSelectedPartnerId(e.target.value); setIsDirty(true); }}
-              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
+              style={accInput}
             >
               <option value="">-- Pilih --</option>
               {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-          </div>
-          <div className="space-y-0.5">
-            <label className="font-bold text-slate-500 uppercase text-[10px]">Catatan Global</label>
+          </AccField>
+          <AccField label="Keterangan">
             <input
               type="text"
               value={notes}
               onChange={e => { setNotes(e.target.value); setIsDirty(true); }}
-              className="w-full bg-white border border-mist-300 rounded p-1.5 font-medium outline-none focus:border-brand"
-              placeholder="Keterangan..."
+              style={accInput}
+              placeholder="Catatan transaksi..."
             />
-          </div>
+          </AccField>
         </div>
-
-        {/* 3. SPREADSHEET GRID */}
-        <div className="flex-1 bg-white overflow-auto relative">
-          <table className="w-full text-left border-collapse table-fixed min-w-[800px]">
-            <thead className="bg-mist-300 text-[10px] font-bold text-slate-700 sticky top-0 z-10 border-b border-mist-300 shadow-sm h-7">
-              <tr>
-                <th className="px-2 w-8 text-center">#</th>
-                <th className="px-2">Nama Barang / SKU</th>
-                <th className="px-2 w-20 text-right">Stok</th>
-                <th className="px-2 w-20 text-right bg-brand/5 text-brand">Kuantitas</th>
-                <th className="px-2 w-20 text-center">Satuan</th>
-                <th className="px-2 w-24 text-right">Total Base</th>
-                <th className="px-2 w-48">Catatan Baris</th>
-                <th className="px-2 w-8 text-center">Act</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-mist-50 text-[11px]">
-              {lines.map((l, i) => {
-                const stockQty = getStockQty(l.itemId);
-                // FIX #4: bandingkan base qty (qty * ratio) bukan qty tampilan
-                const isOverStock = type === 'OUT' && (l.qty * (l.ratio || 1)) > stockQty;
-                const unitOptions = getUnitOptions(l.itemId, l.unit);
-
-                return (
-                  <tr key={l.lineId} className={`h-7 group ${isOverStock ? 'bg-rose-50/40' : 'hover:bg-mist-50'}`}>
-                    <td className="px-2 text-center text-slate-400">{i + 1}</td>
-                    <td className="px-2 truncate">
-                      <span className="font-semibold text-slate-700">{l.name}</span>
-                      <span className="ml-2 text-[10px] text-slate-400 font-mono">{l.code}</span>
-                    </td>
-                    <td className={`px-2 text-right font-mono ${isOverStock ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
-                      {isOverStock && <AlertTriangle size={9} className="inline mr-1 mb-0.5 text-rose-400" />}
-                      {stockQty.toLocaleString()}
-                    </td>
-                    <td className="p-0">
-                      {/* FIX #5: min="0" mencegah input qty negatif */}
-                      <input
-                        id={`input-${i}-qty`}
-                        type="number"
-                        min="0"
-                        value={l.qty}
-                        onChange={e => updateLine(l.lineId, 'qty', Number(e.target.value))}
-                        onKeyDown={e => handleGridKeyDown(e, i, 'qty')}
-                        className={`w-full h-full bg-transparent text-right px-2 font-bold outline-none focus:bg-blue-50 ${isOverStock ? 'text-rose-600' : 'text-slate-800'}`}
-                      />
-                    </td>
-                    {/* FIX #2: ganti unit juga update ratio */}
-                    <td className="p-0">
-                      <select
-                        value={l.unit}
-                        onChange={e => updateLineUnit(l.lineId, e.target.value)}
-                        className="w-full h-full bg-transparent text-center px-1 outline-none appearance-none focus:bg-blue-50 cursor-pointer text-[10px]"
-                      >
-                        {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-2 text-right font-mono text-slate-600">
-                      {(l.qty * (l.ratio || 1)).toLocaleString()}
-                    </td>
-                    <td className="p-0">
-                      <input
-                        id={`input-${i}-note`}
-                        type="text"
-                        value={l.note || ''}
-                        onChange={e => updateLine(l.lineId, 'note', e.target.value)}
-                        onKeyDown={e => handleGridKeyDown(e, i, 'note')}
-                        className="w-full h-full bg-transparent px-2 text-slate-600 italic outline-none focus:bg-blue-50 truncate"
-                        placeholder="..."
-                      />
-                    </td>
-                    <td className="px-0 text-center">
-                      <button
-                        onClick={() => deleteLine(l.lineId)}
-                        className="text-slate-300 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {/* NEW ENTRY ROW */}
-              <tr className="bg-emerald-50/30 h-8 border-b border-mist-200">
-                <td className="px-2 text-center font-bold text-[9px] text-emerald-600">BARU</td>
-                <td className="p-0 relative">
-                  <div className="relative w-full h-full">
-                    <input
-                      ref={inlineSearchTriggerRef}
-                      type="text"
-                      placeholder="Ketik nama / kode barang..."
-                      value={pendingItem ? pendingItem.name : searchQuery}
-                      onChange={e => {
-                        if (pendingItem) setPendingItem(null);
-                        setSearchQuery(e.target.value);
-                        setSelectedIndex(0);
-                        setIsSearching(true);
-                      }}
-                      onKeyDown={e => handleNewEntryKeyDown(e, 'search')}
-                      onFocus={() => { if (searchQuery) setIsSearching(true); }}
-                      className={`w-full h-full px-2 text-[11px] outline-none bg-transparent placeholder:text-slate-400 ${pendingItem ? 'font-bold text-slate-800' : 'font-normal'}`}
-                      autoComplete="off"
-                    />
-                    {pendingItem && (
-                      <button
-                        onClick={() => { setPendingItem(null); setSearchQuery(''); inlineSearchTriggerRef.current?.focus(); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-                {/* Stock of pending item */}
-                <td className={`px-2 text-right font-mono text-[11px] ${pendingStockWarning !== null ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
-                  {pendingItem ? (
-                    <>
-                      {pendingStockWarning !== null && <AlertTriangle size={9} className="inline mr-0.5 mb-0.5" />}
-                      {getStockQty(pendingItem.id).toLocaleString()}
-                    </>
-                  ) : '-'}
-                </td>
-                <td className="p-0 relative">
-                  {/* FIX #5: min="0" pada pending qty */}
-                  <input
-                    ref={qtyInputRef}
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    disabled={!pendingItem}
-                    value={pendingQty}
-                    onChange={e => setPendingQty(e.target.value)}
-                    onKeyDown={e => handleNewEntryKeyDown(e, 'qty')}
-                    className={`w-full h-full bg-white text-right px-2 font-bold outline-none focus:ring-1 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 disabled:text-slate-300 ${pendingStockWarning !== null ? 'text-rose-600' : 'text-brand'}`}
-                  />
-                  {pendingStockWarning !== null && (
-                    <div className="absolute right-0 -top-5 text-[8px] font-bold text-rose-500 bg-white px-1.5 border border-rose-200 shadow-sm rounded z-10 whitespace-nowrap flex items-center gap-0.5">
-                      <AlertTriangle size={8} /> Melebihi stok ({pendingStockWarning.toLocaleString()})
-                    </div>
-                  )}
-                </td>
-                {/* Pending unit selector */}
-                <td className="p-0">
-                  {pendingItem ? (
-                    <select
-                      value={pendingUnit}
-                      onChange={e => setPendingUnit(e.target.value)}
-                      className="w-full h-full bg-transparent text-center px-1 outline-none appearance-none focus:bg-blue-50 cursor-pointer text-[10px] font-bold text-slate-600"
-                    >
-                      {getUnitOptions(pendingItem.id, pendingUnit).map(u =>
-                        <option key={u} value={u}>{u}</option>
-                      )}
-                    </select>
-                  ) : (
-                    <span className="px-2 text-slate-300 text-[10px]">-</span>
-                  )}
-                </td>
-                <td className="px-2 text-right font-mono text-slate-300 text-[11px]">
-                  {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '-'}
-                </td>
-                <td className="p-0">
-                  <input
-                    ref={noteInputRef}
-                    type="text"
-                    placeholder="Catatan..."
-                    disabled={!pendingItem}
-                    value={pendingNote}
-                    onChange={e => setPendingNote(e.target.value)}
-                    onKeyDown={e => handleNewEntryKeyDown(e, 'note')}
-                    className="w-full h-full bg-white px-2 italic text-slate-600 outline-none focus:ring-1 focus:ring-inset focus:ring-brand/30 disabled:bg-mist-50 truncate"
-                  />
-                </td>
-                <td className="text-center p-0">
-                  {pendingItem && (
-                    <button
-                      onClick={handleCommitLine}
-                      className="w-full h-full flex items-center justify-center text-emerald-500 hover:bg-emerald-50"
-                      title="Simpan Baris (Enter / Arrow Down)"
-                    >
-                      <CornerDownLeft size={14} />
-                    </button>
-                  )}
-                </td>
-              </tr>
-
-              {/* FILLER rows */}
-              {[...Array(Math.max(0, 15 - lines.length - 1))].map((_, i) => (
-                <tr key={`fill-${i}`} className="h-7"><td colSpan={8} /></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 4. FOOTER */}
-        <div className="px-4 py-2 bg-mist-50 border-t border-mist-300 flex justify-between items-center text-xs shrink-0">
-          <div className="flex gap-6 text-slate-500 font-medium">
-            <span>Total Baris: <strong className="text-slate-800">{lines.length}</strong></span>
-            <span>
-              Total Qty: <strong className="text-slate-800">{totalBaseQty.toLocaleString()}</strong>
-              <span className="text-[10px] ml-1">BASE</span>
-            </span>
-            {/* FIX #6: pakai overStockCount dari useMemo — tidak double filter */}
-            {overStockCount > 0 && (
-              <span className="flex items-center gap-1 text-rose-600 font-bold">
-                <AlertTriangle size={10} />
-                {overStockCount} item melebihi stok
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-[10px] text-slate-400">
-            <span className="flex items-center gap-1 bg-white px-1.5 py-0.5 rounded border border-mist-300"><Search size={10} /> Cari Barang</span>
-            <span>→</span>
-            <span className="bg-white px-1.5 py-0.5 rounded border border-mist-300">Pilih</span>
-            <span>→</span>
-            <span className="bg-white px-1.5 py-0.5 rounded border border-mist-300">Isi Qty</span>
-            <span>→</span>
-            <span className="bg-white px-1.5 py-0.5 rounded border border-mist-300 font-bold">Enter / ↓</span>
-            <span>=</span>
-            <span className="text-emerald-600 font-bold">Simpan</span>
-          </div>
-        </div>
-
-        {/* 5. AUTOCOMPLETE MODAL */}
-        {isSearching && searchQuery && (
-          <div className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center">
-            <div
-              ref={searchModalRef}
-              className="pointer-events-auto bg-white w-[650px] max-h-[400px] flex flex-col shadow-2xl border border-mist-300 rounded-lg overflow-hidden animate-in fade-in zoom-in-95"
-            >
-              <div className="bg-gradient-to-r from-mist-100 to-mist-200 px-3 py-2 border-b border-mist-300 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <ListFilter size={14} className="text-slate-600" />
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Cari Barang / Item Search</span>
-                </div>
-                <div className="text-[10px] text-slate-500 font-medium">{searchResults.length} hasil</div>
-              </div>
-              <div className="flex-1 overflow-auto">
-                <table className="w-full text-left border-collapse table-fixed">
-                  <thead className="bg-mist-50 sticky top-0 z-10">
-                    <tr className="border-b border-mist-300 text-[10px] font-bold text-slate-600 uppercase">
-                      <th className="px-3 py-1.5 w-32 border-r border-mist-300">Kode Item</th>
-                      <th className="px-3 py-1.5 border-r border-mist-300">Nama Barang</th>
-                      <th className="px-3 py-1.5 w-24 text-right border-r border-mist-300">Stok</th>
-                      <th className="px-3 py-1.5 w-20 text-center">Satuan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-[11px]">
-                    {searchResults.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="p-8 text-center text-slate-400 italic">
-                          Data tidak ditemukan untuk "{searchQuery}"
-                        </td>
-                      </tr>
-                    ) : (
-                      searchResults.map((item, idx) => {
-                        const stockQty = getStockQty(item.id);
-                        const isLowStock = type === 'OUT' && stockQty === 0;
-                        return (
-                          <tr
-                            key={item.id}
-                            onMouseDown={() => handleSelectItem(item)}
-                            className={`cursor-pointer border-b border-mist-100 last:border-0 transition-colors ${
-                              idx === selectedIndex ? 'bg-blue-600 text-white' : 'hover:bg-mist-50 text-slate-700'
-                            }`}
-                          >
-                            <td className={`px-3 py-1.5 font-mono ${idx === selectedIndex ? 'text-blue-100' : 'text-slate-500'}`}>
-                              {highlightMatch(item.code, searchQuery)}
-                            </td>
-                            <td className="px-3 py-1.5 font-bold truncate">
-                              {highlightMatch(item.name, searchQuery)}
-                            </td>
-                            <td className={`px-3 py-1.5 text-right font-mono ${
-                              idx === selectedIndex ? 'text-white' : isLowStock ? 'text-rose-400 font-bold' : 'text-slate-600'
-                            }`}>
-                              {stockQty.toLocaleString()}
-                              {isLowStock && idx !== selectedIndex && (
-                                <span className="ml-1 text-[8px] bg-rose-100 text-rose-600 px-1 rounded">KOSONG</span>
-                              )}
-                            </td>
-                            <td className={`px-3 py-1.5 text-center font-bold text-[9px] uppercase ${idx === selectedIndex ? 'text-blue-200' : 'text-slate-400'}`}>
-                              {item.baseUnit}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <div className="bg-mist-50 px-3 py-1.5 border-t border-mist-200 text-[9px] text-slate-400 flex justify-between items-center">
-                <span>Gunakan <strong>↑ ↓</strong> untuk navigasi, <strong>Enter</strong> untuk memilih, <strong>Esc</strong> untuk tutup.</span>
-                <span className="font-mono">{Math.min(selectedIndex + 1, searchResults.length)} / {searchResults.length}</span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* CLOSE CONFIRMATION — unsaved changes guard */}
-      {showCloseConfirm && (
-        <div className="fixed inset-0 z-[99999] bg-slate-900/20 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in">
-          <div className="bg-white rounded-xl shadow-2xl border border-mist-200 p-6 w-80 flex flex-col gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertTriangle size={16} />
+      {/* ══════════════════════════════════════════
+          4. SPREADSHEET GRID  (Accurate 5 table)
+         ══════════════════════════════════════════ */}
+      <div className="flex-1 overflow-auto relative" style={{ background: '#fff' }}>
+        <table
+          style={{
+            width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed',
+            minWidth: 820, fontSize: 11,
+          }}
+        >
+          {/* Grid Header */}
+          <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+            <tr style={{ height: 22, background: 'linear-gradient(to bottom, #3a6ea8, #2d5a8c)', userSelect: 'none' }}>
+              {[
+                { label: '#',            width: 32,  align: 'center' },
+                { label: 'Kode',         width: 90,  align: 'left'   },
+                { label: 'Nama Barang',  width: undefined, align: 'left' },
+                { label: 'Stok',         width: 80,  align: 'right'  },
+                { label: 'Qty',          width: 80,  align: 'right', highlight: true },
+                { label: 'Satuan',       width: 70,  align: 'center' },
+                { label: 'Total Base',   width: 90,  align: 'right'  },
+                { label: 'Catatan',      width: 160, align: 'left'   },
+                { label: '',             width: 28,  align: 'center' },
+              ].map((col, ci) => (
+                <th
+                  key={ci}
+                  style={{
+                    width: col.width, textAlign: col.align as any,
+                    color: col.highlight ? '#ffd700' : '#e8eef8',
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.03em',
+                    padding: '0 6px',
+                    borderRight: ci < 8 ? '1px solid rgba(255,255,255,0.15)' : undefined,
+                    borderBottom: '2px solid #1e3a6e',
+                    textTransform: 'uppercase',
+                    background: col.highlight ? 'rgba(255,215,0,0.08)' : undefined,
+                  }}
+                >
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {/* ── Existing Lines ── */}
+            {lines.map((l, i) => {
+              const stockQty    = getStockQty(l.itemId);
+              const isOverStock = type === 'OUT' && (l.qty * (l.ratio || 1)) > stockQty;
+              const unitOptions = getUnitOptions(l.itemId, l.unit);
+              const isEven      = i % 2 === 0;
+
+              return (
+                <tr
+                  key={l.lineId}
+                  style={{
+                    height: 22,
+                    background: isOverStock ? '#fff0f0' : isEven ? '#fff' : '#f5f8ff',
+                    borderBottom: '1px solid #e0e4ec',
+                  }}
+                  className="group"
+                >
+                  {/* # */}
+                  <td style={{ ...tdBase, textAlign: 'center', color: '#888', borderRight: cellBorder }}>
+                    {i + 1}
+                  </td>
+                  {/* Kode */}
+                  <td style={{ ...tdBase, fontFamily: 'Consolas, monospace', color: '#556', borderRight: cellBorder }}>
+                    {l.code}
+                  </td>
+                  {/* Nama */}
+                  <td style={{ ...tdBase, borderRight: cellBorder }}>
+                    <span style={{ fontWeight: 600, color: '#1a1a2e' }}>{l.name}</span>
+                  </td>
+                  {/* Stok */}
+                  <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', borderRight: cellBorder, color: isOverStock ? '#c0392b' : '#555' }}>
+                    {isOverStock && <AlertTriangle size={9} style={{ display: 'inline', marginRight: 2, marginBottom: 1, color: '#e74c3c' }} />}
+                    {stockQty.toLocaleString()}
+                  </td>
+                  {/* Qty — editable */}
+                  <td style={{ padding: 0, borderRight: cellBorder, background: 'rgba(255,215,0,0.04)' }}>
+                    <input
+                      id={`input-${i}-qty`}
+                      type="number"
+                      min="0"
+                      value={l.qty}
+                      onChange={e => updateLine(l.lineId, 'qty', Number(e.target.value))}
+                      onKeyDown={e => handleGridKeyDown(e, i, 'qty')}
+                      style={{
+                        width: '100%', height: '100%', border: 'none', background: 'transparent',
+                        textAlign: 'right', padding: '0 6px', fontSize: 11,
+                        fontWeight: 700, outline: 'none',
+                        color: isOverStock ? '#c0392b' : '#1a3a6e',
+                        fontFamily: 'Consolas, monospace',
+                      }}
+                      onFocus={e => (e.currentTarget.style.background = '#fffde7')}
+                      onBlur={e => (e.currentTarget.style.background = 'transparent')}
+                    />
+                  </td>
+                  {/* Satuan */}
+                  <td style={{ padding: 0, borderRight: cellBorder }}>
+                    <select
+                      value={l.unit}
+                      onChange={e => updateLineUnit(l.lineId, e.target.value)}
+                      style={{
+                        width: '100%', height: '100%', border: 'none', background: 'transparent',
+                        textAlign: 'center', fontSize: 10, fontWeight: 600, outline: 'none',
+                        color: '#444', cursor: 'pointer', appearance: 'none',
+                      }}
+                    >
+                      {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </td>
+                  {/* Total Base */}
+                  <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', color: '#333', borderRight: cellBorder }}>
+                    {(l.qty * (l.ratio || 1)).toLocaleString()}
+                  </td>
+                  {/* Catatan */}
+                  <td style={{ padding: 0, borderRight: cellBorder }}>
+                    <input
+                      id={`input-${i}-note`}
+                      type="text"
+                      value={l.note || ''}
+                      onChange={e => updateLine(l.lineId, 'note', e.target.value)}
+                      onKeyDown={e => handleGridKeyDown(e, i, 'note')}
+                      style={{
+                        width: '100%', height: '100%', border: 'none', background: 'transparent',
+                        padding: '0 6px', fontSize: 11, fontStyle: 'italic',
+                        outline: 'none', color: '#666',
+                      }}
+                      placeholder="..."
+                      onFocus={e => (e.currentTarget.style.background = '#f0f8ff')}
+                      onBlur={e => (e.currentTarget.style.background = 'transparent')}
+                    />
+                  </td>
+                  {/* Delete */}
+                  <td style={{ textAlign: 'center', padding: 0 }}>
+                    <button
+                      onClick={() => deleteLine(l.lineId)}
+                      style={{
+                        display: 'none', background: 'none', border: 'none',
+                        color: '#c0392b', cursor: 'pointer', padding: '2px 4px',
+                      }}
+                      className="group-hover:!flex items-center justify-center w-full h-full"
+                      title="Hapus baris"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+
+            {/* ── New Entry Row ── */}
+            <tr
+              style={{
+                height: 24,
+                background: '#f0fff4',
+                borderTop: '2px solid #27ae60',
+                borderBottom: '1px solid #a3d9b5',
+              }}
+            >
+              {/* # */}
+              <td style={{ ...tdBase, textAlign: 'center', borderRight: cellBorder }}>
+                <span style={{ fontSize: 8, fontWeight: 800, color: '#27ae60', letterSpacing: '0.05em' }}>BARU</span>
+              </td>
+              {/* Search (spans Kode + Nama columns) */}
+              <td colSpan={2} style={{ padding: 0, borderRight: cellBorder, position: 'relative' }}>
+                <div style={{ position: 'relative', height: '100%' }}>
+                  <Search size={11} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: '#27ae60', pointerEvents: 'none' }} />
+                  <input
+                    ref={inlineSearchTriggerRef}
+                    type="text"
+                    placeholder="Cari kode / nama barang…"
+                    value={pendingItem ? pendingItem.name : searchQuery}
+                    onChange={e => {
+                      if (pendingItem) setPendingItem(null);
+                      setSearchQuery(e.target.value);
+                      setSelectedIndex(0);
+                      setIsSearching(true);
+                    }}
+                    onKeyDown={e => handleNewEntryKeyDown(e, 'search')}
+                    onFocus={() => { if (searchQuery) setIsSearching(true); }}
+                    style={{
+                      width: '100%', height: '100%', border: 'none', background: 'transparent',
+                      paddingLeft: 22, paddingRight: pendingItem ? 22 : 6,
+                      fontSize: 11, outline: 'none',
+                      fontWeight: pendingItem ? 700 : 400,
+                      color: pendingItem ? '#1a3a6e' : '#333',
+                    }}
+                    autoComplete="off"
+                  />
+                  {pendingItem && (
+                    <button
+                      onClick={() => { setPendingItem(null); setSearchQuery(''); inlineSearchTriggerRef.current?.focus(); }}
+                      style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999' }}
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
+              </td>
+              {/* Stok of pending */}
+              <td style={{
+                ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', borderRight: cellBorder,
+                color: pendingStockWarning !== null ? '#c0392b' : '#888',
+              }}>
+                {pendingItem ? (
+                  <>
+                    {pendingStockWarning !== null && <AlertTriangle size={9} style={{ display: 'inline', marginRight: 2 }} />}
+                    {getStockQty(pendingItem.id).toLocaleString()}
+                  </>
+                ) : '—'}
+              </td>
+              {/* Qty input */}
+              <td style={{ padding: 0, borderRight: cellBorder, position: 'relative', background: 'rgba(39,174,96,0.05)' }}>
+                <input
+                  ref={qtyInputRef}
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  disabled={!pendingItem}
+                  value={pendingQty}
+                  onChange={e => setPendingQty(e.target.value)}
+                  onKeyDown={e => handleNewEntryKeyDown(e, 'qty')}
+                  style={{
+                    width: '100%', height: '100%', border: 'none',
+                    background: 'transparent',
+                    textAlign: 'right', padding: '0 6px', fontSize: 11, fontWeight: 700,
+                    outline: 'none', fontFamily: 'Consolas, monospace',
+                    color: pendingStockWarning !== null ? '#c0392b' : '#1a6b3a',
+                  }}
+                  onFocus={e => (e.currentTarget.style.background = '#fffde7')}
+                  onBlur={e => (e.currentTarget.style.background = 'transparent')}
+                />
+                {pendingStockWarning !== null && (
+                  <div style={{
+                    position: 'absolute', bottom: '100%', right: 0, marginBottom: 2,
+                    background: '#fff0f0', border: '1px solid #e74c3c', borderRadius: 3,
+                    padding: '1px 6px', fontSize: 9, fontWeight: 700, color: '#c0392b',
+                    whiteSpace: 'nowrap', zIndex: 20, display: 'flex', alignItems: 'center', gap: 3,
+                  }}>
+                    <AlertTriangle size={8} /> Melebihi stok ({pendingStockWarning.toLocaleString()})
+                  </div>
+                )}
+              </td>
+              {/* Pending unit */}
+              <td style={{ padding: 0, borderRight: cellBorder }}>
+                {pendingItem ? (
+                  <select
+                    value={pendingUnit}
+                    onChange={e => setPendingUnit(e.target.value)}
+                    style={{ width: '100%', height: '100%', border: 'none', background: 'transparent', textAlign: 'center', fontSize: 10, fontWeight: 700, outline: 'none', color: '#333', appearance: 'none', cursor: 'pointer' }}
+                  >
+                    {getUnitOptions(pendingItem.id, pendingUnit).map(u =>
+                      <option key={u} value={u}>{u}</option>
+                    )}
+                  </select>
+                ) : (
+                  <span style={{ padding: '0 6px', color: '#bbb', fontSize: 10 }}>—</span>
+                )}
+              </td>
+              {/* Total preview */}
+              <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', color: '#888', borderRight: cellBorder }}>
+                {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '—'}
+              </td>
+              {/* Note */}
+              <td style={{ padding: 0, borderRight: cellBorder }}>
+                <input
+                  ref={noteInputRef}
+                  type="text"
+                  placeholder="Catatan baris..."
+                  disabled={!pendingItem}
+                  value={pendingNote}
+                  onChange={e => setPendingNote(e.target.value)}
+                  onKeyDown={e => handleNewEntryKeyDown(e, 'note')}
+                  style={{
+                    width: '100%', height: '100%', border: 'none', background: 'transparent',
+                    padding: '0 6px', fontSize: 11, fontStyle: 'italic', outline: 'none', color: '#555',
+                  }}
+                />
+              </td>
+              {/* Commit */}
+              <td style={{ textAlign: 'center', padding: 0 }}>
+                {pendingItem && (
+                  <button
+                    onClick={handleCommitLine}
+                    style={{
+                      width: '100%', height: '100%', background: 'none', border: 'none',
+                      color: '#27ae60', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                    title="Tambah baris (Enter / ↓)"
+                  >
+                    <CornerDownLeft size={13} />
+                  </button>
+                )}
+              </td>
+            </tr>
+
+            {/* Filler rows */}
+            {[...Array(Math.max(0, 15 - lines.length - 1))].map((_, i) => (
+              <tr key={`fill-${i}`} style={{ height: 22, borderBottom: '1px solid #eef0f5', background: i % 2 === 0 ? '#fff' : '#f5f8ff' }}>
+                <td colSpan={9} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          5. STATUS BAR  (Accurate 5 footer strip)
+         ══════════════════════════════════════════ */}
+      <div
+        className="shrink-0 flex justify-between items-center px-3"
+        style={{
+          height: 26,
+          background: 'linear-gradient(to bottom, #e8e8e8, #d8d8d8)',
+          borderTop: '1px solid #b0b0b0',
+          fontSize: 10,
+        }}
+      >
+        {/* Left: summary stats */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', color: '#444' }}>
+          <StatusChip label="Total Baris" value={String(lines.length)} />
+          <StatusChip label="Total Qty" value={`${totalBaseQty.toLocaleString()} BASE`} />
+          {overStockCount > 0 && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#c0392b', fontWeight: 700 }}>
+              <AlertTriangle size={9} /> {overStockCount} item melebihi stok
+            </span>
+          )}
+        </div>
+
+        {/* Right: keyboard hints */}
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', color: '#777' }}>
+          {[
+            { key: 'Cari Barang', sep: '→' },
+            { key: 'Pilih',       sep: '→' },
+            { key: 'Isi Qty',     sep: '→' },
+            { key: 'Enter / ↓',   sep: '=' },
+          ].map(({ key, sep }, i) => (
+            <React.Fragment key={i}>
+              <span style={{ background: '#fff', border: '1px solid #c0c0c0', borderRadius: 2, padding: '0 4px', fontSize: 9, fontWeight: 600, color: '#333' }}>{key}</span>
+              <span style={{ fontSize: 9, color: '#aaa' }}>{sep}</span>
+            </React.Fragment>
+          ))}
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#27ae60' }}>Simpan</span>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          6. ITEM SEARCH POPUP
+         ══════════════════════════════════════════ */}
+      {isSearching && searchQuery && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            ref={searchModalRef}
+            style={{
+              pointerEvents: 'auto',
+              background: '#fff',
+              width: 680,
+              maxHeight: 420,
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.15)',
+              border: '1px solid #b0b8c8',
+              borderRadius: 4,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Popup header */}
+            <div style={{
+              background: 'linear-gradient(to bottom, #3a6ea8, #2d5a8c)',
+              padding: '5px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ListFilter size={13} color="#c8d8f0" />
+                <span style={{ color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>
+                  CARI BARANG — Item Search
+                </span>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">Tutup tanpa menyimpan?</h3>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Ada perubahan yang belum disimpan. Data akan hilang jika Anda keluar sekarang.
-                </p>
-              </div>
+              <span style={{ color: '#a0b8d0', fontSize: 10 }}>{searchResults.length} hasil</span>
             </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowCloseConfirm(false)}
-                className="px-4 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-mist-100 rounded transition-colors"
-              >
-                Kembali
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-1.5 text-[11px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded transition-colors"
-              >
-                Keluar tanpa simpan
-              </button>
+
+            {/* Table */}
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 11 }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 5 }}>
+                  <tr style={{ background: '#e8eef8', borderBottom: '2px solid #2d5a8c' }}>
+                    {[
+                      { label: 'Kode Item', width: 120 },
+                      { label: 'Nama Barang', width: undefined },
+                      { label: 'Stok', width: 90, align: 'right' },
+                      { label: 'Satuan', width: 80, align: 'center' },
+                    ].map((col, ci) => (
+                      <th
+                        key={ci}
+                        style={{
+                          width: col.width, textAlign: (col.align ?? 'left') as any,
+                          fontSize: 10, fontWeight: 700, color: '#2d5a8c',
+                          padding: '4px 8px', letterSpacing: '0.04em', textTransform: 'uppercase',
+                          borderRight: ci < 3 ? '1px solid #ccd4e0' : undefined,
+                        }}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {searchResults.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: 24, textAlign: 'center', color: '#999', fontStyle: 'italic' }}>
+                        Tidak ada data untuk "{searchQuery}"
+                      </td>
+                    </tr>
+                  ) : (
+                    searchResults.map((item, idx) => {
+                      const stockQty  = getStockQty(item.id);
+                      const isLow     = type === 'OUT' && stockQty === 0;
+                      const isActive  = idx === selectedIndex;
+
+                      return (
+                        <tr
+                          key={item.id}
+                          onMouseDown={() => handleSelectItem(item)}
+                          style={{
+                            height: 22,
+                            background: isActive ? '#2d5a8c' : idx % 2 === 0 ? '#fff' : '#f5f8ff',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #e8eef4',
+                          }}
+                        >
+                          <td style={{ padding: '0 8px', fontFamily: 'Consolas, monospace', fontSize: 10, color: isActive ? '#a0c4f0' : '#556', borderRight: '1px solid #e0e8f4' }}>
+                            {highlightMatch(item.code, searchQuery)}
+                          </td>
+                          <td style={{ padding: '0 8px', fontWeight: 600, color: isActive ? '#fff' : '#1a1a2e', borderRight: '1px solid #e0e8f4' }}>
+                            {highlightMatch(item.name, searchQuery)}
+                          </td>
+                          <td style={{
+                            padding: '0 8px', textAlign: 'right', fontFamily: 'Consolas, monospace',
+                            color: isActive ? '#fff' : isLow ? '#e74c3c' : '#444',
+                            fontWeight: isLow ? 700 : 400,
+                            borderRight: '1px solid #e0e8f4',
+                          }}>
+                            {stockQty.toLocaleString()}
+                            {isLow && !isActive && (
+                              <span style={{ marginLeft: 4, fontSize: 8, background: '#fdeaea', color: '#e74c3c', padding: '0 4px', borderRadius: 2 }}>KOSONG</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0 8px', textAlign: 'center', fontSize: 9, fontWeight: 700, color: isActive ? '#c8d8f0' : '#777', textTransform: 'uppercase' }}>
+                            {item.baseUnit}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Popup footer */}
+            <div style={{
+              background: '#f0f4f8', borderTop: '1px solid #dde4ee',
+              padding: '3px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9,
+            }}>
+              <span style={{ color: '#666' }}>Gunakan <strong>↑↓</strong> untuk navigasi, <strong>Enter</strong> untuk pilih, <strong>Esc</strong> untuk tutup</span>
+              <span style={{ fontFamily: 'Consolas, monospace', color: '#888' }}>
+                {Math.min(selectedIndex + 1, searchResults.length)} / {searchResults.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          7. CLOSE CONFIRMATION DIALOG
+         ══════════════════════════════════════════ */}
+      {showCloseConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 4,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            border: '1px solid #c0c0c0',
+            width: 340,
+            overflow: 'hidden',
+          }}>
+            {/* Dialog title bar */}
+            <div style={{ background: 'linear-gradient(to bottom, #3a6ea8, #2d5a8c)', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={14} color="#ffd700" />
+              <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Konfirmasi Tutup</span>
+            </div>
+            {/* Body */}
+            <div style={{ padding: '16px 16px 12px' }}>
+              <p style={{ fontSize: 12, color: '#333', lineHeight: 1.5, margin: 0 }}>
+                Ada perubahan yang <strong>belum disimpan</strong>. Data akan hilang jika Anda keluar sekarang.
+              </p>
+              <p style={{ fontSize: 11, color: '#e74c3c', marginTop: 6, marginBottom: 0 }}>
+                Apakah Anda yakin ingin keluar?
+              </p>
+            </div>
+            {/* Footer buttons */}
+            <div style={{ padding: '8px 12px', background: '#f5f5f5', borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+              <DialogButton label="Kembali" onClick={() => setShowCloseConfirm(false)} />
+              <DialogButton label="Keluar tanpa simpan" onClick={onClose} danger />
             </div>
           </div>
         </div>
@@ -896,3 +1136,86 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     </div>
   );
 };
+
+// ─────────────────────────────────────────────
+// Sub-components & style constants
+// ─────────────────────────────────────────────
+
+const cellBorder = '1px solid #dde4f0';
+const tdBase: React.CSSProperties = { padding: '0 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const accInput: React.CSSProperties = {
+  width: '100%', fontSize: 11, padding: '2px 5px',
+  border: '1px solid #b0b8c8', borderRadius: 2,
+  background: '#fff', outline: 'none', height: 22,
+  fontFamily: "'Segoe UI', sans-serif",
+  color: '#1a1a2e',
+};
+
+const ToolbarButton: React.FC<{
+  icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean; primary?: boolean;
+}> = ({ icon, label, onClick, disabled, primary }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    style={{
+      display: 'flex', alignItems: 'center', gap: 4,
+      padding: '2px 8px', height: 24, fontSize: 11, fontWeight: primary ? 700 : 500,
+      background: primary
+        ? 'linear-gradient(to bottom, #3a8a5a, #2e7048)'
+        : 'linear-gradient(to bottom, #fafafa, #ebebeb)',
+      color: primary ? '#fff' : '#2a2a2a',
+      border: primary ? '1px solid #1e6038' : '1px solid #b0b0b0',
+      borderRadius: 3, cursor: disabled ? 'not-allowed' : 'pointer',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+      opacity: disabled ? 0.55 : 1,
+      fontFamily: "'Segoe UI', sans-serif",
+      whiteSpace: 'nowrap',
+    }}
+    onMouseOver={e => { if (!disabled) e.currentTarget.style.filter = 'brightness(1.08)'; }}
+    onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}
+  >
+    {icon}
+    {label}
+  </button>
+);
+
+const ToolbarDivider = () => (
+  <div style={{ width: 1, height: 20, background: '#c0c0c0', margin: '0 2px' }} />
+);
+
+const AccField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <label style={{ fontSize: 9, fontWeight: 700, color: '#6a7a90', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+      {label}
+    </label>
+    {children}
+  </div>
+);
+
+const StatusChip: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+    <span style={{ color: '#666' }}>{label}:</span>
+    <strong style={{ color: '#1a1a2e', fontFamily: 'Consolas, monospace' }}>{value}</strong>
+  </span>
+);
+
+const DialogButton: React.FC<{ label: string; onClick: () => void; danger?: boolean }> = ({ label, onClick, danger }) => (
+  <button
+    onClick={onClick}
+    style={{
+      padding: '4px 12px', fontSize: 11, fontWeight: danger ? 700 : 500,
+      background: danger
+        ? 'linear-gradient(to bottom, #e74c3c, #c0392b)'
+        : 'linear-gradient(to bottom, #fafafa, #e8e8e8)',
+      color: danger ? '#fff' : '#333',
+      border: danger ? '1px solid #a93226' : '1px solid #b0b0b0',
+      borderRadius: 3, cursor: 'pointer',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+      fontFamily: "'Segoe UI', sans-serif",
+    }}
+    onMouseOver={e => { e.currentTarget.style.filter = 'brightness(1.08)'; }}
+    onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}
+  >
+    {label}
+  </button>
+);
