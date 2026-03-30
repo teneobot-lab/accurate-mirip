@@ -1,3 +1,10 @@
+    try {
+        const [stocks] = await db.query('SELECT item_id as itemId, warehouse_id as warehouseId, qty FROM stock');
+        res.json(stocks);
+    } catch(e) { next(e); }
+});
+
+module.exports = router;
 
 const router = require('express').Router();
 const db = require('../config/database');
@@ -34,14 +41,24 @@ router.post('/config', async (req, res, next) => {
 router.get('/items', async (req, res, next) => {
     try {
         const [items] = await db.query('SELECT * FROM items ORDER BY created_at DESC');
-        for (let item of items) {
-            const [units] = await db.query('SELECT unit_name as name, conversion_ratio as ratio, operator FROM item_units WHERE item_id = ?', [item.id]);
-            item.conversions = units || [];
-            item.baseUnit = item.base_unit; 
-            item.minStock = item.min_stock;
-            item.isActive = !!item.is_active; // Map DB column to API property
+        const [allUnits] = await db.query('SELECT item_id, unit_name as name, conversion_ratio as ratio, operator FROM item_units');
+        
+        // Group units by item_id
+        const unitsByItemId = {};
+        for (const unit of allUnits) {
+            if (!unitsByItemId[unit.item_id]) unitsByItemId[unit.item_id] = [];
+            unitsByItemId[unit.item_id].push({ name: unit.name, ratio: unit.ratio, operator: unit.operator });
         }
-        res.json(items);
+
+        const result = items.map(item => ({
+            ...item,
+            conversions: unitsByItemId[item.id] || [],
+            baseUnit: item.base_unit,
+            minStock: item.min_stock,
+            isActive: !!item.is_active
+        }));
+
+        res.json(result);
     } catch(e) { 
         next(e); 
     }
