@@ -1,9 +1,8 @@
-
 {
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://invengudang.my.id/api/:path*"
+      "destination": "https://api.invengudang.my.id/api/:path*"
     },
     {
       "source": "/(.*)",
