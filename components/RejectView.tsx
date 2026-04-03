@@ -228,6 +228,8 @@ export const RejectView: React.FC = () => {
   const [batchToDelete, setBatchToDelete] = useState<string | null>(null);
   const [masterItemToDelete, setMasterItemToDelete] = useState<string | null>(null);
   const [outletToDelete, setOutletToDelete] = useState<string | null>(null);
+  const [selectedBatches, setSelectedBatches] = useState<Set<string>>(new Set());
+  const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false);
 
   const [exportStart, setExportStart] = useState(() => {
     const d = new Date();
@@ -422,6 +424,16 @@ export const RejectView: React.FC = () => {
       loadData();
     } catch { showToast('Gagal menghapus riwayat', 'error'); }
     finally { setBatchToDelete(null); }
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      await Promise.all([...selectedBatches].map(id => StorageService.deleteRejectBatch(id)));
+      showToast(`${selectedBatches.size} batch dihapus`, 'success');
+      setSelectedBatches(new Set());
+      loadData();
+    } catch { showToast('Gagal menghapus batch', 'error'); }
+    finally { setShowDeleteSelectedConfirm(false); }
   };
 
   const handleDeleteMasterItem = async () => {
@@ -837,16 +849,63 @@ export const RejectView: React.FC = () => {
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ fontSize:10, color:'#888' }}>{filteredBatches.length} batch</span>
+                {selectedBatches.size > 0 && (
+                  <button onClick={() => setShowDeleteSelectedConfirm(true)} style={{ ...a.tbBtn, ...a.tbBtnDanger }}>
+                    <Trash2 size={12} /> Hapus {selectedBatches.size} Terpilih
+                  </button>
+                )}
                 <button onClick={handleExportMatrix} style={{ ...a.tbBtn, ...a.tbBtnGreen }}>
                   <FileSpreadsheet size={12} /> Export Matrix
                 </button>
               </div>
             </div>
 
+            <style>{`
+              @keyframes circleIn {
+                from { transform: scale(0.4); opacity: 0; }
+                to   { transform: scale(1);   opacity: 1; }
+              }
+              .batch-row .circle-check {
+                opacity: 0;
+                transform: scale(0.4);
+                transition: opacity 0.15s ease, transform 0.15s ease;
+              }
+              .batch-row:hover .circle-check,
+              .batch-row.selected .circle-check {
+                opacity: 1;
+                transform: scale(1);
+              }
+              .batch-row.selected {
+                background: #e8f0fe !important;
+              }
+            `}</style>
             <div style={a.tableWrap}>
               <table style={a.table}>
                 <thead>
                   <tr style={{ height:28 }}>
+                    <th style={{ ...a.th, ...a.thCenter, width:40 }}>
+                      {/* Select-all circle */}
+                      <div
+                        onClick={() => {
+                          const allSelected = filteredBatches.length > 0 && filteredBatches.every(b => selectedBatches.has(b.id));
+                          if (allSelected) setSelectedBatches(new Set());
+                          else setSelectedBatches(new Set(filteredBatches.map(b => b.id)));
+                        }}
+                        style={{
+                          width: 20, height: 20, borderRadius: '50%', border: '2px solid #5f6368',
+                          background: filteredBatches.length > 0 && filteredBatches.every(b => selectedBatches.has(b.id)) ? '#1a73e8' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', margin: '0 auto', transition: 'background 0.15s, border-color 0.15s',
+                          borderColor: filteredBatches.length > 0 && filteredBatches.every(b => selectedBatches.has(b.id)) ? '#1a73e8' : '#5f6368',
+                        }}
+                      >
+                        {filteredBatches.length > 0 && filteredBatches.every(b => selectedBatches.has(b.id)) && (
+                          <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                    </th>
                     <th style={{ ...a.th, width:130 }}>ID Batch</th>
                     <th style={{ ...a.th, width:100 }}>Tanggal</th>
                     <th style={a.th}>Outlet</th>
@@ -855,13 +914,41 @@ export const RejectView: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBatches.map((b, idx) => (
+                  {filteredBatches.map((b, idx) => {
+                    const isSelected = selectedBatches.has(b.id);
+                    return (
                     <tr
                       key={b.id}
-                      style={idx % 2 === 0 ? a.trOdd : a.trEven}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#dce8ff')}
-                      onMouseLeave={e => (e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb')}
+                      className={`batch-row${isSelected ? ' selected' : ''}`}
+                      style={isSelected ? {} : (idx % 2 === 0 ? a.trOdd : a.trEven)}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#dce8ff'; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb'; }}
                     >
+                      <td style={{ ...a.tdBase, ...a.tdCenter, padding:'3px 4px' }}>
+                        {/* Gmail-style circular checkbox */}
+                        <div
+                          className="circle-check"
+                          onClick={() => {
+                            const next = new Set(selectedBatches);
+                            if (isSelected) next.delete(b.id); else next.add(b.id);
+                            setSelectedBatches(next);
+                          }}
+                          style={{
+                            width: 20, height: 20, borderRadius: '50%', cursor: 'pointer',
+                            border: `2px solid ${isSelected ? '#1a73e8' : '#5f6368'}`,
+                            background: isSelected ? '#1a73e8' : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto', transition: 'background 0.15s, border-color 0.15s',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isSelected && (
+                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                      </td>
                       <td style={{ ...a.tdBase, fontFamily:"'Courier New',monospace", fontSize:10, color:'#1a50aa', fontWeight:700 }}>{b.id}</td>
                       <td style={{ ...a.tdBase, fontSize:11 }}>{b.date}</td>
                       <td style={a.tdBase}>
@@ -875,10 +962,10 @@ export const RejectView: React.FC = () => {
                         <button onClick={() => setBatchToDelete(b.id)} style={{ ...a.actionBtn, ...a.actionBtnRed }} title="Hapus"><Trash2 size={11} /></button>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                   {filteredBatches.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ padding:'48px 0' }}>
+                      <td colSpan={6} style={{ padding:'48px 0' }}>
                         <div style={a.empty}>
                           <History size={28} color="#ccc" />
                           <span style={{ fontSize:11, color:'#aaa' }}>
@@ -1196,6 +1283,13 @@ export const RejectView: React.FC = () => {
         </ModalPortal>
       )}
 
+      <ConfirmDialog
+        isOpen={showDeleteSelectedConfirm}
+        title="Hapus Batch Terpilih"
+        message={`Apakah Anda yakin ingin menghapus ${selectedBatches.size} batch yang dipilih? Tindakan ini tidak dapat dibatalkan.`}
+        onConfirm={handleDeleteSelected}
+        onCancel={() => setShowDeleteSelectedConfirm(false)}
+      />
       <ConfirmDialog
         isOpen={!!batchToDelete}
         title="Hapus Riwayat Reject"
