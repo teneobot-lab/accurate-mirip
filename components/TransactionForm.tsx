@@ -531,23 +531,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       >
         <input type="file" ref={fileInputRef} className="hidden" accept=".xlsx,.xls,.csv" onChange={handleExcelImport} />
 
-        {/* Primary save button */}
-        <ToolbarButton
-          icon={isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-          label="Simpan"
-          onClick={() => handleSave(false)}
-          disabled={isSubmitting}
-          primary
-        />
-        <ToolbarButton
-          icon={<Plus size={13} />}
-          label="Simpan & Baru"
-          onClick={() => handleSave(true)}
-          disabled={isSubmitting}
-        />
-
-        <ToolbarDivider />
-
         <ToolbarButton
           icon={<FileSpreadsheet size={13} />}
           label="Import Excel"
@@ -1097,6 +1080,89 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           </div>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════
+          6b. FLOATING SAVE BAR — pojok bawah kanan
+         ══════════════════════════════════════════ */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 28,
+          zIndex: 9000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: 'rgba(255,255,255,0.95)',
+          border: '1px solid #c0c8d8',
+          borderRadius: 6,
+          padding: '6px 10px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10)',
+          backdropFilter: 'blur(4px)',
+        }}
+      >
+        {/* Indikator belum disimpan */}
+        {isDirty && (
+          <span style={{ fontSize: 9, color: '#e67e22', fontWeight: 600, marginRight: 4 }}>
+            ● Belum disimpan
+          </span>
+        )}
+
+        {/* Simpan & Baru — biru */}
+        <button
+          onClick={() => handleSave(true)}
+          disabled={isSubmitting}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 14px', height: 30, fontSize: 11, fontWeight: 600,
+            background: isSubmitting ? '#90b8e0' : 'linear-gradient(to bottom, #2980b9, #1f6fa0)',
+            color: '#fff',
+            border: '1px solid #1a5e8a',
+            borderRadius: 4,
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+            opacity: isSubmitting ? 0.7 : 1,
+            fontFamily: "'Segoe UI', sans-serif",
+            whiteSpace: 'nowrap',
+            transition: 'filter 0.1s',
+          }}
+          onMouseOver={e => { if (!isSubmitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
+          onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}
+          title="Simpan lalu buka form baru (Ctrl+Shift+S)"
+        >
+          <Plus size={13} />
+          Simpan &amp; Baru
+        </button>
+
+        {/* Simpan — hijau */}
+        <button
+          onClick={() => handleSave(false)}
+          disabled={isSubmitting}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            padding: '5px 18px', height: 30, fontSize: 11, fontWeight: 700,
+            background: isSubmitting ? '#7dba96' : 'linear-gradient(to bottom, #27ae60, #1e8449)',
+            color: '#fff',
+            border: '1px solid #176638',
+            borderRadius: 4,
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            boxShadow: '0 2px 6px rgba(30,132,73,0.35)',
+            opacity: isSubmitting ? 0.7 : 1,
+            fontFamily: "'Segoe UI', sans-serif",
+            whiteSpace: 'nowrap',
+            transition: 'filter 0.1s',
+          }}
+          onMouseOver={e => { if (!isSubmitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
+          onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}
+          title="Simpan transaksi (Ctrl+S)"
+        >
+          {isSubmitting
+            ? <Loader2 size={13} className="animate-spin" />
+            : <Save size={13} />
+          }
+          Simpan
+        </button>
+      </div>
 
       {/* ══════════════════════════════════════════
           7. CLOSE CONFIRMATION DIALOG
