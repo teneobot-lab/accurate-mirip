@@ -103,25 +103,26 @@ export const SettingsView: React.FC = () => {
     const [copied, setCopied] = useState(false);
 
     const GS_CODE_BOILERPLATE = `/**
- * GudangPro - Smart Sync v6.0
- * Mode: Full Replace per Periode — Handle Tambah, Edit, Hapus
+ * GudangPro - Smart Sync v7.0
+ * Mode: UPSERT — tambah baris baru, update baris yang sudah ada (by Ref No).
+ * Data lama di luar kiriman TIDAK dihapus.
  */
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
     if (contents.action === 'SYNC_V2') {
       var results = [];
-      var startDate = contents.startDate || null;
-      var endDate   = contents.endDate   || null;
       if (contents.transactions) {
-        results.push(replaceSheetData("Mutasi GudangPro", contents.transactions,
+        // Key = "Ref No" → kolom index 1
+        results.push(upsertSheetData("Mutasi GudangPro", contents.transactions,
           ["Tanggal","Ref No","Tipe","Gudang","Partner","Kode","Nama","Qty","Satuan","Keterangan"],
-          startDate, endDate));
+          1));
       }
       if (contents.rejects) {
-        results.push(replaceSheetData("Laporan Reject", contents.rejects,
+        // Key = "ID Aggregasi" → kolom index 1
+        results.push(upsertSheetData("Laporan Reject", contents.rejects,
           ["Tanggal","ID Aggregasi","SKU","Nama Barang","Total Base Qty","Base Unit","Alasan"],
-          startDate, endDate));
+          1));
       }
       return ContentService.createTextOutput(JSON.stringify({status:"success",details:results}))
         .setMimeType(ContentService.MimeType.JSON);
@@ -134,33 +135,53 @@ function doPost(e) {
   }
 }
 
-function replaceSheetData(sheetName, newRows, headers, startDate, endDate) {
+/**
+ * Upsert rows ke sheet berdasarkan kolom kunci (keyColIndex, 0-based).
+ * - Jika key sudah ada di sheet  → UPDATE baris tersebut.
+ * - Jika key belum ada           → APPEND baris baru di bawah.
+ * - Baris lama yang tidak ada di newRows → DIBIARKAN (tidak dihapus).
+ */
+function upsertSheetData(sheetName, newRows, headers, keyColIndex) {
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) { sheet = ss.insertSheet(sheetName); formatHeader(sheet, headers); }
 
-  var lastRow = sheet.getLastRow();
-  if (startDate && endDate && lastRow > 1) {
-    var allData    = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).getValues();
-    var rowsToKeep = allData.filter(function(row) {
-      var d = formatDateValue(row[0]);
-      return !d || d < startDate || d > endDate;
-    });
-    sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clearContent();
-    if (rowsToKeep.length > 0)
-      sheet.getRange(2, 1, rowsToKeep.length, rowsToKeep[0].length).setValues(rowsToKeep);
-  }
-
-  if (newRows.length > 0) {
-    var insertAt = sheet.getLastRow() + 1;
-    sheet.getRange(insertAt, 1, newRows.length, newRows[0].length).setValues(newRows);
-    sheet.getRange(insertAt, 1, newRows.length, 1).setNumberFormat("DD/MM/YYYY");
-    for (var r = 0; r < newRows.length; r++) {
-      var bg = ((insertAt + r) % 2 === 0) ? "#f8fafb" : "#ffffff";
-      sheet.getRange(insertAt + r, 1, 1, newRows[0].length).setBackground(bg);
+  // Baca semua nilai kunci yang sudah ada → Map {key: rowNumber (1-based)}
+  var keyToRow = {};
+  var lastRow  = sheet.getLastRow();
+  if (lastRow > 1) {
+    var existingKeys = sheet.getRange(2, keyColIndex + 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < existingKeys.length; i++) {
+      var k = String(existingKeys[i][0]).trim();
+      if (k) keyToRow[k] = i + 2; // baris ke-N (1-based, baris 1 = header)
     }
   }
-  return sheetName + ": " + newRows.length + " baris ditulis";
+
+  var updated = 0, inserted = 0;
+  for (var r = 0; r < newRows.length; r++) {
+    var rowKey    = String(newRows[r][keyColIndex]).trim();
+    var targetRow;
+
+    if (keyToRow[rowKey]) {
+      // ── UPDATE baris yang sudah ada ──
+      targetRow = keyToRow[rowKey];
+      sheet.getRange(targetRow, 1, 1, newRows[r].length).setValues([newRows[r]]);
+      updated++;
+    } else {
+      // ── INSERT baris baru ──
+      targetRow = sheet.getLastRow() + 1;
+      sheet.getRange(targetRow, 1, 1, newRows[r].length).setValues([newRows[r]]);
+      keyToRow[rowKey] = targetRow; // update map supaya key berikutnya tahu
+      inserted++;
+    }
+
+    // Format tanggal & warna zebra
+    sheet.getRange(targetRow, 1, 1, 1).setNumberFormat("DD/MM/YYYY");
+    var bg = (targetRow % 2 === 0) ? "#f8fafb" : "#ffffff";
+    sheet.getRange(targetRow, 1, 1, newRows[r].length).setBackground(bg);
+  }
+
+  return sheetName + ": " + updated + " diperbarui, " + inserted + " baris baru";
 }
 
 function formatHeader(sheet, headers) {
@@ -261,10 +282,10 @@ function formatDateValue(val) {
                 showToast("ℹ Tidak ada perubahan data — sync dibatalkan", "warning");
             } else {
                 const details = Array.isArray(result?.details) ? result.details.join(' · ') : 'Selesai';
-                showToast(`✓ Sync v6.1 Selesai — ${details}`, "success");
+                showToast(`✓ Sync v7.0 Selesai — ${details}`, "success");
             }
         } catch (e) {
-            showToast("Gagal Sync. Pastikan Script v6.1 sudah di-deploy ulang.", "error");
+            showToast("Gagal Sync. Pastikan Script v7.0 sudah di-deploy ulang.", "error");
         } finally {
             setIsSyncing(false);
         }
@@ -463,7 +484,7 @@ function formatDateValue(val) {
                             <div style={acc.sectionBox}>
                                 <div style={acc.sectionHeader}>
                                     <FileSpreadsheet size={13} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }}/>
-                                    Google Sync V6.0 — Enterprise Multi-Sheet Synchronization
+                                    Google Sync V7.0 — Smart Upsert Synchronization
                                 </div>
                                 <div style={acc.sectionBody}>
                                     {/* Script URL */}
@@ -506,7 +527,7 @@ function formatDateValue(val) {
                             <div style={acc.sectionBox}>
                                 <div style={acc.sectionHeader}>
                                     <Code size={13} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }}/>
-                                    Apps Script Code (V6.0 — Full Replace per Periode)
+                                    Apps Script Code (V7.0 — Smart Upsert by Ref No)
                                 </div>
                                 <div style={acc.codeBox}>
                                     <div style={acc.codeHeader}>
