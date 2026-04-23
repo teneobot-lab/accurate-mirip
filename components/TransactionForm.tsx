@@ -294,9 +294,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     XLSX.writeFile(wb, `Template_Import_${type}.xlsx`);
   };
 
-  // ─────────────────────────────────────────────
-  // UPDATED: handleExcelImport — merge duplicate SKU
-  // ─────────────────────────────────────────────
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -312,11 +309,6 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
         const newItemsToCreate: Item[] = [];
         const importLines: TransactionLine[] = [];
         let skippedCount = 0;
-
-        // Map untuk agregasi duplikat SKU
-        const skuAggMap = new Map<string, {
-          item: Item; qty: number; unit: string; notes: string[];
-        }>();
 
         for (const row of data) {
           const sku  = String(row.sku || row.SKU || row.KODE || row.kode || '').trim().toUpperCase();
@@ -340,33 +332,15 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
           const validUnits = [item.baseUnit, ...(item.conversions?.map(c => c.name) ?? [])];
           const resolvedUnit = validUnits.includes(unit) ? unit : item.baseUnit;
-
-          if (skuAggMap.has(sku)) {
-            // SKU duplikat — jumlahkan qty
-            const existing = skuAggMap.get(sku)!;
-            existing.qty += qty;
-            if (note) existing.notes.push(note);
-          } else {
-            // SKU baru
-            skuAggMap.set(sku, {
-              item, qty, unit: resolvedUnit,
-              notes: note ? [note] : [],
-            });
-          }
-        }
-
-        // Build importLines dari hasil agregasi
-        for (const [, agg] of skuAggMap) {
-          const { item, qty, unit, notes } = agg;
-          const ratio = unit === item.baseUnit
+          const ratio = resolvedUnit === item.baseUnit
             ? 1
-            : (item.conversions?.find(c => c.name === unit)?.ratio ?? 1);
+            : (item.conversions?.find(c => c.name === resolvedUnit)?.ratio ?? 1);
 
           importLines.push({
             lineId: `import_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            itemId: item.id, qty, unit, ratio,
+            itemId: item.id, qty, unit: resolvedUnit, ratio,
             name: item.name, code: item.code,
-            note: notes.length > 0 ? notes.join(' | ') : 'Import Excel',
+            note: note || 'Import Excel',
           });
         }
 
@@ -471,7 +445,9 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
   // ACCURATE 5 STYLE CONSTANTS
   // ─────────────────────────────────────────────
   const isIN = type === 'IN';
-  const titleBg = '#1e3a6e';
+  const accentColor = isIN ? '#1a6b3a' : '#8b1a1a';
+  const accentBg    = isIN ? '#e6f4ec' : '#fdeaea';
+  const titleBg     = '#1e3a6e'; // Accurate 5 navy header
 
   // ─────────────────────────────────────────────
   // RENDER — Accurate 5 Layout
@@ -483,7 +459,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
     >
 
       {/* ══════════════════════════════════════════
-          1. TITLE BAR
+          1. TITLE BAR  (Accurate 5 dark-navy band)
          ══════════════════════════════════════════ */}
       <div
         className="flex items-center justify-between px-3 shrink-0"
@@ -493,6 +469,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           borderBottom: '2px solid #0f2244',
         }}
       >
+        {/* Left: icon + title */}
         <div className="flex items-center gap-2">
           <div
             className="flex items-center justify-center rounded"
@@ -526,6 +503,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             <span style={{ color: '#ffd700', fontSize: 9, fontWeight: 600 }}>● Belum disimpan</span>
           )}
         </div>
+        {/* Right: close */}
         <button
           onClick={handleClose}
           style={{
@@ -541,7 +519,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
 
       {/* ══════════════════════════════════════════
-          2. TOOLBAR
+          2. TOOLBAR  (Accurate 5 button strip)
          ══════════════════════════════════════════ */}
       <div
         className="flex items-center gap-1 px-2 shrink-0"
@@ -566,6 +544,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
 
         <ToolbarDivider />
 
+        {/* Ref No display */}
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 4,
@@ -580,7 +559,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
 
       {/* ══════════════════════════════════════════
-          3. FORM HEADER
+          3. FORM HEADER  (Accurate 5 field panel)
          ══════════════════════════════════════════ */}
       <div
         className="shrink-0 px-3 py-2"
@@ -630,7 +609,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
 
       {/* ══════════════════════════════════════════
-          4. SPREADSHEET GRID
+          4. SPREADSHEET GRID  (Accurate 5 table)
          ══════════════════════════════════════════ */}
       <div className="flex-1 overflow-auto relative" style={{ background: '#fff' }}>
         <table
@@ -639,6 +618,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             minWidth: 820, fontSize: 11,
           }}
         >
+          {/* Grid Header */}
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ height: 22, background: 'linear-gradient(to bottom, #3a6ea8, #2d5a8c)', userSelect: 'none' }}>
               {[
@@ -672,6 +652,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           </thead>
 
           <tbody>
+            {/* ── Existing Lines ── */}
             {lines.map((l, i) => {
               const stockQty    = getStockQty(l.itemId);
               const isOverStock = type === 'OUT' && (l.qty * (l.ratio || 1)) > stockQty;
@@ -688,19 +669,24 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   }}
                   className="group"
                 >
+                  {/* # */}
                   <td style={{ ...tdBase, textAlign: 'center', color: '#888', borderRight: cellBorder }}>
                     {i + 1}
                   </td>
+                  {/* Kode */}
                   <td style={{ ...tdBase, fontFamily: 'Consolas, monospace', color: '#556', borderRight: cellBorder }}>
                     {l.code}
                   </td>
+                  {/* Nama */}
                   <td style={{ ...tdBase, borderRight: cellBorder }}>
                     <span style={{ fontWeight: 600, color: '#1a1a2e' }}>{l.name}</span>
                   </td>
+                  {/* Stok */}
                   <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', borderRight: cellBorder, color: isOverStock ? '#c0392b' : '#555' }}>
                     {isOverStock && <AlertTriangle size={9} style={{ display: 'inline', marginRight: 2, marginBottom: 1, color: '#e74c3c' }} />}
                     {stockQty.toLocaleString()}
                   </td>
+                  {/* Qty — editable */}
                   <td style={{ padding: 0, borderRight: cellBorder, background: 'rgba(255,215,0,0.04)' }}>
                     <input
                       id={`input-${i}-qty`}
@@ -720,6 +706,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       onBlur={e => (e.currentTarget.style.background = 'transparent')}
                     />
                   </td>
+                  {/* Satuan */}
                   <td style={{ padding: 0, borderRight: cellBorder }}>
                     <select
                       value={l.unit}
@@ -733,9 +720,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
                     </select>
                   </td>
+                  {/* Total Base */}
                   <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', color: '#333', borderRight: cellBorder }}>
                     {(l.qty * (l.ratio || 1)).toLocaleString()}
                   </td>
+                  {/* Catatan */}
                   <td style={{ padding: 0, borderRight: cellBorder }}>
                     <input
                       id={`input-${i}-note`}
@@ -753,6 +742,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                       onBlur={e => (e.currentTarget.style.background = 'transparent')}
                     />
                   </td>
+                  {/* Delete */}
                   <td style={{ textAlign: 'center', padding: 0 }}>
                     <button
                       onClick={() => deleteLine(l.lineId)}
@@ -770,7 +760,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               );
             })}
 
-            {/* New Entry Row */}
+            {/* ── New Entry Row ── */}
             <tr
               style={{
                 height: 24,
@@ -779,9 +769,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 borderBottom: '1px solid #a3d9b5',
               }}
             >
+              {/* # */}
               <td style={{ ...tdBase, textAlign: 'center', borderRight: cellBorder }}>
                 <span style={{ fontSize: 8, fontWeight: 800, color: '#27ae60', letterSpacing: '0.05em' }}>BARU</span>
               </td>
+              {/* Search (spans Kode + Nama columns) */}
               <td colSpan={2} style={{ padding: 0, borderRight: cellBorder, position: 'relative' }}>
                 <div style={{ position: 'relative', height: '100%' }}>
                   <Search size={11} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: '#27ae60', pointerEvents: 'none' }} />
@@ -817,6 +809,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   )}
                 </div>
               </td>
+              {/* Stok of pending */}
               <td style={{
                 ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', borderRight: cellBorder,
                 color: pendingStockWarning !== null ? '#c0392b' : '#888',
@@ -828,6 +821,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   </>
                 ) : '—'}
               </td>
+              {/* Qty input */}
               <td style={{ padding: 0, borderRight: cellBorder, position: 'relative', background: 'rgba(39,174,96,0.05)' }}>
                 <input
                   ref={qtyInputRef}
@@ -859,6 +853,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   </div>
                 )}
               </td>
+              {/* Pending unit */}
               <td style={{ padding: 0, borderRight: cellBorder }}>
                 {pendingItem ? (
                   <select
@@ -874,9 +869,11 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   <span style={{ padding: '0 6px', color: '#bbb', fontSize: 10 }}>—</span>
                 )}
               </td>
+              {/* Total preview */}
               <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'Consolas, monospace', color: '#888', borderRight: cellBorder }}>
                 {pendingItem && pendingQty ? Number(pendingQty).toLocaleString() : '—'}
               </td>
+              {/* Note */}
               <td style={{ padding: 0, borderRight: cellBorder }}>
                 <input
                   ref={noteInputRef}
@@ -892,6 +889,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                   }}
                 />
               </td>
+              {/* Commit */}
               <td style={{ textAlign: 'center', padding: 0 }}>
                 {pendingItem && (
                   <button
@@ -908,6 +906,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               </td>
             </tr>
 
+            {/* Filler rows */}
             {[...Array(Math.max(0, 15 - lines.length - 1))].map((_, i) => (
               <tr key={`fill-${i}`} style={{ height: 22, borderBottom: '1px solid #eef0f5', background: i % 2 === 0 ? '#fff' : '#f5f8ff' }}>
                 <td colSpan={9} />
@@ -918,7 +917,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       </div>
 
       {/* ══════════════════════════════════════════
-          5. STATUS BAR
+          5. STATUS BAR  (Accurate 5 footer strip)
          ══════════════════════════════════════════ */}
       <div
         className="shrink-0 flex justify-between items-center px-3"
@@ -929,6 +928,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           fontSize: 10,
         }}
       >
+        {/* Left: summary stats */}
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', color: '#444' }}>
           <StatusChip label="Total Baris" value={String(lines.length)} />
           <StatusChip label="Total Qty" value={`${totalBaseQty.toLocaleString()} BASE`} />
@@ -938,6 +938,8 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             </span>
           )}
         </div>
+
+        {/* Right: keyboard hints */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', color: '#777' }}>
           {[
             { key: 'Cari Barang', sep: '→' },
@@ -974,6 +976,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               overflow: 'hidden',
             }}
           >
+            {/* Popup header */}
             <div style={{
               background: 'linear-gradient(to bottom, #3a6ea8, #2d5a8c)',
               padding: '5px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -987,6 +990,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               <span style={{ color: '#a0b8d0', fontSize: 10 }}>{searchResults.length} hasil</span>
             </div>
 
+            {/* Table */}
             <div style={{ flex: 1, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', fontSize: 11 }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 5 }}>
@@ -1063,6 +1067,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
               </table>
             </div>
 
+            {/* Popup footer */}
             <div style={{
               background: '#f0f4f8', borderTop: '1px solid #dde4ee',
               padding: '3px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 9,
@@ -1077,7 +1082,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
       )}
 
       {/* ══════════════════════════════════════════
-          6b. FLOATING SAVE BAR
+          6b. FLOATING SAVE BAR — pojok bawah kanan
          ══════════════════════════════════════════ */}
       <div
         style={{
@@ -1096,11 +1101,14 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           backdropFilter: 'blur(4px)',
         }}
       >
+        {/* Indikator belum disimpan */}
         {isDirty && (
           <span style={{ fontSize: 9, color: '#e67e22', fontWeight: 600, marginRight: 4 }}>
             ● Belum disimpan
           </span>
         )}
+
+        {/* Simpan & Baru — biru */}
         <button
           onClick={() => handleSave(true)}
           disabled={isSubmitting}
@@ -1120,10 +1128,13 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           }}
           onMouseOver={e => { if (!isSubmitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
           onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}
+          title="Simpan lalu buka form baru (Ctrl+Shift+S)"
         >
           <Plus size={13} />
           Simpan &amp; Baru
         </button>
+
+        {/* Simpan — hijau */}
         <button
           onClick={() => handleSave(false)}
           disabled={isSubmitting}
@@ -1143,6 +1154,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
           }}
           onMouseOver={e => { if (!isSubmitting) e.currentTarget.style.filter = 'brightness(1.1)'; }}
           onMouseOut={e => { e.currentTarget.style.filter = 'none'; }}
+          title="Simpan transaksi (Ctrl+S)"
         >
           {isSubmitting
             ? <Loader2 size={13} className="animate-spin" />
@@ -1165,10 +1177,12 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
             width: 340,
             overflow: 'hidden',
           }}>
+            {/* Dialog title bar */}
             <div style={{ background: 'linear-gradient(to bottom, #3a6ea8, #2d5a8c)', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <AlertTriangle size={14} color="#ffd700" />
               <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>Konfirmasi Tutup</span>
             </div>
+            {/* Body */}
             <div style={{ padding: '16px 16px 12px' }}>
               <p style={{ fontSize: 12, color: '#333', lineHeight: 1.5, margin: 0 }}>
                 Ada perubahan yang <strong>belum disimpan</strong>. Data akan hilang jika Anda keluar sekarang.
@@ -1177,6 +1191,7 @@ export const TransactionForm: React.FC<Props> = ({ type, initialData, onClose, o
                 Apakah Anda yakin ingin keluar?
               </p>
             </div>
+            {/* Footer buttons */}
             <div style={{ padding: '8px 12px', background: '#f5f5f5', borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
               <DialogButton label="Kembali" onClick={() => setShowCloseConfirm(false)} />
               <DialogButton label="Keluar tanpa simpan" onClick={onClose} danger />
