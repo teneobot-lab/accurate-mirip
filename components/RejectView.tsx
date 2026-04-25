@@ -5,7 +5,8 @@ import { Item, RejectBatch, RejectItem, Stock } from '../types';
 import {
   Trash2, Plus, CornerDownLeft, Loader2, History, MapPin, Search,
   X, Eye, Save, Database, Edit3, Copy, FileSpreadsheet,
-  ChevronRight, Filter, AlertCircle, PackageX
+  ChevronRight, Filter, AlertCircle, PackageX, Upload, Download,
+  CheckCircle2, XCircle, AlertTriangle, FileDown
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -13,7 +14,7 @@ import ExcelJS from 'exceljs';
 import { Decimal } from 'decimal.js';
 import { highlightMatch } from '../search/highlightMatch';
 
-// FIX: ModalPortal — render modal langsung ke document.body
+// ModalPortal — render modal langsung ke document.body
 const ModalPortal: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return createPortal(children, document.body);
 };
@@ -42,6 +43,21 @@ interface OutletManagerProps {
   onConfirmDelete: () => void;
 }
 
+// ─── Tipe untuk bulk import ───────────────────────────────────────────────────
+interface ImportRowParsed {
+  rowNum: number;
+  code: string;
+  name: string;
+  baseUnit: string;
+  isActive: boolean;
+  conversions: { name: string; operator: '*' | '/'; ratio: number }[];
+  // hasil validasi
+  status: 'ok' | 'duplicate' | 'update' | 'error';
+  errorMsg?: string;
+  // existing item jika duplikat/update
+  existingItem?: Item;
+}
+
 /* ─── Accurate-5 style map ──────────────────────────────────────────────────── */
 const a: Record<string, React.CSSProperties> = {
   /* layout */
@@ -59,6 +75,7 @@ const a: Record<string, React.CSSProperties> = {
   tbBtnPrimary:   { background:'linear-gradient(180deg,#4a8de8 0%,#2a68cc 100%)', borderColor:'#1a56aa', color:'white' },
   tbBtnDanger:    { background:'linear-gradient(180deg,#f8f8f8 0%,#e8e8e8 100%)', borderColor:'#c09090', color:'#cc2200' },
   tbBtnGreen:     { background:'linear-gradient(180deg,#4ab870 0%,#2a9850 100%)', borderColor:'#1a7840', color:'white' },
+  tbBtnAmber:     { background:'linear-gradient(180deg,#f8d060 0%,#e8a820 100%)', borderColor:'#b07818', color:'#5a3800' },
   /* sub-toolbar */
   subToolbar:     { height:32, padding:'0 8px', borderBottom:'1px solid #c8d0d8', background:'linear-gradient(180deg,#eef3f8 0%,#e2eaf2 100%)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 },
   searchWrap:     { display:'flex', alignItems:'center', gap:4, background:'white', border:'1px solid #9aa8b4', borderRadius:2, padding:'2px 6px' },
@@ -111,6 +128,7 @@ const a: Record<string, React.CSSProperties> = {
   overlay:        { position:'fixed' as const, inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999 },
   modalWin:       { background:'#f0f0f0', border:'2px solid #1e3a6e', borderRadius:4, width:540, boxShadow:'4px 4px 20px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 80px)' },
   modalWinSm:     { background:'white', border:'2px solid #1e3a6e', borderRadius:4, width:640, boxShadow:'4px 4px 20px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', maxHeight:'80vh' },
+  modalWinLg:     { background:'#f0f0f0', border:'2px solid #1e3a6e', borderRadius:4, width:860, boxShadow:'4px 4px 20px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', maxHeight:'calc(100vh - 60px)' },
   modalTitle:     { background:'linear-gradient(180deg,#2a52a0 0%,#1e3a6e 100%)', color:'white', padding:'6px 12px', fontSize:12, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'space-between', borderRadius:'2px 2px 0 0', flexShrink:0 },
   modalClose:     { width:18, height:18, borderRadius:2, background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.4)', color:'white', cursor:'pointer', fontSize:12, display:'flex', alignItems:'center', justifyContent:'center' },
   modalBody:      { padding:'12px 14px', display:'flex', flexDirection:'column', gap:10, overflowY:'auto' as const, flex:1 },
@@ -135,7 +153,6 @@ const OutletManager: React.FC<OutletManagerProps> = ({
     onAdd(trimmed);
     setNewOutletName('');
   };
-
   return (
     <div style={a.outletWrap}>
       <div style={a.outletCard}>
@@ -153,9 +170,7 @@ const OutletManager: React.FC<OutletManagerProps> = ({
               onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
               style={a.outletInput}
             />
-            <button onClick={handleAdd} style={{ ...a.tbBtn, ...a.tbBtnPrimary }}>
-              TAMBAH
-            </button>
+            <button onClick={handleAdd} style={{ ...a.tbBtn, ...a.tbBtnPrimary }}>TAMBAH</button>
           </div>
           <div style={{ borderTop:'1px solid #e0e8f0', paddingTop:4 }}>
             {outlets.length === 0 && (
@@ -164,10 +179,7 @@ const OutletManager: React.FC<OutletManagerProps> = ({
             {outlets.map(o => (
               <div key={o} style={a.outletRow}>
                 <span style={{ textTransform:'uppercase', fontSize:11 }}>{o}</span>
-                <button
-                  onClick={() => onDelete(o)}
-                  style={{ ...a.actionBtn, ...a.actionBtnRed }}
-                >
+                <button onClick={() => onDelete(o)} style={{ ...a.actionBtn, ...a.actionBtnRed }}>
                   <Trash2 size={11} /> Hapus
                 </button>
               </div>
@@ -186,6 +198,725 @@ const OutletManager: React.FC<OutletManagerProps> = ({
   );
 };
 
+/* ─── BulkImportModal ───────────────────────────────────────────────────────── */
+interface BulkImportModalProps {
+  existingItems: Item[];
+  onClose: () => void;
+  onImportDone: () => void;
+  showToast: (msg: string, type: 'success' | 'error' | 'warning' | 'info') => void;
+}
+
+const BulkImportModal: React.FC<BulkImportModalProps> = ({
+  existingItems, onClose, onImportDone, showToast,
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<'upload' | 'preview' | 'done'>('upload');
+  const [isDragging, setIsDragging] = useState(false);
+  const [parsedRows, setParsedRows] = useState<ImportRowParsed[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [importMode, setImportMode] = useState<'skip' | 'overwrite'>('skip');
+  const [importResult, setImportResult] = useState<{ added: number; updated: number; skipped: number; errors: number } | null>(null);
+
+  // Filter rows
+  const okRows     = parsedRows.filter(r => r.status === 'ok');
+  const updateRows = parsedRows.filter(r => r.status === 'update');
+  const dupRows    = parsedRows.filter(r => r.status === 'duplicate');
+  const errRows    = parsedRows.filter(r => r.status === 'error');
+
+  // ── Download Template ──────────────────────────────────────────────────────
+  const handleDownloadTemplate = async () => {
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'GudangPro';
+      wb.created = new Date();
+
+      // ── Sheet 1: Template Data ─────────────────────────────────────────────
+      const ws = wb.addWorksheet('Katalog Barang', {
+        views: [{ state: 'frozen', xSplit: 0, ySplit: 2 }],
+      });
+
+      // Judul
+      ws.mergeCells('A1:P1');
+      const titleCell = ws.getCell('A1');
+      titleCell.value = 'TEMPLATE BULK IMPORT — KATALOG BARANG';
+      titleCell.font = { bold: true, size: 13, name: 'Calibri', color: { argb: 'FFFFFFFF' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A6E' } };
+      ws.getRow(1).height = 24;
+
+      // Header kolom
+      const headers = [
+        { col: 'A', label: 'KODE SKU *',        note: 'Wajib. Unik, huruf kapital otomatis. Contoh: BRG-001' },
+        { col: 'B', label: 'NAMA BARANG *',      note: 'Wajib. Nama lengkap produk.' },
+        { col: 'C', label: 'SATUAN DASAR *',     note: 'Wajib. Contoh: Pcs, Kg, Liter, Botol' },
+        { col: 'D', label: 'STATUS',             note: 'Opsional. Isi "Aktif" atau "Nonaktif". Default: Aktif' },
+        { col: 'E', label: 'UNIT 1 NAMA',        note: 'Nama unit konversi ke-1. Contoh: Lusin, Box, Krat' },
+        { col: 'F', label: 'UNIT 1 OPERATOR',    note: 'Operator: * (kali) atau / (bagi)' },
+        { col: 'G', label: 'UNIT 1 RASIO',       note: 'Angka rasio konversi. Contoh: 12 (1 Lusin = 12 Pcs)' },
+        { col: 'H', label: 'UNIT 2 NAMA',        note: 'Nama unit konversi ke-2 (opsional)' },
+        { col: 'I', label: 'UNIT 2 OPERATOR',    note: 'Operator: * atau /' },
+        { col: 'J', label: 'UNIT 2 RASIO',       note: 'Angka rasio konversi' },
+        { col: 'K', label: 'UNIT 3 NAMA',        note: 'Nama unit konversi ke-3 (opsional)' },
+        { col: 'L', label: 'UNIT 3 OPERATOR',    note: 'Operator: * atau /' },
+        { col: 'M', label: 'UNIT 3 RASIO',       note: 'Angka rasio konversi' },
+        { col: 'N', label: 'UNIT 4 NAMA',        note: 'Nama unit konversi ke-4 (opsional)' },
+        { col: 'O', label: 'UNIT 4 OPERATOR',    note: 'Operator: * atau /' },
+        { col: 'P', label: 'UNIT 4 RASIO',       note: 'Angka rasio konversi' },
+      ];
+
+      headers.forEach(({ col, label, note }) => {
+        const cell = ws.getCell(`${col}2`);
+        cell.value = label;
+        cell.font = { bold: true, size: 9, name: 'Calibri', color: { argb: 'FF1A3060' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE8F8' } };
+        cell.border = { bottom: { style: 'medium', color: { argb: 'FFA8B8CC' } }, right: { style: 'thin', color: { argb: 'FFA8B8CC' } } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.note = { texts: [{ text: note }] };
+      });
+      ws.getRow(2).height = 36;
+
+      // ── Data contoh ────────────────────────────────────────────────────────
+      const sampleData = [
+        // [SKU, Nama, BaseUnit, Status, U1Nama, U1Op, U1Rasio, U2Nama, U2Op, U2Rasio, U3Nama, U3Op, U3Rasio, U4Nama, U4Op, U4Rasio]
+        ['BRG-001', 'Kopi Arabica Bubuk',        'Gram',  'Aktif',    'Kilogram', '*', 1000, 'Ons',    '*', 100,  '',        '', '', '', '', ''],
+        ['BRG-002', 'Gula Pasir Putih',           'Kg',    'Aktif',    'Gram',     '/', 1000, 'Kwintal','*', 100,  '',        '', '', '', '', ''],
+        ['BRG-003', 'Botol Kaca 250ml',           'Pcs',   'Aktif',    'Lusin',    '*', 12,   'Krat',   '*', 144,  '',        '', '', '', '', ''],
+        ['BRG-004', 'Susu UHT Full Cream',        'Karton','Aktif',    'Liter',    '/', 8,    'Pcs',    '/', 48,   '',        '', '', '', '', ''],
+        ['BRG-005', 'Teh Celup Premium',          'Box',   'Aktif',    'Pcs',      '/', 25,   '',       '', '',   '',        '', '', '', '', ''],
+        ['BRG-006', 'Minyak Goreng Kemasan',      'Karton','Aktif',    'Botol',    '/', 12,   'Liter',  '/', 24,  '',        '', '', '', '', ''],
+        ['BRG-007', 'Tepung Terigu Protein Tinggi','Sak',  'Aktif',    'Kilogram', '/', 25,   'Gram',   '/', 25000,'',       '', '', '', '', ''],
+        ['BRG-008', 'Saos Sambal Botol Kecil',    'Karton','Aktif',    'Lusin',    '/', 4,    'Pcs',    '/', 48,  '',        '', '', '', '', ''],
+        ['BRG-009', 'Plastik Wrap Gulung',        'Roll',  'Aktif',    '',         '', '',   '',       '', '',   '',        '', '', '', '', ''],
+        ['BRG-010', 'Produk Discontinued',        'Pcs',   'Nonaktif', 'Lusin',    '*', 12,  '',       '', '',   '',        '', '', '', '', ''],
+      ];
+
+      sampleData.forEach((row, i) => {
+        const excelRow = ws.getRow(3 + i);
+        row.forEach((val, ci) => {
+          const cell = excelRow.getCell(ci + 1);
+          cell.value = val === '' ? null : val;
+          cell.font = { name: 'Calibri', size: 10 };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFD8E0E8' } },
+            bottom: { style: 'thin', color: { argb: 'FFD8E0E8' } },
+            left: { style: 'thin', color: { argb: 'FFD8E0E8' } },
+            right: { style: 'thin', color: { argb: 'FFD8E0E8' } },
+          };
+          // Warnai kolom wajib
+          if (ci < 3) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFFFF8E8' : 'FFFFF0D0' } };
+            cell.font = { bold: ci === 0, name: 'Calibri', size: 10, color: { argb: ci === 0 ? 'FF1A5090' : 'FF1A1A1A' } };
+          } else {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: i % 2 === 0 ? 'FFFFFFFF' : 'FFF8FBFF' } };
+          }
+          // Kolom operator — rata tengah
+          if ([5, 8, 11, 14].includes(ci)) {
+            cell.alignment = { horizontal: 'center' };
+            cell.font = { bold: true, name: 'Calibri', size: 11 };
+          }
+          // Kolom rasio — angka
+          if ([6, 9, 12, 15].includes(ci)) {
+            cell.alignment = { horizontal: 'right' };
+            cell.numFmt = '#,##0.####';
+          }
+          // Status
+          if (ci === 3) {
+            cell.alignment = { horizontal: 'center' };
+            const isAktif = String(val).toLowerCase() === 'aktif';
+            cell.font = { bold: true, name: 'Calibri', size: 10, color: { argb: isAktif ? 'FF1A6A1A' : 'FF888888' } };
+          }
+        });
+        excelRow.height = 18;
+      });
+
+      // ── Lebar kolom ───────────────────────────────────────────────────────
+      ws.getColumn(1).width = 14;  // SKU
+      ws.getColumn(2).width = 30;  // Nama
+      ws.getColumn(3).width = 12;  // Base Unit
+      ws.getColumn(4).width = 10;  // Status
+      ws.getColumn(5).width = 12;  ws.getColumn(6).width = 8;  ws.getColumn(7).width = 9;
+      ws.getColumn(8).width = 12;  ws.getColumn(9).width = 8;  ws.getColumn(10).width = 9;
+      ws.getColumn(11).width = 12; ws.getColumn(12).width = 8; ws.getColumn(13).width = 9;
+      ws.getColumn(14).width = 12; ws.getColumn(15).width = 8; ws.getColumn(16).width = 9;
+
+      // Data validation untuk kolom Operator
+      for (const col of [6, 9, 12, 15]) {
+        for (let r = 3; r <= 1000; r++) {
+          ws.getCell(r, col).dataValidation = {
+            type: 'list', allowBlank: true,
+            formulae: ['"*,/"'],
+            showErrorMessage: true,
+            errorStyle: 'warning',
+            errorTitle: 'Nilai tidak valid',
+            error: 'Gunakan * (kali) atau / (bagi)',
+          };
+        }
+      }
+      // Data validation untuk Status
+      for (let r = 3; r <= 1000; r++) {
+        ws.getCell(r, 4).dataValidation = {
+          type: 'list', allowBlank: true,
+          formulae: ['"Aktif,Nonaktif"'],
+          showErrorMessage: true,
+          errorStyle: 'warning',
+          errorTitle: 'Nilai tidak valid',
+          error: 'Pilih Aktif atau Nonaktif',
+        };
+      }
+
+      // ── Sheet 2: Panduan ───────────────────────────────────────────────────
+      const wsPanduan = wb.addWorksheet('Panduan Konversi');
+      wsPanduan.mergeCells('A1:D1');
+      const ph = wsPanduan.getCell('A1');
+      ph.value = 'PANDUAN RASIO KONVERSI MULTI-UNIT';
+      ph.font = { bold: true, size: 13, name: 'Calibri', color: { argb: 'FFFFFFFF' } };
+      ph.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A6E' } };
+      ph.alignment = { horizontal: 'center', vertical: 'middle' };
+      wsPanduan.getRow(1).height = 24;
+
+      const panduanHeaders = ['Nama Unit', 'Operator', 'Rasio', 'Penjelasan'];
+      const ph2 = wsPanduan.getRow(2);
+      panduanHeaders.forEach((h, i) => {
+        const c = ph2.getCell(i + 1);
+        c.value = h;
+        c.font = { bold: true, size: 10, name: 'Calibri', color: { argb: 'FF1A3060' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE8F8' } };
+        c.border = { bottom: { style: 'medium', color: { argb: 'FFA8B8CC' } } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
+      wsPanduan.getRow(2).height = 20;
+
+      const panduanRows = [
+        ['', '', '', '── SATUAN DASAR: Pcs ──'],
+        ['Lusin',     '*', 12,    '1 Lusin = 12 Pcs → qty input × 12 = qty base (Pcs)'],
+        ['Kodi',      '*', 20,    '1 Kodi = 20 Pcs → qty input × 20 = qty base (Pcs)'],
+        ['Gros',      '*', 144,   '1 Gros = 144 Pcs → qty input × 144 = qty base (Pcs)'],
+        ['Box (12)',  '*', 12,    '1 Box isi 12 Pcs → qty input × 12 = qty base (Pcs)'],
+        ['', '', '', '── SATUAN DASAR: Kg ──'],
+        ['Gram',      '/', 1000,  '1 Gram = 1/1000 Kg → qty input / 1000 = qty base (Kg)'],
+        ['Ons',       '/', 10,    '1 Ons = 0.1 Kg → qty input / 10 = qty base (Kg)'],
+        ['Kwintal',   '*', 100,   '1 Kwintal = 100 Kg → qty input × 100 = qty base (Kg)'],
+        ['Ton',       '*', 1000,  '1 Ton = 1000 Kg → qty input × 1000 = qty base (Kg)'],
+        ['', '', '', '── SATUAN DASAR: Liter ──'],
+        ['mL',        '/', 1000,  '1 mL = 1/1000 Liter → qty input / 1000 = qty base (Liter)'],
+        ['Galon',     '*', 19,    '1 Galon = 19 Liter → qty input × 19 = qty base (Liter)'],
+        ['', '', '', '── SATUAN DASAR: Karton ──'],
+        ['Pcs',       '/', 48,    '1 Karton isi 48 Pcs → misal 1 Pcs = 1/48 Karton'],
+        ['Lusin',     '/', 4,     '1 Karton isi 4 Lusin → misal 1 Lusin = 1/4 Karton'],
+        ['', '', '', '── RUMUS KONVERSI ──'],
+        ['', '', '', 'Operator * (kali): qty_base = qty_input × rasio'],
+        ['', '', '', 'Operator / (bagi): qty_base = qty_input / rasio'],
+        ['', '', '', 'Contoh: 2 Lusin × 12 = 24 Pcs (base)'],
+        ['', '', '', 'Contoh: 500 Gram / 1000 = 0.5 Kg (base)'],
+      ];
+
+      panduanRows.forEach((row, i) => {
+        const exRow = wsPanduan.getRow(3 + i);
+        row.forEach((val, ci) => {
+          const c = exRow.getCell(ci + 1);
+          c.value = val === '' ? null : val;
+          c.font = { name: 'Calibri', size: 10 };
+          c.border = { bottom: { style: 'thin', color: { argb: 'FFE0E8F0' } } };
+          if (ci === 1) { c.alignment = { horizontal: 'center' }; c.font = { bold: true, name: 'Calibri', size: 11 }; }
+          if (ci === 2) { c.alignment = { horizontal: 'right' }; c.numFmt = '#,##0.####'; }
+          if (ci === 3 && String(val).startsWith('──')) {
+            c.font = { bold: true, name: 'Calibri', size: 10, color: { argb: 'FF1A3060' } };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEEF3F8' } };
+          }
+          if (i % 2 === 0 && !String(val).startsWith('──') && val !== '') {
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FBFF' } };
+          }
+        });
+        exRow.height = 16;
+      });
+
+      wsPanduan.getColumn(1).width = 14;
+      wsPanduan.getColumn(2).width = 10;
+      wsPanduan.getColumn(3).width = 10;
+      wsPanduan.getColumn(4).width = 60;
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Template_Katalog_Barang_GudangPro.xlsx';
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('Template berhasil diunduh', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal membuat template', 'error');
+    }
+  };
+
+  // ── Parse Excel ────────────────────────────────────────────────────────────
+  const parseExcel = async (file: File) => {
+    setIsProcessing(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buffer);
+
+      // Cari worksheet — prioritaskan sheet bernama "Katalog Barang", fallback ke sheet pertama
+      let ws = wb.getWorksheet('Katalog Barang');
+      if (!ws) ws = wb.worksheets[0];
+      if (!ws) throw new Error('Sheet tidak ditemukan');
+
+      const rows: ImportRowParsed[] = [];
+      const seenCodes = new Set<string>();
+
+      ws.eachRow((row, rowNum) => {
+        if (rowNum <= 2) return; // skip header rows
+
+        const getStr = (colIdx: number): string => {
+          const val = row.getCell(colIdx).value;
+          if (val === null || val === undefined) return '';
+          return String(val).trim();
+        };
+        const getNum = (colIdx: number): number => {
+          const val = row.getCell(colIdx).value;
+          if (val === null || val === undefined || val === '') return 0;
+          const n = Number(val);
+          return isNaN(n) ? 0 : n;
+        };
+        const getOp = (colIdx: number): '*' | '/' => {
+          const v = getStr(colIdx);
+          return v === '/' ? '/' : '*';
+        };
+
+        const code     = getStr(1).toUpperCase();
+        const name     = getStr(2);
+        const baseUnit = getStr(3) || 'Pcs';
+        const statusStr= getStr(4).toLowerCase();
+        const isActive = statusStr === 'nonaktif' ? false : true;
+
+        // Skip baris kosong total
+        if (!code && !name) return;
+
+        // Bangun konversi
+        const conversions: { name: string; operator: '*' | '/'; ratio: number }[] = [];
+        for (let slot = 0; slot < 4; slot++) {
+          const base = 5 + slot * 3;
+          const uName = getStr(base).toUpperCase();
+          const uOp   = getOp(base + 1);
+          const uRatio= getNum(base + 2);
+          if (uName && uRatio > 0) {
+            conversions.push({ name: uName, operator: uOp, ratio: uRatio });
+          }
+        }
+
+        // Validasi
+        let status: ImportRowParsed['status'] = 'ok';
+        let errorMsg: string | undefined;
+        let existingItem: Item | undefined;
+
+        if (!code) {
+          status = 'error'; errorMsg = 'Kode SKU kosong';
+        } else if (!name) {
+          status = 'error'; errorMsg = 'Nama barang kosong';
+        } else if (seenCodes.has(code)) {
+          status = 'error'; errorMsg = 'SKU duplikat dalam file';
+        } else {
+          // Cek terhadap data existing
+          const existing = existingItems.find(it => it.code.toUpperCase() === code);
+          if (existing) {
+            existingItem = existing;
+            status = 'update'; // akan di-overwrite atau di-skip tergantung importMode
+          }
+        }
+
+        seenCodes.add(code);
+        rows.push({ rowNum, code, name, baseUnit, isActive, conversions, status, errorMsg, existingItem });
+      });
+
+      if (rows.length === 0) {
+        showToast('File tidak memiliki data. Pastikan data dimulai dari baris 3.', 'warning');
+        return;
+      }
+
+      setParsedRows(rows);
+      setStep('preview');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal membaca file Excel. Pastikan menggunakan template yang benar.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) parseExcel(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+      parseExcel(file);
+    } else {
+      showToast('Hanya file .xlsx atau .xls yang didukung', 'warning');
+    }
+  };
+
+  // ── Lakukan import ─────────────────────────────────────────────────────────
+  const handleConfirmImport = async () => {
+    setIsProcessing(true);
+    let added = 0, updated = 0, skipped = 0, errors = 0;
+    try {
+      for (const row of parsedRows) {
+        if (row.status === 'error') { errors++; continue; }
+
+        if (row.status === 'update') {
+          if (importMode === 'skip') { skipped++; continue; }
+          // overwrite
+          try {
+            await StorageService.saveRejectMasterItem({
+              ...row.existingItem!,
+              name: row.name,
+              baseUnit: row.baseUnit,
+              isActive: row.isActive,
+              conversions: row.conversions,
+            });
+            updated++;
+          } catch { errors++; }
+          continue;
+        }
+
+        // status === 'ok' — tambah baru
+        try {
+          await StorageService.saveRejectMasterItem({
+            id: undefined as any,
+            code: row.code,
+            name: row.name,
+            baseUnit: row.baseUnit,
+            isActive: row.isActive,
+            conversions: row.conversions,
+          });
+          added++;
+        } catch { errors++; }
+      }
+
+      setImportResult({ added, updated, skipped, errors });
+      setStep('done');
+      onImportDone();
+    } catch (err) {
+      console.error(err);
+      showToast('Terjadi kesalahan saat import', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ── Helpers UI ─────────────────────────────────────────────────────────────
+  const statusBadge = (status: ImportRowParsed['status']) => {
+    const cfg: Record<string, { bg: string; color: string; border: string; label: string }> = {
+      ok:        { bg: '#e0f5e0', color: '#1a6a1a', border: '#88cc88', label: 'BARU' },
+      update:    { bg: '#fff8e0', color: '#8a5000', border: '#e8c060', label: 'UPDATE' },
+      duplicate: { bg: '#fff0f0', color: '#aa1a1a', border: '#e09090', label: 'DUPLIKAT' },
+      error:     { bg: '#ffe8e8', color: '#cc1a1a', border: '#cc8080', label: 'ERROR' },
+    };
+    const c = cfg[status] || cfg.error;
+    return (
+      <span style={{ display:'inline-block', padding:'1px 5px', borderRadius:2, fontSize:9, fontWeight:700,
+        background: c.bg, color: c.color, border: `1px solid ${c.border}` }}>
+        {c.label}
+      </span>
+    );
+  };
+
+  const importableCount = parsedRows.filter(r =>
+    r.status === 'ok' || (r.status === 'update' && importMode === 'overwrite')
+  ).length;
+
+  return (
+    <ModalPortal>
+      <div style={a.overlay}>
+        <div style={a.modalWinLg}>
+          {/* Title */}
+          <div style={a.modalTitle}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <Upload size={15} />
+              <span>Bulk Import Katalog Barang</span>
+              {step === 'preview' && (
+                <span style={{ fontSize:10, background:'rgba(255,255,255,0.2)', padding:'1px 8px', borderRadius:10, marginLeft:4 }}>
+                  {parsedRows.length} baris ditemukan
+                </span>
+              )}
+            </div>
+            <button style={a.modalClose} onClick={onClose}>✕</button>
+          </div>
+
+          <div style={a.modalBody}>
+            {/* STEP: Upload */}
+            {step === 'upload' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Instruksi singkat */}
+                <div style={{ background:'#eef5ff', border:'1px solid #b8d0f0', borderRadius:3, padding:'10px 14px', fontSize:11 }}>
+                  <div style={{ fontWeight:700, color:'#1a3a6e', marginBottom:6, display:'flex', alignItems:'center', gap:6 }}>
+                    <AlertCircle size={13} color="#2a68cc" />
+                    Cara Penggunaan
+                  </div>
+                  <ol style={{ margin:0, paddingLeft:16, color:'#2a4a6a', lineHeight:'20px' }}>
+                    <li>Download template Excel terlebih dahulu (klik tombol di bawah)</li>
+                    <li>Isi data barang sesuai format di sheet <strong>Katalog Barang</strong></li>
+                    <li>Kolom wajib: <strong>Kode SKU</strong>, <strong>Nama Barang</strong>, <strong>Satuan Dasar</strong></li>
+                    <li>Kolom konversi multi-unit: isi Nama Unit, Operator (* atau /), dan Rasio</li>
+                    <li>Lihat sheet <strong>Panduan Konversi</strong> untuk referensi rasio</li>
+                    <li>Upload file yang sudah diisi untuk preview sebelum disimpan</li>
+                  </ol>
+                </div>
+
+                {/* Download template */}
+                <div style={{ display:'flex', justifyContent:'center' }}>
+                  <button
+                    onClick={handleDownloadTemplate}
+                    style={{ ...a.tbBtn, ...a.tbBtnGreen, padding:'7px 20px', fontSize:12 }}
+                  >
+                    <FileDown size={15} /> Download Template Excel
+                  </button>
+                </div>
+
+                {/* Drop zone */}
+                <div
+                  onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: `2px dashed ${isDragging ? '#2a68cc' : '#b8c8d8'}`,
+                    borderRadius: 6,
+                    padding: '36px 24px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: isDragging ? '#eaf3ff' : '#f8fbff',
+                    transition: 'all 0.15s',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                  }}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 size={32} color="#2a68cc" style={{ animation:'spin 1s linear infinite' }} />
+                      <span style={{ fontSize:12, color:'#2a68cc', fontWeight:600 }}>Membaca file...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={36} color={isDragging ? '#2a68cc' : '#b0b8c8'} />
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:700, color: isDragging ? '#2a68cc' : '#5a6a7a' }}>
+                          {isDragging ? 'Lepaskan file di sini' : 'Drag & drop file Excel, atau klik untuk pilih'}
+                        </div>
+                        <div style={{ fontSize:10, color:'#aaa', marginTop:4 }}>
+                          Format didukung: .xlsx, .xls
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+              </div>
+            )}
+
+            {/* STEP: Preview */}
+            {step === 'preview' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:10, minHeight:0, flex:1 }}>
+                {/* Summary bar */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:8 }}>
+                  {[
+                    { label:'Baru', count: okRows.length,   bg:'#e0f5e0', color:'#1a6a1a', border:'#88cc88', icon: <CheckCircle2 size={16} color="#1a8a1a" /> },
+                    { label:'Akan Update', count: updateRows.length, bg:'#fff8e0', color:'#8a5000', border:'#e8c060', icon: <Edit3 size={16} color="#a06000" /> },
+                    { label:'Error', count: errRows.length, bg:'#ffe8e8', color:'#cc1a1a', border:'#cc8080', icon: <XCircle size={16} color="#cc1a1a" /> },
+                    { label:'Total Baris', count: parsedRows.length, bg:'#eef3f8', color:'#1a3a6a', border:'#b8c8d8', icon: <Database size={16} color="#2a5a9a" /> },
+                  ].map(({ label, count, bg, color, border, icon }) => (
+                    <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius:4, padding:'8px 12px', display:'flex', alignItems:'center', gap:8 }}>
+                      {icon}
+                      <div>
+                        <div style={{ fontSize:18, fontWeight:700, color, fontFamily:"'Courier New',monospace" }}>{count}</div>
+                        <div style={{ fontSize:9, fontWeight:700, color, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mode pilihan untuk duplikat */}
+                {updateRows.length > 0 && (
+                  <div style={{ background:'#fffbe8', border:'1px solid #e8d080', borderRadius:3, padding:'8px 12px', display:'flex', alignItems:'center', gap:12, fontSize:11 }}>
+                    <AlertTriangle size={14} color="#c08000" style={{ flexShrink:0 }} />
+                    <span style={{ color:'#8a5000', fontWeight:600 }}>
+                      {updateRows.length} SKU sudah ada. Pilih tindakan:
+                    </span>
+                    <label style={{ display:'flex', alignItems:'center', gap:4, cursor:'pointer', fontWeight:600, color: importMode === 'skip' ? '#1a5090' : '#888' }}>
+                      <input type="radio" name="importMode" value="skip" checked={importMode === 'skip'}
+                        onChange={() => setImportMode('skip')} />
+                      Lewati (Skip)
+                    </label>
+                    <label style={{ display:'flex', alignItems:'center', gap:4, cursor:'pointer', fontWeight:600, color: importMode === 'overwrite' ? '#1a5090' : '#888' }}>
+                      <input type="radio" name="importMode" value="overwrite" checked={importMode === 'overwrite'}
+                        onChange={() => setImportMode('overwrite')} />
+                      Timpa (Overwrite)
+                    </label>
+                  </div>
+                )}
+
+                {/* Tabel preview */}
+                <div style={{ flex:1, overflow:'auto', border:'1px solid #c8d0d8', borderRadius:3 }}>
+                  <table style={{ ...a.table, tableLayout:'auto' }}>
+                    <thead>
+                      <tr style={{ height:26 }}>
+                        <th style={{ ...a.th, ...a.thCenter, width:40 }}>Baris</th>
+                        <th style={{ ...a.th, ...a.thCenter, width:70 }}>Status</th>
+                        <th style={{ ...a.th, width:120 }}>Kode SKU</th>
+                        <th style={a.th}>Nama Barang</th>
+                        <th style={{ ...a.th, ...a.thCenter, width:80 }}>Unit Dasar</th>
+                        <th style={{ ...a.th, ...a.thCenter, width:70 }}>Status Item</th>
+                        <th style={a.th}>Konversi Multi-Unit</th>
+                        <th style={{ ...a.th, width:180 }}>Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedRows.map((row, idx) => (
+                        <tr
+                          key={row.rowNum}
+                          style={{
+                            ...(idx % 2 === 0 ? a.trOdd : a.trEven),
+                            opacity: row.status === 'error' ? 0.7 : 1,
+                          }}
+                        >
+                          <td style={{ ...a.tdBase, ...a.tdCenter, fontFamily:"'Courier New',monospace", fontSize:10, color:'#888' }}>
+                            {row.rowNum}
+                          </td>
+                          <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                            {statusBadge(row.status)}
+                          </td>
+                          <td style={{ ...a.tdBase, fontFamily:"'Courier New',monospace", fontSize:10, fontWeight:700, color:'#1a4080' }}>
+                            {row.code || <span style={{ color:'#cc0000', fontStyle:'italic' }}>kosong</span>}
+                          </td>
+                          <td style={{ ...a.tdBase, fontWeight:600, whiteSpace:'normal' as const }}>
+                            {row.name || <span style={{ color:'#cc0000', fontStyle:'italic' }}>kosong</span>}
+                          </td>
+                          <td style={{ ...a.tdBase, ...a.tdCenter, fontWeight:700, color:'#5a7090', textTransform:'uppercase', fontSize:10 }}>
+                            {row.baseUnit}
+                          </td>
+                          <td style={{ ...a.tdBase, ...a.tdCenter }}>
+                            <span style={row.isActive ? a.badgeAktif : a.badgeNonaktif}>
+                              {row.isActive ? 'AKTIF' : 'NONAKTIF'}
+                            </span>
+                          </td>
+                          <td style={{ ...a.tdBase, fontSize:10, color:'#555', whiteSpace:'normal' as const }}>
+                            {row.conversions.length === 0 ? (
+                              <span style={{ color:'#bbb', fontStyle:'italic' }}>—</span>
+                            ) : (
+                              <div style={{ display:'flex', flexWrap:'wrap' as const, gap:3 }}>
+                                {row.conversions.map((c, i) => (
+                                  <span key={i} style={{
+                                    background:'#eef3f8', border:'1px solid #b8c8d8', borderRadius:2,
+                                    padding:'1px 5px', fontSize:9, fontFamily:"'Courier New',monospace",
+                                    color:'#1a3a6a', fontWeight:700
+                                  }}>
+                                    {c.name} {c.operator} {c.ratio} {row.baseUnit}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ ...a.tdBase, fontSize:10 }}>
+                            {row.status === 'error' && (
+                              <span style={{ color:'#cc1a1a', display:'flex', alignItems:'center', gap:3 }}>
+                                <XCircle size={10} /> {row.errorMsg}
+                              </span>
+                            )}
+                            {row.status === 'update' && (
+                              <span style={{ color:'#8a5000' }}>
+                                SKU ada → {importMode === 'overwrite' ? 'akan ditimpa' : 'akan dilewati'}
+                              </span>
+                            )}
+                            {row.status === 'ok' && (
+                              <span style={{ color:'#1a6a1a' }}>Siap disimpan</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* STEP: Done */}
+            {step === 'done' && importResult && (
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, padding:'24px 0' }}>
+                <CheckCircle2 size={48} color="#1a8a1a" />
+                <div style={{ fontSize:15, fontWeight:700, color:'#1a3060' }}>Import Selesai!</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, width:'100%', maxWidth:480 }}>
+                  {[
+                    { label: 'Ditambahkan', value: importResult.added,   color: '#1a6a1a', bg: '#e0f5e0', border: '#88cc88' },
+                    { label: 'Diupdate',    value: importResult.updated,  color: '#8a5000', bg: '#fff8e0', border: '#e8c060' },
+                    { label: 'Dilewati',    value: importResult.skipped,  color: '#555',    bg: '#f0f0f0', border: '#ccc' },
+                    { label: 'Error',       value: importResult.errors,   color: '#cc1a1a', bg: '#ffe8e8', border: '#cc8080' },
+                  ].map(({ label, value, color, bg, border }) => (
+                    <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius:4, padding:'10px 8px', textAlign:'center' }}>
+                      <div style={{ fontSize:22, fontWeight:700, color, fontFamily:"'Courier New',monospace" }}>{value}</div>
+                      <div style={{ fontSize:9, fontWeight:700, color, textTransform:'uppercase' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                {importResult.errors > 0 && (
+                  <div style={{ fontSize:11, color:'#888', fontStyle:'italic' }}>
+                    Beberapa baris gagal diimpor. Periksa kembali file dan ulangi untuk baris yang error.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={a.modalFooter}>
+            {step === 'upload' && (
+              <button style={a.modalBtnCancel} onClick={onClose}>Tutup</button>
+            )}
+            {step === 'preview' && (
+              <>
+                <button style={a.modalBtnCancel} onClick={() => { setStep('upload'); setParsedRows([]); }}>
+                  ← Kembali
+                </button>
+                <button
+                  onClick={handleConfirmImport}
+                  disabled={isProcessing || importableCount === 0}
+                  style={{
+                    ...a.modalBtnOk,
+                    opacity: (isProcessing || importableCount === 0) ? 0.5 : 1,
+                    cursor: (isProcessing || importableCount === 0) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {isProcessing ? (
+                    <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }} /> Menyimpan...</>
+                  ) : (
+                    <><Save size={13} /> Import {importableCount} Barang</>
+                  )}
+                </button>
+              </>
+            )}
+            {step === 'done' && (
+              <button style={a.modalBtnOk} onClick={onClose}>
+                <CheckCircle2 size={13} /> Selesai
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
+  );
+};
+
 /* ─── RejectView ────────────────────────────────────────────────────────────── */
 export const RejectView: React.FC = () => {
   const { showToast } = useToast();
@@ -200,6 +931,9 @@ export const RejectView: React.FC = () => {
   const [itemForm, setItemForm] = useState<Partial<Item>>({ code: '', name: '', baseUnit: 'Pcs', conversions: [] });
   const [masterSearch, setMasterSearch] = useState('');
   const debouncedMasterSearch = useDebounce(masterSearch, 300);
+
+  // ── State Bulk Import ──────────────────────────────────────────────────────
+  const [showBulkImport, setShowBulkImport] = useState(false);
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [inputOutlet, setInputOutlet] = useState('');
@@ -565,10 +1299,10 @@ export const RejectView: React.FC = () => {
 
   /* ── TABS CONFIG ── */
   const tabs = [
-    { id: 'NEW',          label: 'Input Reject', icon: Plus },
-    { id: 'HISTORY',      label: 'Riwayat',      icon: History },
-    { id: 'MASTER_ITEMS', label: 'Katalog Barang',icon: Database },
-    { id: 'MASTER',       label: 'Master Outlet', icon: MapPin },
+    { id: 'NEW',          label: 'Input Reject',  icon: Plus },
+    { id: 'HISTORY',      label: 'Riwayat',        icon: History },
+    { id: 'MASTER_ITEMS', label: 'Katalog Barang', icon: Database },
+    { id: 'MASTER',       label: 'Master Outlet',  icon: MapPin },
   ] as const;
 
   return (
@@ -637,6 +1371,16 @@ export const RejectView: React.FC = () => {
                 <Save size={13} /> {editingBatchId ? 'Update' : 'Simpan'}
               </button>
             </>
+          )}
+
+          {/* Tombol Bulk Import — hanya di MASTER_ITEMS */}
+          {activeTab === 'MASTER_ITEMS' && (
+            <button
+              onClick={() => setShowBulkImport(true)}
+              style={{ ...a.tbBtn, ...a.tbBtnAmber }}
+            >
+              <Upload size={13} /> Import Excel
+            </button>
           )}
         </div>
       </div>
@@ -865,6 +1609,10 @@ export const RejectView: React.FC = () => {
                 from { transform: scale(0.4); opacity: 0; }
                 to   { transform: scale(1);   opacity: 1; }
               }
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to   { transform: rotate(360deg); }
+              }
               .batch-row .circle-check {
                 opacity: 0;
                 transform: scale(0.4);
@@ -884,7 +1632,6 @@ export const RejectView: React.FC = () => {
                 <thead>
                   <tr style={{ height:28 }}>
                     <th style={{ ...a.th, ...a.thCenter, width:40 }}>
-                      {/* Select-all circle */}
                       <div
                         onClick={() => {
                           const allSelected = filteredBatches.length > 0 && filteredBatches.every(b => selectedBatches.has(b.id));
@@ -925,7 +1672,6 @@ export const RejectView: React.FC = () => {
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = idx % 2 === 0 ? '#ffffff' : '#f0f5fb'; }}
                     >
                       <td style={{ ...a.tdBase, ...a.tdCenter, padding:'3px 4px' }}>
-                        {/* Gmail-style circular checkbox */}
                         <div
                           className="circle-check"
                           onClick={() => {
@@ -999,12 +1745,15 @@ export const RejectView: React.FC = () => {
                   style={a.searchInput}
                 />
               </div>
-              <button
-                onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }}
-                style={{ ...a.tbBtn, ...a.tbBtnPrimary }}
-              >
-                <Plus size={13} /> Barang Baru
-              </button>
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontSize:10, color:'#888' }}>{filteredMasterItems.length} barang</span>
+                <button
+                  onClick={() => { setEditingItem(null); setItemForm({ code: '', name: '', baseUnit: 'Pcs', conversions: [] }); setShowItemModal(true); }}
+                  style={{ ...a.tbBtn, ...a.tbBtnPrimary }}
+                >
+                  <Plus size={13} /> Barang Baru
+                </button>
+              </div>
             </div>
 
             <div style={a.tableWrap}>
@@ -1014,7 +1763,7 @@ export const RejectView: React.FC = () => {
                     <th style={{ ...a.th, width:130 }}>Kode SKU</th>
                     <th style={a.th}>Nama Produk</th>
                     <th style={{ ...a.th, ...a.thCenter, width:80 }}>Unit</th>
-                    <th style={{ ...a.th, width:140 }}>Multi-Unit</th>
+                    <th style={{ ...a.th, width:200 }}>Multi-Unit (Konversi)</th>
                     <th style={{ ...a.th, ...a.thCenter, width:80 }}>Status</th>
                     <th style={{ ...a.th, ...a.thCenter, width:80 }}>Aksi</th>
                   </tr>
@@ -1036,8 +1785,22 @@ export const RejectView: React.FC = () => {
                       <td style={{ ...a.tdBase, ...a.tdCenter }}>
                         <span style={{ fontSize:10, fontWeight:700, color:'#5a7090', textTransform:'uppercase' }}>{item.baseUnit}</span>
                       </td>
-                      <td style={{ ...a.tdBase, fontSize:10, color:'#888', fontStyle:'italic' }}>
-                        {item.conversions?.length ? item.conversions.map(c => c.name).join(', ') : '—'}
+                      <td style={{ ...a.tdBase, fontSize:10 }}>
+                        {item.conversions?.length ? (
+                          <div style={{ display:'flex', flexWrap:'wrap' as const, gap:3 }}>
+                            {item.conversions.map((c, ci) => (
+                              <span key={ci} style={{
+                                background:'#eef3f8', border:'1px solid #b8c8d8', borderRadius:2,
+                                padding:'1px 5px', fontSize:9, fontFamily:"'Courier New',monospace",
+                                color:'#1a3a6a', fontWeight:700, whiteSpace:'nowrap' as const
+                              }}>
+                                {c.name} {c.operator} {c.ratio} {item.baseUnit}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color:'#ccc', fontStyle:'italic' }}>—</span>
+                        )}
                       </td>
                       <td style={{ ...a.tdBase, ...a.tdCenter }}>
                         <span style={item.isActive === false ? a.badgeNonaktif : a.badgeAktif}>
@@ -1064,7 +1827,18 @@ export const RejectView: React.FC = () => {
                     <tr>
                       <td colSpan={6} style={{ padding:'48px 0' }}>
                         <div style={a.empty}>
-                          <span style={{ fontSize:11, color:'#aaa' }}>Tidak ada barang ditemukan</span>
+                          <Database size={28} color="#ccc" />
+                          <span style={{ fontSize:11, color:'#aaa' }}>
+                            {masterSearch ? 'Tidak ada barang ditemukan' : 'Belum ada katalog barang. Tambah manual atau import Excel.'}
+                          </span>
+                          {!masterSearch && (
+                            <button
+                              onClick={() => setShowBulkImport(true)}
+                              style={{ ...a.tbBtn, ...a.tbBtnAmber, marginTop:4 }}
+                            >
+                              <Upload size={12} /> Import dari Excel
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1195,6 +1969,11 @@ export const RejectView: React.FC = () => {
                         </button>
                       </div>
                     ))}
+                    {(itemForm.conversions || []).length === 0 && (
+                      <div style={{ fontSize:10, color:'#aaa', fontStyle:'italic', textAlign:'center', padding:'8px 0' }}>
+                        Belum ada konversi unit. Klik "+ Tambah Unit" untuk menambahkan.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1281,6 +2060,16 @@ export const RejectView: React.FC = () => {
             </div>
           </div>
         </ModalPortal>
+      )}
+
+      {/* ── MODAL: BULK IMPORT ───────────────────────────────────────────────── */}
+      {showBulkImport && (
+        <BulkImportModal
+          existingItems={rejectMasterItems}
+          onClose={() => setShowBulkImport(false)}
+          onImportDone={() => { loadData(); }}
+          showToast={showToast}
+        />
       )}
 
       <ConfirmDialog
