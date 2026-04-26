@@ -63,11 +63,17 @@ const A5 = {
   } as React.CSSProperties,
 };
 
+// Warna left-border indicator per tipe transaksi
+const TYPE_BORDER: Record<string, string> = {
+  IN:       '#1a6b3a',
+  OUT:      '#8b1a1a',
+  TRANSFER: '#1a3a6e',
+};
+
 // ─────────────────────────────────────────────
 // Sub-components
 // ─────────────────────────────────────────────
 
-/** Accurate 5 style toolbar button */
 const TBtn: React.FC<{
   icon: React.ElementType; label?: string; onClick: () => void;
   disabled?: boolean; primary?: boolean; danger?: boolean;
@@ -117,7 +123,6 @@ const TDivider = () => (
   <div style={{ width: 1, height: 20, background: '#c0c0c0', margin: '0 3px', flexShrink: 0 }} />
 );
 
-/** Accurate 5 type badge */
 const TypeBadge: React.FC<{ type: string; selected?: boolean }> = ({ type, selected }) => {
   if (selected) {
     return (
@@ -138,7 +143,6 @@ const TypeBadge: React.FC<{ type: string; selected?: boolean }> = ({ type, selec
   );
 };
 
-/** Sortable column header */
 const SortTh: React.FC<{
   label: string; sortKey: SortKey;
   currentKey: SortKey | null; currentDir: SortDir;
@@ -173,7 +177,6 @@ const SortTh: React.FC<{
   );
 };
 
-/** Plain (non-sortable) column header */
 const PlainTh: React.FC<{ label: string; width?: string | number; align?: 'left' | 'center' | 'right'; focused?: boolean }> = ({
   label, width, align = 'left', focused,
 }) => (
@@ -190,7 +193,6 @@ const PlainTh: React.FC<{ label: string; width?: string | number; align?: 'left'
   </th>
 );
 
-/** Accurate 5 style form field */
 const AccField: React.FC<{ label: string; children: React.ReactNode; style?: React.CSSProperties }> = ({ label, children, style }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, ...style }}>
     <label style={{ fontSize: 9, fontWeight: 700, color: '#6a7a90', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -213,6 +215,12 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
 
   const [focusedRowIdx, setFocusedRowIdx] = useState<number>(-1);
   const [focusedColIdx, setFocusedColIdx] = useState<number>(0);
+
+  // ── FIX: track hover by id (tidak pakai onMouseOver/Out inline untuk row) ──
+  const [hoveredTxId, setHoveredTxId] = useState<string | null>(null);
+
+  // ── FIX: click timer untuk bedakan single vs double click ──
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showNewDropdown, setShowNewDropdown] = useState(false);
   const newButtonRef = useRef<HTMLButtonElement>(null);
@@ -274,6 +282,13 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
     return () => document.removeEventListener('mousedown', handler);
   }, [showNewDropdown]);
 
+  // Cleanup click timer on unmount
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
   const filteredTransactions = useMemo(() => {
     const lower = searchQuery.toLowerCase().trim();
     let result = transactions.filter(tx => {
@@ -321,9 +336,54 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
   }, []);
 
   const handleEdit = useCallback(() => {
-    const tx = transactions.find(t => t.id === selectedTxId);
-    if (tx) onEditTransaction(tx);
-  }, [transactions, selectedTxId, onEditTransaction]);
+    // Ambil dari filteredTransactions berdasarkan selectedTxId yang ada di state saat ini
+    // bukan dari closure — pakai functional lookup langsung ke transactions array
+    setSelectedTxId(currentId => {
+      if (currentId) {
+        const tx = transactions.find(t => t.id === currentId);
+        if (tx) onEditTransaction(tx);
+      }
+      return currentId;
+    });
+  }, [transactions, onEditTransaction]);
+
+  // ── FIX: Row click handler dengan debounce untuk bedakan single vs double click ──
+  const handleRowClick = useCallback((tx: Transaction, rowIdx: number) => {
+    // Cancel timer sebelumnya kalau ada
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    // Set timer 220ms — kalau tidak ada double click, eksekusi single click logic
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      setSelectedTxId(prev => {
+        if (prev === tx.id) {
+          // Klik baris yang sudah dipilih = deselect
+          setFocusedRowIdx(-1);
+          setFocusedColIdx(0);
+          return null;
+        }
+        setFocusedRowIdx(rowIdx);
+        setFocusedColIdx(0);
+        return tx.id;
+      });
+    }, 220);
+  }, []);
+
+  // ── FIX: Double click handler — cancel single click timer, langsung edit tx yang benar ──
+  const handleRowDoubleClick = useCallback((tx: Transaction, rowIdx: number) => {
+    // Cancel pending single click
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    // Select dulu, lalu edit — pakai `tx` dari parameter (bukan dari state)
+    setSelectedTxId(tx.id);
+    setFocusedRowIdx(rowIdx);
+    setFocusedColIdx(0);
+    onEditTransaction(tx);
+  }, [onEditTransaction]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -599,7 +659,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
   const isFocusedCol = (idx: number) => !!selectedTxId && focusedColIdx === idx;
 
   // ─────────────────────────────────────────────
-  // RENDER — Accurate 5 Layout
+  // RENDER
   // ─────────────────────────────────────────────
   return (
     <div
@@ -638,7 +698,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
         height: 34, background: A5.toolbarBg, borderBottom: `1px solid ${A5.toolbarBdr}`,
         display: 'flex', alignItems: 'center', gap: 3, padding: '0 8px', flexShrink: 0,
       }}>
-        {/* New dropdown */}
         <div style={{ position: 'relative' }}>
           <button
             ref={newButtonRef as any}
@@ -693,24 +752,20 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
         </div>
 
         <TDivider />
-
         <TBtn icon={Edit3}  label="Ubah"  onClick={handleEdit}                        disabled={!selectedTxId} />
         <TBtn icon={Trash2} label="Hapus" onClick={() => setIsDeleteDialogOpen(true)} disabled={!selectedTxId} danger />
-
         <TDivider />
-
-        <TBtn icon={RefreshCw}      label="Segarkan"      onClick={refreshData}         loading={isLoading} />
-        <TBtn icon={FileSpreadsheet} label="Export Excel" onClick={handleOpenExportModal} />
+        <TBtn icon={RefreshCw}       label="Segarkan"      onClick={refreshData}         loading={isLoading} />
+        <TBtn icon={FileSpreadsheet} label="Export Excel"  onClick={handleOpenExportModal} />
       </div>
 
       {/* ══════════════════════════════════════════
-          3. FILTER BAR  (Accurate 5 panel filter)
+          3. FILTER BAR
          ══════════════════════════════════════════ */}
       <div style={{
         background: '#fafafa', borderBottom: '1px solid #c0c0c0',
         padding: '5px 10px', display: 'flex', alignItems: 'flex-end', gap: 10, flexShrink: 0,
       }}>
-        {/* Date range */}
         <AccField label="Periode">
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <Calendar size={11} color="#6a7a90" style={{ flexShrink: 0 }} />
@@ -720,19 +775,13 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
           </div>
         </AccField>
 
-        {/* Warehouse filter */}
         <AccField label="Gudang" style={{ minWidth: 130 }}>
-          <select
-            value={filterWhFrom}
-            onChange={e => setFilterWhFrom(e.target.value)}
-            style={{ ...A5.inputStyle, width: '100%' }}
-          >
+          <select value={filterWhFrom} onChange={e => setFilterWhFrom(e.target.value)} style={{ ...A5.inputStyle, width: '100%' }}>
             <option value="ALL">Semua Gudang</option>
             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         </AccField>
 
-        {/* Type filter — toggle buttons Accurate 5 style */}
         <AccField label="Tipe Transaksi">
           <div style={{ display: 'flex', gap: 2, height: 22 }}>
             {(['ALL', 'IN', 'OUT', 'TRANSFER'] as const).map(t => {
@@ -748,8 +797,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 <button key={t} onClick={() => setFilterType(t)} style={{
                   padding: '0 8px', height: '100%', fontSize: 10, fontWeight: 700,
                   background: c.bg, border: `1px solid ${c.border}`, color: c.color,
-                  borderRadius: 2, cursor: 'pointer', fontFamily: A5.font,
-                  letterSpacing: '0.04em',
+                  borderRadius: 2, cursor: 'pointer', fontFamily: A5.font, letterSpacing: '0.04em',
                 }}>
                   {t === 'ALL' ? 'Semua' : t}
                 </button>
@@ -758,7 +806,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
           </div>
         </AccField>
 
-        {/* Search */}
         <AccField label="Cari" style={{ flex: 1, maxWidth: 240 }}>
           <div style={{ position: 'relative' }}>
             <Search size={11} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: '#888', pointerEvents: 'none' }} />
@@ -777,7 +824,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
           </div>
         </AccField>
 
-        {/* Active filter badge */}
         {activeFilterCount > 0 && (
           <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 1 }}>
             <span style={{
@@ -792,7 +838,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
       </div>
 
       {/* ══════════════════════════════════════════
-          4. KEYBOARD HINT BAR (when row selected)
+          4. KEYBOARD HINT BAR
          ══════════════════════════════════════════ */}
       {selectedTxId && (
         <div style={{
@@ -819,7 +865,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
         ref={scrollContainerRef}
         style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', background: '#fff', position: 'relative' }}
       >
-        {/* Loading overlay */}
         {isLoading && (
           <div style={{
             position: 'absolute', inset: 0, zIndex: 20,
@@ -843,109 +888,141 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
           width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed',
           minWidth: 860, fontSize: 11,
         }}>
-          {/* Sticky header */}
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ height: 22, background: A5.headerBg, borderBottom: `2px solid ${A5.navyDark}` }}>
-              <SortTh label="Referensi"  sortKey="referenceNo" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} width="16%"  focused={isFocusedCol(0)} />
-              <SortTh label="Tanggal"    sortKey="date"        currentKey={sortKey} currentDir={sortDir} onSort={handleSort} width="10%"  focused={isFocusedCol(1)} />
-              <PlainTh label="Tipe"  width="8%"  align="center" focused={isFocusedCol(2)} />
-              <SortTh label="Partner"    sortKey="partnerName" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} width="18%"  focused={isFocusedCol(3)} />
+              <SortTh label="Referensi"   sortKey="referenceNo" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} width="16%"  focused={isFocusedCol(0)} />
+              <SortTh label="Tanggal"     sortKey="date"        currentKey={sortKey} currentDir={sortDir} onSort={handleSort} width="10%"  focused={isFocusedCol(1)} />
+              <PlainTh label="Tipe"       width="8%"  align="center" focused={isFocusedCol(2)} />
+              <SortTh label="Partner"     sortKey="partnerName" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} width="18%"  focused={isFocusedCol(3)} />
               <PlainTh label="Keterangan" width="20%" focused={isFocusedCol(4)} />
               <PlainTh label="Gudang"     width="18%" focused={isFocusedCol(5)} />
-              <PlainTh label="Items" width="10%" align="center" focused={isFocusedCol(6)} />
+              <PlainTh label="Items"      width="10%" align="center" focused={isFocusedCol(6)} />
             </tr>
           </thead>
 
           <tbody ref={tbodyRef}>
             {filteredTransactions.map((tx, rowIdx) => {
-              const isSel  = selectedTxId === tx.id;
-              const isEven = rowIdx % 2 === 0;
-              const whName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name ?? '-';
+              const isSel     = selectedTxId === tx.id;
+              const isHovered = hoveredTxId === tx.id && !isSel;
+              const isEven    = rowIdx % 2 === 0;
 
-              // Cell background helpers
-              const bg = isSel ? A5.rowSel : isEven ? A5.rowOdd : A5.rowEven;
-              const cellFocusBg = (colIdx: number) =>
-                isSel
-                  ? (isFocusedCol(colIdx) ? '#1a4a7a' : A5.rowSel)
-                  : (isFocusedCol(colIdx) ? '#d8e8f8' : bg);
+              // ── Hitung background baris ──
+              let rowBg: string;
+              if (isSel)         rowBg = A5.rowSel;
+              else if (isHovered) rowBg = A5.rowHover;
+              else                rowBg = isEven ? A5.rowOdd : A5.rowEven;
+
+              // ── Cell background per kolom (dengan focused column highlight) ──
+              const cellBg = (colIdx: number): string => {
+                if (isSel)   return isFocusedCol(colIdx) ? '#1a4a7a' : A5.rowSel;
+                if (isHovered) return isFocusedCol(colIdx) ? '#c8daf5' : A5.rowHover;
+                return isFocusedCol(colIdx) ? '#d8e8f8' : rowBg;
+              };
+
+              // ── Left border indicator warna tipe (hanya kolom pertama) ──
+              const typeBorderColor = TYPE_BORDER[tx.type] ?? '#888';
+
+              const whName = warehouses.find(w => w.id === tx.sourceWarehouseId)?.name ?? '-';
 
               return (
                 <tr
                   key={tx.id}
                   data-row={rowIdx}
-                  onClick={() => {
-                    if (isSel) { setSelectedTxId(null); setFocusedRowIdx(-1); setFocusedColIdx(0); }
-                    else { setSelectedTxId(tx.id); setFocusedRowIdx(rowIdx); setFocusedColIdx(0); }
-                  }}
-                  onDoubleClick={() => { setSelectedTxId(tx.id); setFocusedRowIdx(rowIdx); onEditTransaction(tx); }}
+                  onClick={() => handleRowClick(tx, rowIdx)}
+                  onDoubleClick={() => handleRowDoubleClick(tx, rowIdx)}
+                  onMouseEnter={() => setHoveredTxId(tx.id)}
+                  onMouseLeave={() => setHoveredTxId(null)}
                   style={{
-                    height: 22, cursor: 'pointer',
-                    borderBottom: `1px solid ${isSel ? '#1a3a6e' : '#e0e8f0'}`,
-                    background: bg,
-                    transition: 'background 0.05s',
+                    height: 22,
+                    cursor: 'pointer',
+                    borderBottom: `1px solid ${isSel ? '#1a3a6e' : isHovered ? '#b8cce8' : '#e0e8f0'}`,
+                    background: rowBg,
+                    // Transisi halus saat hover masuk/keluar
+                    transition: 'background 0.08s ease, border-color 0.08s ease',
+                    // Outline ringan saat hover untuk kejelasan
+                    outline: isHovered ? `1px solid #b0c8e8` : 'none',
+                    outlineOffset: '-1px',
                   }}
-                  onMouseOver={e => { if (!isSel) e.currentTarget.style.background = A5.rowHover; }}
-                  onMouseOut={e => { if (!isSel) e.currentTarget.style.background = bg; }}
                 >
-                  {/* Referensi */}
+                  {/* Referensi — dengan left border indicator tipe */}
                   <td style={{
-                    padding: '0 7px', fontFamily: 'Consolas, monospace', fontSize: 10,
+                    padding: '0 7px',
+                    paddingLeft: isHovered || isSel ? 4 : 7,
+                    fontFamily: 'Consolas, monospace', fontSize: 10,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    borderRight: A5.cellBdr, background: cellFocusBg(0),
-                    color: isSel ? '#c8dcf8' : '#1a3a6e', fontWeight: isSel ? 400 : 600,
+                    borderRight: A5.cellBdr,
+                    // FIX: left border indicator yang menunjukkan tipe transaksi
+                    borderLeft: `3px solid ${isSel ? 'rgba(255,255,255,0.5)' : isHovered ? typeBorderColor : 'transparent'}`,
+                    background: cellBg(0),
+                    color: isSel ? '#c8dcf8' : '#1a3a6e',
+                    fontWeight: isSel ? 400 : 600,
+                    transition: 'border-left-color 0.08s ease',
                   }}>
                     {tx.referenceNo}
                   </td>
+
                   {/* Tanggal */}
                   <td style={{
                     padding: '0 7px', fontFamily: 'Consolas, monospace', fontSize: 10,
-                    borderRight: A5.cellBdr, background: cellFocusBg(1),
-                    color: isSel ? '#a0c0e8' : '#555',
+                    borderRight: A5.cellBdr, background: cellBg(1),
+                    color: isSel ? '#a0c0e8' : isHovered ? '#333' : '#555',
                   }}>
                     {tx.date}
                   </td>
+
                   {/* Tipe */}
-                  <td style={{
-                    textAlign: 'center', borderRight: A5.cellBdr, background: cellFocusBg(2),
-                  }}>
+                  <td style={{ textAlign: 'center', borderRight: A5.cellBdr, background: cellBg(2) }}>
                     <TypeBadge type={tx.type} selected={isSel} />
                   </td>
+
                   {/* Partner */}
                   <td style={{
                     padding: '0 7px', fontSize: 11, fontWeight: 600,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    borderRight: A5.cellBdr, background: cellFocusBg(3),
-                    color: isSel ? '#fff' : '#1a1a2e',
+                    borderRight: A5.cellBdr, background: cellBg(3),
+                    color: isSel ? '#fff' : isHovered ? '#0a0a1a' : '#1a1a2e',
                   }}>
                     {tx.partnerName || '-'}
                   </td>
+
                   {/* Keterangan */}
                   <td style={{
                     padding: '0 7px', fontSize: 10, fontStyle: 'italic',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    borderRight: A5.cellBdr, background: cellFocusBg(4),
-                    color: isSel ? '#a0c0e8' : '#666',
+                    borderRight: A5.cellBdr, background: cellBg(4),
+                    color: isSel ? '#a0c0e8' : isHovered ? '#444' : '#666',
                   }} title={tx.notes}>
                     {tx.notes || '-'}
                   </td>
+
                   {/* Gudang */}
                   <td style={{
                     padding: '0 7px', fontSize: 10, fontWeight: 600,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    borderRight: A5.cellBdr, background: cellFocusBg(5),
-                    color: isSel ? '#a0c0e8' : '#444',
+                    borderRight: A5.cellBdr, background: cellBg(5),
+                    color: isSel ? '#a0c0e8' : isHovered ? '#333' : '#444',
                     textTransform: 'uppercase', letterSpacing: '0.02em',
                   }}>
                     {whName}
                   </td>
+
                   {/* Items count */}
                   <td style={{
                     textAlign: 'center', fontFamily: 'Consolas, monospace', fontWeight: 700,
-                    background: cellFocusBg(6),
-                    color: isSel ? '#fff' : '#3a6ea8',
+                    background: cellBg(6),
+                    color: isSel ? '#fff' : isHovered ? '#1a5aa8' : '#3a6ea8',
                     fontSize: 11,
                   }}>
-                    {tx.items.length}
+                    {/* Badge item count dengan highlight saat hover */}
+                    <span style={{
+                      display: 'inline-block',
+                      padding: isHovered && !isSel ? '0 7px' : '0 5px',
+                      borderRadius: 8,
+                      background: isHovered && !isSel ? '#c8daf5' : isSel ? 'rgba(255,255,255,0.15)' : 'transparent',
+                      transition: 'all 0.08s ease',
+                    }}>
+                      {tx.items.length}
+                    </span>
                   </td>
                 </tr>
               );
@@ -1003,6 +1080,16 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
               Baris {focusedRowIdx + 1} · Kolom: <strong>{COLUMNS[focusedColIdx].label}</strong>
             </span>
           )}
+          {/* ── Hover info ── */}
+          {hoveredTxId && !selectedTxId && (() => {
+            const hTx = filteredTransactions.find(t => t.id === hoveredTxId);
+            return hTx ? (
+              <span style={{ color: '#5a7a9a', fontStyle: 'italic' }}>
+                {hTx.referenceNo} · {hTx.type} · {hTx.items.length} item
+                {hTx.partnerName ? ` · ${hTx.partnerName}` : ''}
+              </span>
+            ) : null;
+          })()}
         </div>
         <div style={{ color: '#888', fontStyle: 'italic', fontSize: 9 }}>GudangPro System v2.1</div>
       </div>
@@ -1024,7 +1111,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
       </ModalPortal>
 
       {/* ══════════════════════════════════════════
-          MODAL: EXPORT EXCEL  (Accurate 5 dialog)
+          MODAL: EXPORT EXCEL
          ══════════════════════════════════════════ */}
       {showExportModal && (
         <ModalPortal>
@@ -1040,7 +1127,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
               border: '1px solid #b0b8c8', borderRadius: 4, overflow: 'hidden',
               fontFamily: A5.font,
             }}>
-              {/* Dialog title bar */}
               <div style={{
                 background: `linear-gradient(to bottom, ${A5.navyLight}, ${A5.navyMid})`,
                 padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -1064,9 +1150,7 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </button>
               </div>
 
-              {/* Dialog body */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Format selector */}
                 <div>
                   <label style={{ display: 'block', fontSize: 9, fontWeight: 700, color: '#6a7a90', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Format Export</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -1100,7 +1184,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                   </div>
                 </div>
 
-                {/* Period */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <AccField label="Dari">
                     <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} style={{ ...A5.inputStyle, width: '100%' }} />
@@ -1110,7 +1193,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                   </AccField>
                 </div>
 
-                {/* Filters */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <AccField label="Gudang">
                     <select value={exportWh} onChange={e => setExportWh(e.target.value)} style={{ ...A5.inputStyle, width: '100%' }}>
@@ -1136,7 +1218,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                   </div>
                 </div>
 
-                {/* Search */}
                 <AccField label="Pencarian (Opsional)">
                   <div style={{ position: 'relative' }}>
                     <Search size={11} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', color: '#888', pointerEvents: 'none' }} />
@@ -1150,7 +1231,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                   </div>
                 </AccField>
 
-                {/* Preview count */}
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 12px', borderRadius: 4,
@@ -1171,7 +1251,6 @@ export const ReportsView: React.FC<Props> = ({ onEditTransaction, onCreateTransa
                 </div>
               </div>
 
-              {/* Dialog footer */}
               <div style={{
                 padding: '8px 12px', background: '#f5f5f5', borderTop: '1px solid #e0e0e0',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
