@@ -40,11 +40,11 @@ type Theme = 'dark' | 'light';
 // Border radius: 0 everywhere  |  Shadow: 4px solid offset
 const THEME = {
   dark: {
-    pageBg:         '[background-color:hsl(20,10%,10%)]',
-    sidebarBg:      'hsl(20,10%,7%)',
+    pageBg:         '[background-color:hsl(20,10%,18%)]',
+    sidebarBg:      'hsl(20,10%,14%)',
     sidebarBrand:   'rgba(0,0,0,0.4)',
     sidebarBorder:  'border-[hsl(40,10%,96%)]',
-    topbarBg:       '[background-color:hsl(20,10%,12%)]',
+    topbarBg:       '[background-color:hsl(20,10%,21%)]',
     topbarBorder:   'border-[hsl(40,10%,96%)]',
     topbarSep:      'border-[hsl(40,10%,96%)]',
     textPrimary:    'text-[hsl(40,10%,96%)]',
@@ -53,27 +53,27 @@ const THEME = {
     btnHover:       'hover:bg-[hsl(325,100%,50%)] hover:text-[hsl(40,10%,96%)]',
     btnIcon:        'text-[hsl(40,10%,70%)]',
     avatarBg:       'bg-[hsl(325,100%,50%)] border-[hsl(325,100%,40%)] text-white',
-    contentBg:      '[background-color:hsl(20,10%,10%)]',
+    contentBg:      '[background-color:hsl(20,10%,18%)]',
     scrollThumb:    'hsl(40,10%,96%)',
     scrollThumbHover: 'hsl(325,100%,50%)',
     backdropMobile: 'bg-black/40',
   },
   light: {
     pageBg:         '[background-color:hsl(40,10%,96%)]',
-    sidebarBg:      'hsl(20,10%,10%)',
+    sidebarBg:      'hsl(20,10%,18%)',
     sidebarBrand:   'rgba(0,0,0,0.3)',
-    sidebarBorder:  'border-[hsl(20,10%,10%)]',
+    sidebarBorder:  'border-[hsl(20,10%,18%)]',
     topbarBg:       '[background-color:hsl(40,10%,96%)]',
-    topbarBorder:   'border-[hsl(20,10%,10%)]',
-    topbarSep:      'border-[hsl(20,10%,10%)]',
-    textPrimary:    'text-[hsl(20,10%,10%)]',
+    topbarBorder:   'border-[hsl(20,10%,18%)]',
+    topbarSep:      'border-[hsl(20,10%,18%)]',
+    textPrimary:    'text-[hsl(20,10%,18%)]',
     textSecondary:  'text-[hsl(20,10%,30%)]',
     textMuted:      'text-[hsl(20,10%,50%)]',
     btnHover:       'hover:bg-[hsl(325,100%,50%)] hover:text-white',
     btnIcon:        'text-[hsl(20,10%,40%)]',
     avatarBg:       'bg-[hsl(325,100%,50%)] border-[hsl(325,100%,40%)] text-white',
     contentBg:      '[background-color:hsl(40,10%,96%)]',
-    scrollThumb:    'hsl(20,10%,10%)',
+    scrollThumb:    'hsl(20,10%,18%)',
     scrollThumbHover: 'hsl(325,100%,50%)',
     backdropMobile: 'bg-black/30',
   },
@@ -108,7 +108,7 @@ const NavItem: React.FC<NavItemProps> = ({ id, label, icon: Icon, activeTab, has
       onClick={() => onClick(id)}
       className={`flex items-center w-full px-3 py-2 mb-0.5 text-[12px] font-medium transition-all ${
         isActive
-          ? 'bg-[hsl(325,100%,50%)] text-white border-2 border-[hsl(325,100%,50%)] shadow-[2px_2px_0px_hsl(20,10%,10%)]'
+          ? 'bg-[hsl(325,100%,50%)] text-white border-2 border-[hsl(325,100%,50%)] shadow-[2px_2px_0px_hsl(20,10%,18%)]'
           : 'text-[hsl(40,10%,70%)] hover:text-white hover:bg-[hsl(325,100%,50%)] border-2 border-transparent'
       }`}
     >
@@ -310,10 +310,10 @@ function App() {
                   <div className="space-y-1 px-0.5">
                     <button
                       onClick={() => openTransaction('IN')}
-                      className="w-full text-left px-3 py-2 text-[10px] font-mono font-bold text-[hsl(60,100%,50%)] hover:bg-[hsl(60,100%,50%)] hover:text-[hsl(20,10%,10%)] flex items-center gap-2.5 transition-all border-2 border-[hsl(60,100%,50%)] tracking-widest uppercase"
+                      className="w-full text-left px-3 py-2 text-[10px] font-mono font-bold text-[hsl(60,100%,50%)] hover:bg-[hsl(60,100%,50%)] hover:text-[hsl(20,10%,18%)] flex items-center gap-2.5 transition-all border-2 border-[hsl(60,100%,50%)] tracking-widest uppercase"
                     >
                       <div className="w-4 h-4 bg-[hsl(60,100%,50%)] flex items-center justify-center shrink-0">
-                        <Plus size={10} className="text-[hsl(20,10%,10%)]" />
+                        <Plus size={10} className="text-[hsl(20,10%,18%)]" />
                       </div>
                       Penerimaan
                     </button>
@@ -466,7 +466,7 @@ function App() {
           </div>
 
           {appState === 'logging-out' && (
-            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[hsl(20,10%,10%)]/90 app-animate-in">
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[hsl(20,10%,18%)]/90 app-animate-in">
               <div className="w-16 h-16 flex items-center justify-center bg-[hsl(325,100%,50%)] border-2 border-[hsl(60,100%,50%)] shadow-[6px_6px_0px_hsl(60,100%,50%)] mb-4 animate-pulse">
                 <AppLogo className="w-10 h-10" strokeColor="white" />
               </div>
