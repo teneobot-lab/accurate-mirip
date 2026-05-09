@@ -12,120 +12,92 @@
         theme: {
           extend: {
             colors: {
-              primary: 'hsl(325, 100%, 50%)',
-              accent:  'hsl(60, 100%, 50%)',
-              destructive: 'hsl(0, 84%, 60%)',
-              'destructive-dark': 'hsl(0, 63%, 31%)',
+              slate: {
+                950: '#020617',
+              },
+              // Professional Palette
+              cutty: '#475569', // Slate 600
+              spectra: '#0f172a', // Slate 900
+              gable: '#ffffff', // White
+              daintree: '#f8fafc', // Slate 50 (Main Canvas)
+              brand: '#0369a1', // Sky 700
+              // SILVER MIST THEME (#cdcfdb based)
+              mist: {
+                50: '#f4f5f7',  // App Background (Lighter)
+                100: '#e8eaee', // Sidebar/Card BG
+                200: '#dbdde6', // Borders
+                300: '#cdcfdb', // *** PRIMARY SILVER MIST (#cdcfdb) - Used for Headers ***
+                400: '#aeb1c2', // Icons / Placeholders
+                500: '#757991', // Text
+                600: '#4b4e63', // Dark Text
+                700: '#3a3d4d',
+                800: '#2b2d38',
+                900: '#1e2029',
+              }
             },
             fontFamily: {
-              display: ['"Clash Display"', 'sans-serif'],
-              sans:    ['"Space Grotesk"', 'system-ui', 'sans-serif'],
-              mono:    ['"Space Mono"', 'monospace'],
-              marker:  ['"Permanent Marker"', 'cursive'],
-            },
+              sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            }
           }
         }
       }
     </script>
-
-    <!-- FONTS -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Permanent+Marker&display=swap" rel="stylesheet">
-    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
-
     <style>
-      /* ── CSS VARS ── */
-      :root {
-        --primary:   hsl(325, 100%, 50%);
-        --accent:    hsl(60, 100%, 50%);
-        --bg:        hsl(40, 10%, 96%);
-        --fg:        hsl(20, 10%, 10%);
-        --secondary: hsl(20, 10%, 20%);
-        --muted:     hsl(40, 10%, 85%);
-        --destructive: hsl(0, 84%, 60%);
-        --shadow-fg: 4px 4px 0px hsl(20, 10%, 10%);
-      }
-      .dark {
-        --bg:        hsl(20, 10%, 10%);
-        --fg:        hsl(40, 10%, 96%);
-        --secondary: hsl(40, 10%, 96%);
-        --muted:     hsl(20, 10%, 20%);
-        --destructive: hsl(0, 63%, 31%);
-        --shadow-fg: 4px 4px 0px hsl(40, 10%, 96%);
-      }
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-      /* ── GLOBAL RESET ── */
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f4f5f7; /* mist-50 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cdcfdb; /* mist-300 */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #aeb1c2; /* mist-400 */
+      }
+      
+      /* Global Transitions */
       * {
-        border-radius: 0 !important;
-        transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
       }
-
+      
       body {
-        font-family: 'Space Grotesk', system-ui, sans-serif;
-        background-color: var(--bg);
-        color: var(--fg);
         -webkit-font-smoothing: antialiased;
-        overflow: hidden;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f4f5f7; /* mist-50 */
+        color: #1e293b;
       }
 
-      /* ── ZINE UTILITIES ── */
-      .zine-border {
-        border: 2px solid var(--fg) !important;
-        box-shadow: 4px 4px 0px var(--fg);
-      }
-      .zine-border-sm {
-        border: 2px solid var(--fg) !important;
-        box-shadow: 2px 2px 0px var(--fg);
-      }
-      .zine-border-primary {
-        border: 2px solid var(--primary) !important;
-        box-shadow: 4px 4px 0px var(--primary);
-      }
-      .zine-border-accent {
-        border: 2px solid var(--accent) !important;
-        box-shadow: 4px 4px 0px var(--accent);
-      }
-      .font-display { font-family: 'Clash Display', sans-serif; }
-      .font-marker  { font-family: 'Permanent Marker', cursive; }
-      .zine-label {
-        font-family: 'Space Mono', monospace;
-        font-size: 9px;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
-        font-weight: 700;
-      }
-
-      /* ── SCROLLBAR ── */
-      ::-webkit-scrollbar       { width: 6px; height: 6px; }
-      ::-webkit-scrollbar-track { background: var(--muted); }
-      ::-webkit-scrollbar-thumb { background: var(--fg); }
-      ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
-
-      /* ── INPUTS ── */
+      /* Global Input Overrides for Clarity within Silver Theme */
       input, select, textarea {
-        background-color: var(--bg) !important;
-        border: 2px solid var(--fg) !important;
-        color: var(--fg) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #cdcfdb !important; /* mist-300 */
+        color: #0f172a !important;
         font-weight: 500 !important;
-        font-family: 'Space Grotesk', sans-serif !important;
-        border-radius: 0 !important;
       }
+      
       input:focus, select:focus, textarea:focus {
-        border-color: var(--primary) !important;
+        border-color: #0369a1 !important;
         outline: none;
-        box-shadow: 3px 3px 0px var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1) !important;
       }
+      
       input::placeholder {
-        color: var(--muted) !important;
+        color: #aeb1c2 !important; /* mist-400 */
         font-weight: 400 !important;
       }
 
       .search-highlight {
-        background-color: var(--accent);
-        color: var(--fg);
+        background-color: #fef08a;
+        color: #854d0e;
         font-weight: 700;
         padding: 0 2px;
+        border-radius: 2px;
       }
     </style>
   <script type="importmap">
@@ -150,7 +122,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
+  <body class="bg-mist-50 text-slate-800 antialiased overflow-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
   <script type="module" src="/index.tsx"></script>
