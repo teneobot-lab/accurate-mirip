@@ -1,0 +1,130 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GudangPro Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              slate: {
+                950: '#020617',
+              },
+              // Professional Palette
+              cutty: '#475569', // Slate 600
+              spectra: '#0f172a', // Slate 900
+              gable: '#ffffff', // White
+              daintree: '#f8fafc', // Slate 50 (Main Canvas)
+              brand: '#0369a1', // Sky 700
+              // SILVER MIST THEME (#cdcfdb based)
+              mist: {
+                50: '#f4f5f7',  // App Background (Lighter)
+                100: '#e8eaee', // Sidebar/Card BG
+                200: '#dbdde6', // Borders
+                300: '#cdcfdb', // *** PRIMARY SILVER MIST (#cdcfdb) - Used for Headers ***
+                400: '#aeb1c2', // Icons / Placeholders
+                500: '#757991', // Text
+                600: '#4b4e63', // Dark Text
+                700: '#3a3d4d',
+                800: '#2b2d38',
+                900: '#1e2029',
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f4f5f7; /* mist-50 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cdcfdb; /* mist-300 */
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #aeb1c2; /* mist-400 */
+      }
+      
+      /* Global Transitions */
+      * {
+        transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+      }
+      
+      body {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f4f5f7; /* mist-50 */
+        color: #1e293b;
+      }
+
+      /* Global Input Overrides for Clarity within Silver Theme */
+      input, select, textarea {
+        background-color: #ffffff !important;
+        border: 1px solid #cdcfdb !important; /* mist-300 */
+        color: #0f172a !important;
+        font-weight: 500 !important;
+      }
+      
+      input:focus, select:focus, textarea:focus {
+        border-color: #0369a1 !important;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.1) !important;
+      }
+      
+      input::placeholder {
+        color: #aeb1c2 !important; /* mist-400 */
+        font-weight: 400 !important;
+      }
+
+      .search-highlight {
+        background-color: #fef08a;
+        color: #854d0e;
+        font-weight: 700;
+        padding: 0 2px;
+        border-radius: 2px;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react": "https://esm.sh/react@18.3.1",
+    "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+    "recharts": "https://esm.sh/recharts@2.12.2",
+    "xlsx": "https://esm.sh/xlsx@0.18.5",
+    "exceljs": "https://esm.sh/exceljs@4.4.0",
+    "jspdf": "https://esm.sh/jspdf@2.5.1",
+    "jspdf-autotable": "https://esm.sh/jspdf-autotable@3.8.2",
+    "fuse.js": "https://esm.sh/fuse.js@7.0.0",
+    "decimal.js": "https://esm.sh/decimal.js@10.4.3",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-mist-50 text-slate-800 antialiased overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

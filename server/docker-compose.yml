@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: mysql_docker
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Lokasiku123.
+      MYSQL_DATABASE: waresix_db
+      MYSQL_USER: waresix
+      MYSQL_PASSWORD: Lokasiku123.
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+      - ./waresix_backup.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3307:3306"
+
+  backend:
+    build: .
+    container_name: backend_docker
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      DB_HOST: mysql
+      DB_USER: waresix
+      DB_PASSWORD: Lokasiku123.
+      DB_NAME: waresix_db
+      NODE_ENV: production
+    depends_on:
+      - mysql

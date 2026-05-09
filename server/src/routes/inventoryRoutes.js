@@ -1,10 +1,3 @@
-    try {
-        const [stocks] = await db.query('SELECT item_id as itemId, warehouse_id as warehouseId, qty FROM stock');
-        res.json(stocks);
-    } catch(e) { next(e); }
-});
-
-module.exports = router;
 
 const router = require('express').Router();
 const db = require('../config/database');
